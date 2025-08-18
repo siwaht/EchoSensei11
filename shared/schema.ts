@@ -192,6 +192,11 @@ export const billingPackages = pgTable("billing_packages", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const insertBillingPackageSchema = createInsertSchema(billingPackages).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -204,3 +209,4 @@ export type InsertAgent = z.infer<typeof insertAgentSchema>;
 export type CallLog = typeof callLogs.$inferSelect;
 export type InsertCallLog = z.infer<typeof insertCallLogSchema>;
 export type BillingPackage = typeof billingPackages.$inferSelect;
+export type InsertBillingPackage = z.infer<typeof insertBillingPackageSchema>;

@@ -45,6 +45,21 @@ export default function AdminDashboard() {
   // State management
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [creatingPackage, setCreatingPackage] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<BillingPackage | null>(null);
+  const [deletingPackage, setDeletingPackage] = useState<BillingPackage | null>(null);
+  const [newPackage, setNewPackage] = useState({
+    id: "",
+    name: "",
+    displayName: "",
+    perCallRate: "0.30",
+    perMinuteRate: "0.30",
+    monthlyCredits: "0",
+    maxAgents: "5",
+    maxUsers: "10",
+    monthlyPrice: "0",
+    features: [] as string[],
+  });
   const [editingOrg, setEditingOrg] = useState<{
     id: string;
     name: string;
@@ -144,6 +159,76 @@ export default function AdminDashboard() {
     },
     onError: () => {
       toast({ title: "Failed to delete user", variant: "destructive" });
+    },
+  });
+
+  // Create billing package mutation
+  const createPackageMutation = useMutation({
+    mutationFn: async (packageData: typeof newPackage) => {
+      return await apiRequest("POST", "/api/admin/billing-packages", {
+        ...packageData,
+        perCallRate: packageData.perCallRate,
+        perMinuteRate: packageData.perMinuteRate,
+        monthlyCredits: parseInt(packageData.monthlyCredits),
+        maxAgents: parseInt(packageData.maxAgents),
+        maxUsers: parseInt(packageData.maxUsers),
+        monthlyPrice: packageData.monthlyPrice,
+        features: packageData.features,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/billing-packages"] });
+      toast({ title: "Billing package created successfully" });
+      setCreatingPackage(false);
+      setNewPackage({
+        id: "",
+        name: "",
+        displayName: "",
+        perCallRate: "0.30",
+        perMinuteRate: "0.30",
+        monthlyCredits: "0",
+        maxAgents: "5",
+        maxUsers: "10",
+        monthlyPrice: "0",
+        features: [],
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to create billing package", 
+        description: error.message || "An error occurred",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Update billing package mutation
+  const updatePackageMutation = useMutation({
+    mutationFn: async (data: { id: string; updates: Partial<BillingPackage> }) => {
+      return await apiRequest("PATCH", `/api/admin/billing-packages/${data.id}`, data.updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/billing-packages"] });
+      toast({ title: "Billing package updated successfully" });
+      setEditingPackage(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to update billing package", variant: "destructive" });
+    },
+  });
+
+  // Delete billing package mutation
+  const deletePackageMutation = useMutation({
+    mutationFn: async (packageId: string) => {
+      return await apiRequest("DELETE", `/api/admin/billing-packages/${packageId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/billing-packages"] });
+      toast({ title: "Billing package deleted successfully" });
+      setDeletingPackage(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to delete billing package", variant: "destructive" });
     },
   });
 
@@ -403,47 +488,58 @@ export default function AdminDashboard() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Billing Packages</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Card className="p-4 border-2 border-blue-500/20">
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-base">Starter</h3>
-                  <p className="text-xl font-bold">$0/mo</p>
-                  <ul className="space-y-1 text-xs">
-                    <li className="truncate">• $0.30 per call</li>
-                    <li className="truncate">• $0.30 per minute</li>
-                    <li className="truncate">• 5 agents max</li>
-                    <li className="truncate">• 10 users max</li>
-                  </ul>
-                </div>
-              </Card>
-              <Card className="p-4 border-2 border-purple-500/20">
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-base">Professional</h3>
-                  <p className="text-xl font-bold">$99/mo</p>
-                  <ul className="space-y-1 text-xs">
-                    <li className="truncate">• $0.25 per call</li>
-                    <li className="truncate">• $0.25 per minute</li>
-                    <li className="truncate">• 20 agents max</li>
-                    <li className="truncate">• 50 users max</li>
-                    <li className="truncate">• 500 monthly credits</li>
-                  </ul>
-                </div>
-              </Card>
-              <Card className="p-4 border-2 border-amber-500/20">
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-base">Enterprise</h3>
-                  <p className="text-xl font-bold">Custom</p>
-                  <ul className="space-y-1 text-xs">
-                    <li>• Custom rates</li>
-                    <li>• Unlimited agents</li>
-                    <li>• Unlimited users</li>
-                    <li>• Custom credits</li>
-                    <li>• Priority support</li>
-                  </ul>
-                </div>
-              </Card>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Billing Packages</h2>
+              <Button onClick={() => setCreatingPackage(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Create Package
+              </Button>
             </div>
+            
+            {billingPackages.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No billing packages defined yet.</p>
+                <p className="text-sm mt-2">Create your first billing package to get started.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {billingPackages.map((pkg) => (
+                  <Card key={pkg.id} className="p-4 border-2 relative">
+                    <div className="absolute top-2 right-2 flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingPackage(pkg)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-500 hover:text-red-600 h-8 w-8 p-0"
+                        onClick={() => setDeletingPackage(pkg)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="font-semibold text-base">{pkg.displayName}</h3>
+                      <p className="text-xl font-bold">${pkg.monthlyPrice}/mo</p>
+                      <ul className="space-y-1 text-xs">
+                        <li className="truncate">• ${pkg.perCallRate} per call</li>
+                        <li className="truncate">• ${pkg.perMinuteRate} per minute</li>
+                        <li className="truncate">• {pkg.maxAgents} agents max</li>
+                        <li className="truncate">• {pkg.maxUsers} users max</li>
+                        {pkg.monthlyCredits > 0 && (
+                          <li className="truncate">• {pkg.monthlyCredits} monthly credits</li>
+                        )}
+                      </ul>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </Card>
         </TabsContent>
 
@@ -801,6 +897,291 @@ export default function AdminDashboard() {
               data-testid="button-confirm-delete-user"
             >
               Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Billing Package Dialog */}
+      <Dialog open={creatingPackage} onOpenChange={setCreatingPackage}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Billing Package</DialogTitle>
+            <DialogDescription>Define a new billing package with custom rates and limits</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Package ID</Label>
+                <Input
+                  value={newPackage.id}
+                  onChange={(e) => setNewPackage({ ...newPackage, id: e.target.value })}
+                  placeholder="e.g., starter, pro, enterprise"
+                  data-testid="input-package-id"
+                />
+              </div>
+              <div>
+                <Label>Display Name</Label>
+                <Input
+                  value={newPackage.displayName}
+                  onChange={(e) => setNewPackage({ ...newPackage, displayName: e.target.value })}
+                  placeholder="e.g., Professional Plan"
+                  data-testid="input-package-display-name"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Name (Internal)</Label>
+                <Input
+                  value={newPackage.name}
+                  onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
+                  placeholder="e.g., Professional"
+                  data-testid="input-package-name"
+                />
+              </div>
+              <div>
+                <Label>Monthly Price ($)</Label>
+                <Input
+                  type="number"
+                  value={newPackage.monthlyPrice}
+                  onChange={(e) => setNewPackage({ ...newPackage, monthlyPrice: e.target.value })}
+                  placeholder="99.00"
+                  data-testid="input-package-price"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Per Call Rate ($)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={newPackage.perCallRate}
+                  onChange={(e) => setNewPackage({ ...newPackage, perCallRate: e.target.value })}
+                  data-testid="input-package-call-rate"
+                />
+              </div>
+              <div>
+                <Label>Per Minute Rate ($)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={newPackage.perMinuteRate}
+                  onChange={(e) => setNewPackage({ ...newPackage, perMinuteRate: e.target.value })}
+                  data-testid="input-package-minute-rate"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label>Monthly Credits</Label>
+                <Input
+                  type="number"
+                  value={newPackage.monthlyCredits}
+                  onChange={(e) => setNewPackage({ ...newPackage, monthlyCredits: e.target.value })}
+                  data-testid="input-package-credits"
+                />
+              </div>
+              <div>
+                <Label>Max Agents</Label>
+                <Input
+                  type="number"
+                  value={newPackage.maxAgents}
+                  onChange={(e) => setNewPackage({ ...newPackage, maxAgents: e.target.value })}
+                  data-testid="input-package-max-agents"
+                />
+              </div>
+              <div>
+                <Label>Max Users</Label>
+                <Input
+                  type="number"
+                  value={newPackage.maxUsers}
+                  onChange={(e) => setNewPackage({ ...newPackage, maxUsers: e.target.value })}
+                  data-testid="input-package-max-users"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label>Features (one per line)</Label>
+              <textarea
+                className="w-full min-h-[100px] p-2 border rounded-md bg-background"
+                value={newPackage.features.join('\n')}
+                onChange={(e) => setNewPackage({ ...newPackage, features: e.target.value.split('\n').filter(f => f.trim()) })}
+                placeholder="Priority support&#10;Advanced analytics&#10;Custom integrations"
+                data-testid="textarea-package-features"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreatingPackage(false)}>Cancel</Button>
+            <Button
+              onClick={() => createPackageMutation.mutate(newPackage)}
+              disabled={createPackageMutation.isPending || !newPackage.id || !newPackage.displayName}
+              data-testid="button-create-package"
+            >
+              Create Package
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Billing Package Dialog */}
+      <Dialog open={!!editingPackage} onOpenChange={() => setEditingPackage(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Billing Package</DialogTitle>
+            <DialogDescription>Update the billing package settings</DialogDescription>
+          </DialogHeader>
+          {editingPackage && (
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Package ID</Label>
+                  <Input
+                    value={editingPackage.id}
+                    disabled
+                    className="bg-muted"
+                    data-testid="input-edit-package-id"
+                  />
+                </div>
+                <div>
+                  <Label>Display Name</Label>
+                  <Input
+                    value={editingPackage.displayName}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, displayName: e.target.value })}
+                    data-testid="input-edit-package-display-name"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Name (Internal)</Label>
+                  <Input
+                    value={editingPackage.name}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, name: e.target.value })}
+                    data-testid="input-edit-package-name"
+                  />
+                </div>
+                <div>
+                  <Label>Monthly Price ($)</Label>
+                  <Input
+                    type="number"
+                    value={editingPackage.monthlyPrice}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, monthlyPrice: e.target.value })}
+                    data-testid="input-edit-package-price"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Per Call Rate ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editingPackage.perCallRate}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, perCallRate: e.target.value })}
+                    data-testid="input-edit-package-call-rate"
+                  />
+                </div>
+                <div>
+                  <Label>Per Minute Rate ($)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editingPackage.perMinuteRate}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, perMinuteRate: e.target.value })}
+                    data-testid="input-edit-package-minute-rate"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label>Monthly Credits</Label>
+                  <Input
+                    type="number"
+                    value={editingPackage.monthlyCredits}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, monthlyCredits: parseInt(e.target.value) })}
+                    data-testid="input-edit-package-credits"
+                  />
+                </div>
+                <div>
+                  <Label>Max Agents</Label>
+                  <Input
+                    type="number"
+                    value={editingPackage.maxAgents}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, maxAgents: parseInt(e.target.value) })}
+                    data-testid="input-edit-package-max-agents"
+                  />
+                </div>
+                <div>
+                  <Label>Max Users</Label>
+                  <Input
+                    type="number"
+                    value={editingPackage.maxUsers}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, maxUsers: parseInt(e.target.value) })}
+                    data-testid="input-edit-package-max-users"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label>Features (one per line)</Label>
+                <textarea
+                  className="w-full min-h-[100px] p-2 border rounded-md bg-background"
+                  value={(editingPackage.features as string[]).join('\n')}
+                  onChange={(e) => setEditingPackage({ ...editingPackage, features: e.target.value.split('\n').filter(f => f.trim()) as any })}
+                  placeholder="Priority support&#10;Advanced analytics&#10;Custom integrations"
+                  data-testid="textarea-edit-package-features"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingPackage(null)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (editingPackage) {
+                  updatePackageMutation.mutate({
+                    id: editingPackage.id,
+                    updates: editingPackage,
+                  });
+                }
+              }}
+              disabled={updatePackageMutation.isPending}
+              data-testid="button-update-package"
+            >
+              Update Package
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Package Confirmation */}
+      <AlertDialog open={!!deletingPackage} onOpenChange={() => setDeletingPackage(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Billing Package</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the "{deletingPackage?.displayName}" billing package?
+              This action cannot be undone. Organizations using this package will need to be reassigned.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingPackage && deletePackageMutation.mutate(deletingPackage.id)}
+              className="bg-red-500 hover:bg-red-600"
+              data-testid="button-confirm-delete-package"
+            >
+              Delete Package
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
