@@ -349,6 +349,162 @@ function RecentActivity() {
   );
 }
 
+// Cost Analysis Chart Component
+function CostAnalysisChart() {
+  const [timeRange, setTimeRange] = useState('daily');
+  
+  const { data: callLogs } = useQuery({
+    queryKey: ["/api/call-logs"],
+  });
+
+  // Process cost data based on selected time range
+  const processCostData = (logs: any[], range: string) => {
+    if (!logs || logs.length === 0) return [];
+
+    const now = new Date();
+    const data: any[] = [];
+    let days = 7;
+    let formatKey = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    switch (range) {
+      case 'daily':
+        days = 7;
+        break;
+      case 'weekly':
+        days = 28;
+        formatKey = (date: Date) => `W${Math.ceil(date.getDate() / 7)}`;
+        break;
+      case 'monthly':
+        days = 90;
+        formatKey = (date: Date) => date.toLocaleDateString('en-US', { month: 'short' });
+        break;
+    }
+
+    // Group by period
+    const periodData: any = {};
+    
+    logs.forEach((call: any) => {
+      const callDate = new Date(call.createdAt);
+      const periodKey = formatKey(callDate);
+      
+      if (!periodData[periodKey]) {
+        periodData[periodKey] = {
+          period: periodKey,
+          cost: 0,
+          calls: 0,
+          avgCost: 0
+        };
+      }
+      
+      periodData[periodKey].cost += Number(call.cost || 0);
+      periodData[periodKey].calls++;
+    });
+
+    // Calculate averages and convert to array
+    Object.values(periodData).forEach((item: any) => {
+      item.avgCost = item.calls > 0 ? item.cost / item.calls : 0;
+      item.cost = Number(item.cost.toFixed(4));
+      item.avgCost = Number(item.avgCost.toFixed(4));
+    });
+
+    return Object.values(periodData).slice(-10);
+  };
+
+  const chartData = processCostData(Array.isArray(callLogs) ? callLogs : [], timeRange);
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-card-foreground">
+          Cost Analysis
+        </h3>
+        <Select value={timeRange} onValueChange={setTimeRange}>
+          <SelectTrigger className="w-32" data-testid="select-cost-time-range">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="daily">Daily</SelectItem>
+            <SelectItem value="weekly">Weekly</SelectItem>
+            <SelectItem value="monthly">Monthly</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {chartData.length > 0 ? (
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis 
+                dataKey="period" 
+                stroke="#666"
+                fontSize={12}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis 
+                stroke="#666" 
+                fontSize={12}
+                tickFormatter={(value) => `$${value}`}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#fff', 
+                  border: '1px solid #ccc',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+                formatter={(value: any, name: string) => [
+                  `$${Number(value).toFixed(4)}`,
+                  name === 'cost' ? 'Total Cost' : 'Avg Cost/Call'
+                ]}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="cost" 
+                stroke="#10b981" 
+                strokeWidth={2}
+                dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2 }}
+                name="cost"
+              />
+              <Line 
+                type="monotone" 
+                dataKey="avgCost" 
+                stroke="#f59e0b" 
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={{ fill: '#f59e0b', strokeWidth: 2, r: 3 }}
+                activeDot={{ r: 5, stroke: '#f59e0b', strokeWidth: 2 }}
+                name="avgCost"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+          <div className="flex items-center justify-center gap-6 mt-2 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-0.5 bg-green-500"></div>
+              <span className="text-gray-600 dark:text-gray-400">Total Cost</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-0.5 bg-orange-500" style={{ borderTop: '2px dashed' }}></div>
+              <span className="text-gray-600 dark:text-gray-400">Avg Cost per Call</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg">
+          <div className="text-center text-muted-foreground">
+            <DollarSign className="w-12 h-12 mx-auto mb-2" />
+            <p data-testid="text-cost-placeholder">No cost data available</p>
+            <p className="text-sm">Data will appear after calls are made</p>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // Call Volume Chart Component
 function CallVolumeChart() {
   const [timeRange, setTimeRange] = useState('daily');
@@ -583,16 +739,7 @@ export default function Dashboard() {
         <CallVolumeChart />
         
         {/* Cost Analysis Chart */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 text-card-foreground">Cost Analysis</h3>
-          <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg">
-            <div className="text-center text-muted-foreground">
-              <DollarSign className="w-12 h-12 mx-auto mb-2" />
-              <p>Cost breakdown chart</p>
-              <p className="text-sm">Coming soon</p>
-            </div>
-          </div>
-        </Card>
+        <CostAnalysisChart />
       </div>
 
       {/* Analytics Section */}
