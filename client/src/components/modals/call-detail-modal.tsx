@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -41,6 +41,9 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
           <DialogTitle data-testid="text-modal-title">
             Call Details #{callLog.id.slice(-6)}
           </DialogTitle>
+          <DialogDescription>
+            View detailed information about this voice agent call including transcript, duration, and status.
+          </DialogDescription>
         </DialogHeader>
         
         {/* Call Info */}
@@ -111,8 +114,48 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
           <div>
             <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Call Transcript</h4>
             <Card className="p-4 bg-gray-50 dark:bg-gray-700 max-h-64 overflow-y-auto">
-              <div className="whitespace-pre-wrap text-sm text-gray-900 dark:text-white" data-testid="text-call-transcript">
-                {callLog.transcript}
+              <div className="space-y-3" data-testid="text-call-transcript">
+                {(() => {
+                  try {
+                    const transcript = JSON.parse(callLog.transcript);
+                    if (Array.isArray(transcript)) {
+                      return transcript
+                        .filter(turn => turn.message && turn.message.trim())
+                        .map((turn, index) => (
+                          <div key={index} className={`p-3 rounded-lg ${
+                            turn.role === 'agent' 
+                              ? 'bg-blue-100 dark:bg-blue-900 ml-4' 
+                              : 'bg-gray-100 dark:bg-gray-600 mr-4'
+                          }`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`text-xs font-semibold uppercase ${
+                                turn.role === 'agent' 
+                                  ? 'text-blue-700 dark:text-blue-300' 
+                                  : 'text-gray-700 dark:text-gray-300'
+                              }`}>
+                                {turn.role === 'agent' ? '🤖 Agent' : '👤 User'}
+                              </span>
+                              {turn.time_in_call_secs && (
+                                <span className="text-xs text-gray-500">
+                                  {Math.floor(turn.time_in_call_secs / 60)}:{(turn.time_in_call_secs % 60).toString().padStart(2, '0')}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-900 dark:text-white">
+                              {turn.message}
+                            </p>
+                          </div>
+                        ));
+                    }
+                  } catch (e) {
+                    // Fallback for non-JSON transcript
+                    return (
+                      <div className="whitespace-pre-wrap text-sm text-gray-900 dark:text-white">
+                        {callLog.transcript}
+                      </div>
+                    );
+                  }
+                })()}
               </div>
             </Card>
           </div>
