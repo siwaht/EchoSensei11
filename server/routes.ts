@@ -351,26 +351,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Sync call logs from ElevenLabs API
   app.post("/api/sync-calls", isAuthenticated, async (req: any, res) => {
+    console.log("=== SYNC CALLS REQUEST STARTED ===");
     try {
       const userId = req.user.claims.sub;
+      console.log("User ID:", userId);
+      
       const user = await storage.getUser(userId);
       if (!user) {
+        console.log("User not found");
         return res.status(404).json({ message: "User not found" });
       }
+      console.log("User found:", user.email, "Org ID:", user.organizationId);
 
       const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
       if (!integration || integration.status !== "ACTIVE") {
+        console.log("No active integration found");
         return res.status(400).json({ message: "Active ElevenLabs integration required" });
       }
+      console.log("Integration found, status:", integration.status);
 
       const apiKey = decryptApiKey(integration.apiKey);
+      console.log("API key decrypted successfully");
+      
       const agents = await storage.getAgents(user.organizationId);
+      console.log(`Found ${agents.length} agents to sync`);
       
       let totalSynced = 0;
+      let totalErrors = 0;
       
       for (const agent of agents) {
         try {
-          console.log(`Syncing calls for agent: ${agent.name} (${agent.elevenLabsAgentId})`);
+          console.log(`\n--- Syncing agent: ${agent.name} (${agent.elevenLabsAgentId}) ---`);
           
           // Get conversations for this agent
           const conversations = await callElevenLabsAPI(
@@ -378,56 +389,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `/v1/convai/conversations?agent_id=${agent.elevenLabsAgentId}&page_size=100`
           );
           
+          console.log(`API response:`, conversations);
           console.log(`Found ${conversations.conversations?.length || 0} conversations for agent ${agent.name}`);
           
           for (const conversation of conversations.conversations || []) {
-            // Check if we already have this call log
-            const existing = await storage.getCallLogByElevenLabsId(conversation.conversation_id, user.organizationId);
-            if (existing) {
-              console.log(`Conversation ${conversation.conversation_id} already exists, skipping`);
-              continue;
+            try {
+              console.log(`\n  Processing conversation: ${conversation.conversation_id}`);
+              
+              // Check if we already have this call log
+              const existing = await storage.getCallLogByElevenLabsId(conversation.conversation_id, user.organizationId);
+              if (existing) {
+                console.log(`  Conversation ${conversation.conversation_id} already exists, skipping`);
+                continue;
+              }
+              
+              console.log(`  Fetching details for conversation: ${conversation.conversation_id}`);
+              
+              // Get detailed conversation data
+              const details = await callElevenLabsAPI(
+                apiKey,
+                `/v1/convai/conversations/${conversation.conversation_id}`
+              );
+              
+              console.log(`  Conversation details received:`, {
+                id: details.conversation_id || details.id,
+                duration: details.call_duration_secs,
+                hasTranscript: !!details.transcript,
+                transcriptLength: details.transcript?.length || 0
+              });
+              
+              // Create call log with proper field mapping
+              const callData = {
+                organizationId: user.organizationId,
+                agentId: agent.id,
+                elevenLabsCallId: conversation.conversation_id,
+                duration: details.call_duration_secs || conversation.call_duration_secs || 0,
+                transcript: details.transcript || "",
+                audioUrl: details.audio_url || "",
+                cost: calculateCallCost(details.call_duration_secs || conversation.call_duration_secs || 0).toString(),
+                status: "completed",
+              };
+              
+              console.log("  Creating call log with data:", callData);
+              const savedLog = await storage.createCallLog(callData);
+              console.log("  Call log created successfully:", savedLog.id);
+              
+              totalSynced++;
+            } catch (convError: any) {
+              console.error(`  Error processing conversation ${conversation.conversation_id}:`, convError.message);
+              totalErrors++;
             }
-            
-            console.log(`Fetching details for conversation: ${conversation.conversation_id}`);
-            
-            // Get detailed conversation data
-            const details = await callElevenLabsAPI(
-              apiKey,
-              `/v1/convai/conversations/${conversation.conversation_id}`
-            );
-            
-            console.log(`Conversation details:`, {
-              id: details.conversation_id,
-              duration: details.call_duration_secs,
-              transcript: details.transcript?.length || 0
-            });
-            
-            // Create call log with proper field mapping
-            const callData = {
-              organizationId: user.organizationId,
-              agentId: agent.id,
-              elevenLabsCallId: conversation.conversation_id,
-              duration: details.call_duration_secs || conversation.call_duration_secs || 0,
-              transcript: details.transcript || "",
-              audioUrl: details.audio_url || "",
-              cost: calculateCallCost(details.call_duration_secs || conversation.call_duration_secs || 0).toString(),
-              status: "completed",
-            };
-            
-            console.log("Creating call log with data:", callData);
-            await storage.createCallLog(callData);
-            
-            totalSynced++;
           }
-        } catch (error) {
-          console.error(`Error syncing calls for agent ${agent.id}:`, error);
+        } catch (agentError: any) {
+          console.error(`Error syncing calls for agent ${agent.id}:`, agentError.message);
+          totalErrors++;
         }
       }
       
-      res.json({ message: `Synced ${totalSynced} new call logs` });
-    } catch (error) {
-      console.error("Error syncing calls:", error);
-      res.status(500).json({ message: "Failed to sync calls" });
+      console.log(`\n=== SYNC COMPLETE ===`);
+      console.log(`Total synced: ${totalSynced}`);
+      console.log(`Total errors: ${totalErrors}`);
+      
+      const message = totalSynced > 0 
+        ? `Successfully synced ${totalSynced} new call logs` 
+        : totalErrors > 0 
+          ? `Sync completed with ${totalErrors} errors. No new calls found.`
+          : "No new calls found to sync";
+          
+      res.json({ message, totalSynced, totalErrors });
+    } catch (error: any) {
+      console.error("=== SYNC FAILED ===", error);
+      res.status(500).json({ message: `Failed to sync calls: ${error.message}` });
     }
   });
 
