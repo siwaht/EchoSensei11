@@ -10,6 +10,7 @@ import {
   decimal,
   pgEnum,
   boolean,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -59,7 +60,10 @@ export const integrations = pgTable("integrations", {
   lastTested: timestamp("last_tested"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  // Unique constraint on organizationId and provider for upsert operations
+  uniqueOrgProvider: unique("unique_org_provider").on(table.organizationId, table.provider),
+}));
 
 // Agents table
 export const agents = pgTable("agents", {

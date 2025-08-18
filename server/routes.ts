@@ -31,6 +31,7 @@ function encryptApiKey(apiKey: string): string {
   const iv = crypto.randomBytes(16);
   
   const cipher = crypto.createCipher(algorithm, key);
+  cipher.setAutoPadding(true);
   let encrypted = cipher.update(apiKey, "utf8", "hex");
   encrypted += cipher.final("hex");
   
@@ -45,6 +46,7 @@ function decryptApiKey(encryptedApiKey: string): string {
   const iv = Buffer.from(ivHex, "hex");
   
   const decipher = crypto.createDecipher(algorithm, key);
+  decipher.setAutoPadding(true);
   let decrypted = decipher.update(encrypted, "hex", "utf8");
   decrypted += decipher.final("utf8");
   
