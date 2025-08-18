@@ -118,67 +118,89 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
                 {(() => {
                   try {
                     let transcript = callLog.transcript;
+                    console.log("=== TRANSCRIPT DEBUG ===");
+                    console.log("Raw transcript:", transcript);
+                    console.log("Transcript length:", transcript?.length);
+                    
                     const conversationTurns = [];
                     
-                    // The transcript is a malformed JSON string, we need to extract the conversation turns manually
                     if (typeof transcript === 'string') {
-                      // Extract JSON objects from the malformed string using regex
-                      const jsonPattern = /\{[^{}]*"role"[^{}]*"message"[^{}]*\}/g;
-                      const matches = transcript.match(jsonPattern);
+                      console.log("Processing string transcript...");
                       
-                      if (matches) {
-                        for (const match of matches) {
-                          try {
-                            // Fix common JSON issues and parse
-                            const cleanMatch = match.replace(/\\"/g, '"').replace(/"{/g, '{').replace(/}"/g, '}');
-                            const turnData = JSON.parse(cleanMatch);
-                            
-                            if (turnData && turnData.message && turnData.message.trim()) {
-                              conversationTurns.push(turnData);
-                            }
-                          } catch (parseError) {
-                            // Try alternate parsing for escaped JSON
-                            try {
-                              const unescaped = match.replace(/\\(.)/g, '$1');
-                              const turnData = JSON.parse(unescaped);
-                              
-                              if (turnData && turnData.message && turnData.message.trim()) {
-                                conversationTurns.push(turnData);
-                              }
-                            } catch (e) {
-                              continue; // Skip this turn
-                            }
-                          }
+                      // Method 1: Try to extract individual JSON strings from the malformed structure
+                      // The pattern from the logs shows: {"\"role\":\"agent\",..."}
+                      const jsonStringPattern = /\{"[^"]*":"[^"]*"[^}]*\}/g;
+                      let matches = transcript.match(jsonStringPattern);
+                      console.log("JSON string matches:", matches);
+                      
+                      if (!matches) {
+                        // Method 2: Look for escaped JSON patterns
+                        const escapedPattern = /\\"role\\":\\"[^\\]*\\"/g;
+                        const escapedMatches = transcript.match(escapedPattern);
+                        console.log("Escaped JSON matches:", escapedMatches);
+                        
+                        if (escapedMatches) {
+                          // Try to reconstruct full JSON objects
+                          const fullObjectPattern = /\{[^{}]*\\"role\\":\\"[^{}]*\}/g;
+                          matches = transcript.match(fullObjectPattern);
+                          console.log("Full object matches:", matches);
                         }
                       }
                       
-                      // If regex approach didn't work, try splitting by quote patterns
-                      if (conversationTurns.length === 0) {
-                        // Look for patterns like "0":"{\\"role\\":\\"agent\\""
-                        const splitPattern = /"\d+":\s*"/g;
-                        const parts = transcript.split(splitPattern);
+                      if (!matches) {
+                        // Method 3: Split by numbered keys and extract JSON
+                        console.log("Trying numbered key approach...");
+                        const parts = transcript.split(/"\d+":/);
+                        console.log("Split parts:", parts.length);
                         
                         for (let i = 1; i < parts.length; i++) {
+                          let part = parts[i].trim();
+                          console.log(`Processing part ${i}:`, part.substring(0, 100));
+                          
+                          // Remove quotes and commas at the end
+                          part = part.replace(/^"|"[,}]*$/g, '');
+                          
+                          // Unescape the JSON
+                          part = part.replace(/\\"/g, '"');
+                          
+                          console.log(`Cleaned part ${i}:`, part.substring(0, 100));
+                          
                           try {
-                            // Remove trailing quote and unescape
-                            let jsonStr = parts[i].replace(/",?\s*$/, '').replace(/\\"/g, '"');
-                            
-                            // Add opening brace if missing
-                            if (!jsonStr.startsWith('{')) {
-                              jsonStr = '{' + jsonStr;
-                            }
-                            
-                            const turnData = JSON.parse(jsonStr);
+                            const turnData = JSON.parse(part);
+                            console.log(`Parsed turn ${i}:`, turnData);
                             
                             if (turnData && turnData.message && turnData.message.trim()) {
                               conversationTurns.push(turnData);
                             }
                           } catch (e) {
-                            continue; // Skip invalid turns
+                            console.log(`Failed to parse part ${i}:`, e.message);
+                          }
+                        }
+                      } else {
+                        // Process the matches
+                        for (let i = 0; i < matches.length; i++) {
+                          const match = matches[i];
+                          console.log(`Processing match ${i}:`, match);
+                          
+                          try {
+                            // Clean up the match
+                            let cleanMatch = match.replace(/\\"/g, '"');
+                            console.log(`Cleaned match ${i}:`, cleanMatch);
+                            
+                            const turnData = JSON.parse(cleanMatch);
+                            console.log(`Parsed match ${i}:`, turnData);
+                            
+                            if (turnData && turnData.message && turnData.message.trim()) {
+                              conversationTurns.push(turnData);
+                            }
+                          } catch (parseError) {
+                            console.log(`Failed to parse match ${i}:`, parseError.message);
                           }
                         }
                       }
                     }
+                    
+                    console.log("Final conversation turns:", conversationTurns);
                     
                     // Sort by time_in_call_secs to maintain conversation order
                     conversationTurns.sort((a, b) => (a.time_in_call_secs || 0) - (b.time_in_call_secs || 0));
@@ -222,17 +244,34 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
                       );
                     }
                     
-                    // Fallback for no conversation data
+                    // Show detailed debugging info
                     return (
-                      <div className="text-center py-8 text-gray-500">
-                        <p>No conversation data available</p>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+                            Debug: No conversation turns extracted
+                          </p>
+                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-2">
+                            Transcript length: {transcript?.length || 0} characters
+                          </p>
+                          <pre className="text-xs text-yellow-700 dark:text-yellow-300 whitespace-pre-wrap overflow-auto max-h-32">
+                            {transcript?.substring(0, 500)}...
+                          </pre>
+                        </div>
                       </div>
                     );
                   } catch (e) {
-                    // Final error fallback
+                    console.log("=== TRANSCRIPT PARSING ERROR ===");
+                    console.log("Error:", e);
+                    
                     return (
-                      <div className="text-center py-8 text-red-500">
-                        <p>Unable to parse conversation transcript</p>
+                      <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                        <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+                          Parsing Error: {e.message}
+                        </p>
+                        <pre className="text-xs text-red-700 dark:text-red-300 whitespace-pre-wrap overflow-auto max-h-32">
+                          {callLog.transcript?.substring(0, 500)}...
+                        </pre>
                       </div>
                     );
                   }
