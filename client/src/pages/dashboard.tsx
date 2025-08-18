@@ -79,28 +79,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        {/* Quick Actions */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 text-card-foreground" data-testid="text-actions-title">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <button className="p-4 bg-primary/10 hover:bg-primary/20 rounded-xl text-primary font-medium transition-colors flex items-center justify-center space-x-2" data-testid="button-add-agent">
-              <Plus className="w-5 h-5" />
-              <span>Add Agent</span>
-            </button>
-            <button className="p-4 bg-green-500/10 hover:bg-green-500/20 rounded-xl text-green-500 font-medium transition-colors flex items-center justify-center space-x-2" data-testid="button-view-integrations">
-              <Settings className="w-5 h-5" />
-              <span>Integrations</span>
-            </button>
-            <button className="p-4 bg-purple-500/10 hover:bg-purple-500/20 rounded-xl text-purple-500 font-medium transition-colors flex items-center justify-center space-x-2" data-testid="button-view-history">
-              <History className="w-5 h-5" />
-              <span>Call History</span>
-            </button>
-            <button className="p-4 bg-orange-500/10 hover:bg-orange-500/20 rounded-xl text-orange-500 font-medium transition-colors flex items-center justify-center space-x-2" data-testid="button-view-billing">
-              <CreditCard className="w-5 h-5" />
-              <span>Billing</span>
-            </button>
-          </div>
-        </Card>
+
       </div>
 
       {/* Recent Activity */}
