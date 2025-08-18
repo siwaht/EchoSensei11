@@ -52,7 +52,7 @@ export default function AdminDashboard() {
     firstName: "",
     lastName: "",
     password: "",
-    organizationId: "",
+    companyName: "",
     isAdmin: false,
   });
 
@@ -81,6 +81,7 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/organizations"] });
       toast({ title: "User created successfully" });
       setCreatingUser(false);
       setNewUser({
@@ -88,7 +89,7 @@ export default function AdminDashboard() {
         firstName: "",
         lastName: "",
         password: "",
-        organizationId: "",
+        companyName: "",
         isAdmin: false,
       });
     },
