@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useTheme } from "@/components/theme-provider";
-import { Moon, Sun, Shield, TrendingUp, Users, Mic, LogIn, UserCheck } from "lucide-react";
+import { Moon, Sun, Shield, TrendingUp, Users, Mic, LogIn, Mail, Lock } from "lucide-react";
 
 export default function Landing() {
   const { theme, setTheme } = useTheme();
@@ -44,46 +46,61 @@ export default function Landing() {
               <p className="text-muted-foreground">Sign in to access your VoiceAI Dashboard</p>
             </div>
 
-            <div className="space-y-4">
-              <Button 
-                className="w-full py-6 text-lg" 
-                size="lg" 
-                asChild 
-                data-testid="button-user-login"
-              >
-                <a href="/api/login">
-                  <LogIn className="w-5 h-5 mr-2" />
-                  Login as User
-                </a>
-              </Button>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
+            <form 
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                window.location.href = "/api/login";
+              }}
+            >
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    className="pl-10 h-11"
+                    data-testid="input-email"
+                    required
+                  />
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">For Administrators</span>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    className="pl-10 h-11"
+                    data-testid="input-password"
+                    required
+                  />
                 </div>
               </div>
 
               <Button 
-                className="w-full py-6 text-lg" 
-                variant="outline"
+                type="submit"
+                className="w-full h-11" 
                 size="lg" 
-                asChild 
-                data-testid="button-admin-login"
+                data-testid="button-login"
               >
-                <a href="/api/login">
-                  <Shield className="w-5 h-5 mr-2" />
-                  Login as Admin
-                </a>
+                <LogIn className="w-5 h-5 mr-2" />
+                Sign In
               </Button>
 
-              <p className="text-xs text-center text-muted-foreground mt-4">
-                Admin access is restricted to authorized personnel only.
-                Admin user: cc@siwaht.com
+              <p className="text-xs text-center text-muted-foreground pt-2">
+                Admin users (cc@siwaht.com) will be automatically granted admin privileges upon login.
               </p>
-            </div>
+            </form>
           </Card>
 
           {/* Info Section */}
