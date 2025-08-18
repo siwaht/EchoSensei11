@@ -1108,7 +1108,7 @@ export default function AdminDashboard() {
                   <Input
                     type="number"
                     value={editingPackage.monthlyCredits}
-                    onChange={(e) => setEditingPackage({ ...editingPackage, monthlyCredits: parseInt(e.target.value) })}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, monthlyCredits: parseInt(e.target.value) || 0 })}
                     data-testid="input-edit-package-credits"
                   />
                 </div>
@@ -1117,7 +1117,7 @@ export default function AdminDashboard() {
                   <Input
                     type="number"
                     value={editingPackage.maxAgents}
-                    onChange={(e) => setEditingPackage({ ...editingPackage, maxAgents: parseInt(e.target.value) })}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, maxAgents: parseInt(e.target.value) || 0 })}
                     data-testid="input-edit-package-max-agents"
                   />
                 </div>
@@ -1126,7 +1126,7 @@ export default function AdminDashboard() {
                   <Input
                     type="number"
                     value={editingPackage.maxUsers}
-                    onChange={(e) => setEditingPackage({ ...editingPackage, maxUsers: parseInt(e.target.value) })}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, maxUsers: parseInt(e.target.value) || 0 })}
                     data-testid="input-edit-package-max-users"
                   />
                 </div>
@@ -1136,7 +1136,7 @@ export default function AdminDashboard() {
                 <Label>Features (one per line)</Label>
                 <textarea
                   className="w-full min-h-[100px] p-2 border rounded-md bg-background"
-                  value={(editingPackage.features as string[]).join('\n')}
+                  value={(editingPackage.features as string[] || []).join('\n')}
                   onChange={(e) => setEditingPackage({ ...editingPackage, features: e.target.value.split('\n').filter(f => f.trim()) as any })}
                   placeholder="Priority support&#10;Advanced analytics&#10;Custom integrations"
                   data-testid="textarea-edit-package-features"
