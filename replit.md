@@ -52,8 +52,10 @@ BYOK integration pattern for secure third-party service access:
 - **Agent Validation**: Real-time validation of ElevenLabs conversational AI agent IDs via `/v1/convai/agents/` API
 - **Call Data Collection**: Webhook endpoint `/api/webhooks/elevenlabs` for real-time call transcripts and audio
 - **Manual Sync**: User-triggered sync button to fetch historical call logs from ElevenLabs API
+- **Audio Recordings**: Authenticated proxy endpoint `/api/audio/:conversationId` streams actual ElevenLabs call recordings
 - **Data Storage**: Complete call logs with transcripts, duration, costs, and audio URLs stored in PostgreSQL
 - **Analytics**: Real-time dashboard showing total calls, minutes, estimated costs, and active agents
+- **Recordings Tab**: Dedicated interface for browsing, playing, and downloading actual voice call recordings from ElevenLabs
 
 ## External Dependencies
 
