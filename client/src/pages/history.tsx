@@ -70,6 +70,24 @@ export default function History() {
     return agent?.name || "Unknown Agent";
   };
 
+  // Filter call logs based on selected agent and date
+  const filteredCallLogs = callLogs?.filter((log) => {
+    // Filter by agent
+    if (selectedAgent !== "all" && log.agentId !== selectedAgent) {
+      return false;
+    }
+    
+    // Filter by date
+    if (selectedDate && log.createdAt) {
+      const logDate = new Date(log.createdAt).toISOString().split('T')[0];
+      if (logDate !== selectedDate) {
+        return false;
+      }
+    }
+    
+    return true;
+  }) || [];
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -125,14 +143,16 @@ export default function History() {
 
       {/* Call History Table */}
       <Card className="border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {!callLogs || callLogs.length === 0 ? (
+        {!filteredCallLogs || filteredCallLogs.length === 0 ? (
           <div className="text-center py-12">
             <Bot className="w-12 h-12 mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2" data-testid="text-no-calls-title">
               No call history found
             </h3>
             <p className="text-gray-600 dark:text-gray-400" data-testid="text-no-calls-description">
-              Call logs will appear here once your agents start receiving calls.
+              {callLogs && callLogs.length > 0 
+                ? "No calls match your current filters. Try adjusting the date or agent filter."
+                : "Call logs will appear here once your agents start receiving calls."}
             </p>
           </div>
         ) : (
@@ -161,7 +181,7 @@ export default function History() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {callLogs.map((callLog) => (
+                {filteredCallLogs.map((callLog) => (
                   <tr key={callLog.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4">
                       <div>
@@ -242,10 +262,10 @@ export default function History() {
           </div>
         )}
         
-        {callLogs && callLogs.length > 0 && (
+        {filteredCallLogs && filteredCallLogs.length > 0 && (
           <div className="bg-gray-50 dark:bg-gray-700 px-6 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-600">
             <div className="text-sm text-gray-500 dark:text-gray-400" data-testid="text-pagination-info">
-              Showing 1 to {callLogs.length} of {callLogs.length} results
+              Showing 1 to {filteredCallLogs.length} of {filteredCallLogs.length} results
             </div>
             <div className="flex items-center space-x-2">
               <Button variant="outline" size="sm" disabled data-testid="button-previous-page">
