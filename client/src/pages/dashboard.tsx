@@ -145,35 +145,29 @@ function AgentPerformanceTable() {
   const agentData = calculateAgentStats();
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {agentData.length > 0 ? (
         <>
-          <div className="grid grid-cols-5 gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 pb-2 border-b">
-            <div>Agent name</div>
-            <div className="text-right">Calls</div>
-            <div className="text-right">Minutes</div>
-            <div className="text-right">LLM cost</div>
-            <div className="text-right">Credits</div>
+          <div className="grid grid-cols-5 gap-3 text-xs text-gray-500 dark:text-gray-400 pb-2 border-b">
+            <div className="col-span-1">Agent name</div>
+            <div className="text-center">Number of calls</div>
+            <div className="text-center">Call minutes</div>
+            <div className="text-center">LLM cost</div>
+            <div className="text-center">Credits spent</div>
           </div>
           {agentData.map((agent: any, index: number) => (
-            <div key={index} className="grid grid-cols-5 gap-2 text-sm py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded">
-              <div className="font-medium truncate">{agent.name}</div>
-              <div className="text-right">{agent.calls}</div>
-              <div className="text-right">{(agent.duration / 60).toFixed(2)}</div>
-              <div className="text-right">${agent.llmCost.toFixed(4)}</div>
-              <div className="text-right">{agent.credits.toLocaleString()}</div>
+            <div key={index} className="grid grid-cols-5 gap-3 text-sm py-2">
+              <div className="col-span-1 truncate">{agent.name}</div>
+              <div className="text-center">{agent.calls}</div>
+              <div className="text-center">{(agent.duration / 60).toFixed(3)}</div>
+              <div className="text-center">${agent.llmCost.toFixed(4)}</div>
+              <div className="text-center">{agent.credits.toLocaleString()}</div>
             </div>
           ))}
-          <div className="pt-2 mt-2 border-t">
-            <button className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400">
-              See all {Array.isArray(agents) ? agents.length : 0} agents →
-            </button>
-          </div>
         </>
       ) : (
-        <div className="text-center py-8 text-muted-foreground">
-          <Activity className="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <p>No agent activity yet</p>
+        <div className="text-center py-4 text-muted-foreground text-sm">
+          No agent activity yet
         </div>
       )}
     </div>
@@ -182,26 +176,26 @@ function AgentPerformanceTable() {
 
 // Language Stats Component
 function LanguageStats() {
-  // Since we don't have language data in the schema, we'll show a placeholder
-  // In production, this would come from actual call analysis
   const languages = [
-    { name: 'English', percentage: 100, color: 'bg-blue-500' }
+    { name: 'English', percentage: 100 }
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {languages.map((lang, index) => (
-        <div key={index} className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">{lang.name}</span>
-            <span className="text-sm text-gray-500">{lang.percentage}%</span>
+        <div key={index}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm">{lang.name}</span>
+            <span className="text-sm font-semibold">{lang.percentage}%</span>
           </div>
-          <Progress value={lang.percentage} className="h-2" />
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div 
+              className="bg-black dark:bg-white h-2 rounded-full" 
+              style={{ width: `${lang.percentage}%` }}
+            />
+          </div>
         </div>
       ))}
-      <div className="text-xs text-gray-500 dark:text-gray-400 pt-2">
-        Language detection based on call transcripts
-      </div>
     </div>
   );
 }
@@ -675,6 +669,10 @@ export default function Dashboard() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["/api/analytics/organization"],
   });
+  
+  const { data: callLogs } = useQuery({
+    queryKey: ["/api/call-logs"],
+  });
 
   if (isLoading) {
     return (
@@ -688,82 +686,149 @@ export default function Dashboard() {
     );
   }
 
+  // Calculate average duration
+  const avgDuration = (stats as any)?.totalCalls > 0 
+    ? Math.floor((stats as any)?.totalMinutes * 60 / (stats as any)?.totalCalls)
+    : 0;
+  const avgMinutes = Math.floor(avgDuration / 60);
+  const avgSeconds = avgDuration % 60;
+
+  // Calculate average cost per call
+  const avgCostPerCall = (stats as any)?.totalCalls > 0
+    ? ((stats as any)?.estimatedCost / (stats as any)?.totalCalls).toFixed(4)
+    : '0.0000';
+
+  // Calculate credits (approximation: 1 credit = $0.0001)
+  const totalCredits = Math.round((stats as any)?.estimatedCost * 10000) || 0;
+  const avgCreditsPerCall = (stats as any)?.totalCalls > 0
+    ? Math.round(totalCredits / (stats as any)?.totalCalls)
+    : 0;
+
   return (
     <div className="space-y-8">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatsCard
-          title="Total Calls"
-          value={(stats as any)?.totalCalls || 0}
-          change="+12% from last month"
-          changeType="positive"
-          icon={Phone}
-          bgColor="from-blue-500 to-blue-600"
-          testId="stats-total-calls"
-        />
-        
-        <StatsCard
-          title="Total Minutes"
-          value={(stats as any)?.totalMinutes || 0}
-          change="+8% from last month"
-          changeType="positive"
-          icon={Clock}
-          bgColor="from-purple-500 to-purple-600"
-          testId="stats-total-minutes"
-        />
-        
-        <StatsCard
-          title="Estimated Cost"
-          value={`$${(stats as any)?.estimatedCost?.toFixed(2) || '0.00'}`}
-          change="+15% from last month"
-          changeType="negative"
-          icon={DollarSign}
-          bgColor="from-green-500 to-green-600"
-          testId="stats-estimated-cost"
-        />
-        
-        <StatsCard
-          title="Active Agents"
-          value={(stats as any)?.activeAgents || 0}
-          change="2 new this month"
-          changeType="positive"
-          icon={Bot}
-          bgColor="from-orange-500 to-orange-600"
-          testId="stats-active-agents"
-        />
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Call Volume Chart */}
-        <CallVolumeChart />
-        
-        {/* Cost Analysis Chart */}
-        <CostAnalysisChart />
-      </div>
-
-      {/* Analytics Section */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Overall Success Rate */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 text-card-foreground flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            Overall Success Rate
-          </h3>
-          <SuccessRateChart />
+      {/* ElevenLabs-style Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {/* Number of calls */}
+        <Card className="p-4">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Number of calls</p>
+            <p className="text-2xl font-bold">{(stats as any)?.totalCalls || 0}</p>
+          </div>
         </Card>
 
-        {/* Most Called Agents */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 text-card-foreground">Most Called Agents</h3>
-          <AgentPerformanceTable />
+        {/* Average duration */}
+        <Card className="p-4">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Average duration</p>
+            <p className="text-2xl font-bold">{avgMinutes}:{String(avgSeconds).padStart(2, '0')}</p>
+          </div>
+        </Card>
+
+        {/* Total cost */}
+        <Card className="p-4">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Total cost</p>
+            <div className="flex items-baseline gap-1">
+              <p className="text-2xl font-bold">{totalCredits.toLocaleString()}</p>
+              <span className="text-sm text-muted-foreground">credits</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* Average cost */}
+        <Card className="p-4">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Average cost</p>
+            <div className="flex items-baseline gap-1">
+              <p className="text-2xl font-bold">{avgCreditsPerCall}</p>
+              <span className="text-sm text-muted-foreground">credits/call</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* Total LLM cost */}
+        <Card className="p-4">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Total LLM cost</p>
+            <p className="text-2xl font-bold">${(stats as any)?.estimatedCost?.toFixed(3) || '0.000'}</p>
+          </div>
+        </Card>
+
+        {/* Average LLM cost */}
+        <Card className="p-4">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Avg LLM cost</p>
+            <p className="text-2xl font-bold">${avgCostPerCall}</p>
+          </div>
         </Card>
       </div>
 
-      {/* Language Distribution */}
+      {/* Call Volume Line Chart */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4 text-card-foreground">Language Distribution</h3>
-        <LanguageStats />
+        <div className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={(() => {
+              const logs = Array.isArray(callLogs) ? callLogs : [];
+              const dailyVolume: any = {};
+              const now = new Date();
+              for (let i = 29; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - i);
+                const dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                dailyVolume[dateKey] = 0;
+              }
+              logs.forEach((call: any) => {
+                const date = new Date(call.createdAt);
+                const dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                if (dailyVolume.hasOwnProperty(dateKey)) {
+                  dailyVolume[dateKey]++;
+                }
+              });
+              return Object.entries(dailyVolume).map(([date, count]) => ({ date, calls: count }));
+            })()} margin={{ top: 5, right: 5, left: 5, bottom: 25 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" vertical={false} />
+              <XAxis dataKey="date" stroke="#666" fontSize={10} angle={0} textAnchor="middle" interval={4} tick={{ fontSize: 10 }} />
+              <YAxis stroke="#666" fontSize={10} domain={[0, 'dataMax + 1']} ticks={[0, 1, 2, 3, 4]} />
+              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px' }} />
+              <Line type="monotone" dataKey="calls" stroke="#666" strokeWidth={1.5} dot={{ fill: '#666', strokeWidth: 1, r: 3 }} activeDot={{ r: 4, stroke: '#666', strokeWidth: 2 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      {/* Overall Success Rate with Agent Table and Language */}
+      <Card className="p-6">
+        <div className="space-y-6">
+          {/* Success Rate Chart */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-card-foreground flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              Overall success rate
+            </h3>
+            <SuccessRateChart />
+          </div>
+
+          {/* Divider */}
+          <div className="border-t"></div>
+
+          {/* Most Called Agents and Language Side by Side */}
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-card-foreground">Most called agents</h3>
+                <button className="text-sm text-blue-500 hover:text-blue-600">
+                  See all 4 agents
+                </button>
+              </div>
+              <AgentPerformanceTable />
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-card-foreground">Language</h3>
+              <LanguageStats />
+            </div>
+          </div>
+        </div>
       </Card>
     </div>
   );
