@@ -21,7 +21,8 @@ export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModal
   const queryClient = useQueryClient();
   
   const { data: callLogs } = useQuery<CallLog[]>({
-    queryKey: ["/api/call-logs", agent?.id],
+    queryKey: ["/api/call-logs"],
+    queryFn: () => fetch(`/api/call-logs?agentId=${agent?.id}`).then(res => res.json()),
     enabled: !!agent?.id && open,
   });
 

@@ -38,17 +38,32 @@ function encryptApiKey(apiKey: string): string {
 }
 
 function decryptApiKey(encryptedApiKey: string): string {
-  const algorithm = "aes-256-cbc";
-  const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || "default-key", "salt", 32);
-  
-  const [ivHex, encrypted] = encryptedApiKey.split(":");
-  const iv = Buffer.from(ivHex, "hex");
-  
-  const decipher = crypto.createDecipheriv(algorithm, key, iv);
-  let decrypted = decipher.update(encrypted, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-  
-  return decrypted;
+  try {
+    const algorithm = "aes-256-cbc";
+    const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || "default-key", "salt", 32);
+    
+    // Handle both old and new encryption formats
+    if (!encryptedApiKey.includes(":")) {
+      // Old format - try legacy decryption
+      const decipher = crypto.createDecipher("aes-256-cbc", process.env.ENCRYPTION_KEY || "default-key");
+      let decrypted = decipher.update(encryptedApiKey, "hex", "utf8");
+      decrypted += decipher.final("utf8");
+      return decrypted;
+    }
+    
+    // New format
+    const [ivHex, encrypted] = encryptedApiKey.split(":");
+    const iv = Buffer.from(ivHex, "hex");
+    
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    
+    return decrypted;
+  } catch (error) {
+    console.error("Decryption failed:", error);
+    throw new Error("Failed to decrypt API key. Please re-enter your API key.");
+  }
 }
 
 // Cost calculation helper (rough estimate: $0.30 per minute)
