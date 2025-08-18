@@ -11,7 +11,6 @@ import {
   Plug, 
   CreditCard, 
   Settings, 
-  HelpCircle, 
   Menu, 
   Moon, 
   Sun,
@@ -29,7 +28,6 @@ const navigation = [
 
 const secondaryNavigation = [
   { name: "Settings", href: "/settings", icon: Settings },
-  { name: "Support", href: "/support", icon: HelpCircle },
 ];
 
 interface AppShellProps {
