@@ -728,14 +728,11 @@ export default function Dashboard() {
 
   // Calculate average cost per call
   const avgCostPerCall = (stats as any)?.totalCalls > 0
-    ? ((stats as any)?.estimatedCost / (stats as any)?.totalCalls).toFixed(4)
-    : '0.0000';
+    ? ((stats as any)?.estimatedCost / (stats as any)?.totalCalls).toFixed(2)
+    : '0.00';
 
-  // Calculate credits (approximation: 1 credit = $0.0001)
+  // Calculate credits (ElevenLabs uses a credit system where 1 credit ≈ $0.0001)
   const totalCredits = Math.round((stats as any)?.estimatedCost * 10000) || 0;
-  const avgCreditsPerCall = (stats as any)?.totalCalls > 0
-    ? Math.round(totalCredits / (stats as any)?.totalCalls)
-    : 0;
 
   return (
     <div className="space-y-8">
@@ -782,58 +779,109 @@ export default function Dashboard() {
       )}
       
       {/* ElevenLabs-style Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {/* Number of calls */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {/* Total calls */}
         <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Number of calls</p>
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-purple-400" />
+              <p className="text-sm text-muted-foreground">Total Calls</p>
+            </div>
             <p className="text-2xl font-bold">{(stats as any)?.totalCalls || 0}</p>
+            <p className="text-xs text-muted-foreground">All voice conversations</p>
+          </div>
+        </Card>
+
+        {/* Total duration */}
+        <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-purple-400" />
+              <p className="text-sm text-muted-foreground">Total Duration</p>
+            </div>
+            <p className="text-2xl font-bold">{(stats as any)?.totalMinutes || 0} min</p>
+            <p className="text-xs text-muted-foreground">Total talk time</p>
+          </div>
+        </Card>
+
+        {/* Total spending */}
+        <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-purple-400" />
+              <p className="text-sm text-muted-foreground">Total Spending</p>
+            </div>
+            <p className="text-2xl font-bold">${(stats as any)?.estimatedCost?.toFixed(2) || '0.00'}</p>
+            <p className="text-xs text-muted-foreground">All-time cost in USD</p>
+          </div>
+        </Card>
+
+        {/* Average cost per call */}
+        <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-purple-400" />
+              <p className="text-sm text-muted-foreground">Avg Cost per Call</p>
+            </div>
+            <p className="text-2xl font-bold">${avgCostPerCall}</p>
+            <p className="text-xs text-muted-foreground">Average spending per call</p>
           </div>
         </Card>
 
         {/* Average duration */}
         <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Average duration</p>
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-purple-400" />
+              <p className="text-sm text-muted-foreground">Avg Call Duration</p>
+            </div>
             <p className="text-2xl font-bold">{avgMinutes}:{String(avgSeconds).padStart(2, '0')}</p>
+            <p className="text-xs text-muted-foreground">Average talk time</p>
           </div>
         </Card>
 
-        {/* Total cost */}
+        {/* Active agents */}
         <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Total cost</p>
+            <div className="flex items-center gap-2">
+              <Bot className="h-4 w-4 text-purple-400" />
+              <p className="text-sm text-muted-foreground">Active Agents</p>
+            </div>
+            <p className="text-2xl font-bold">{(stats as any)?.activeAgents || 0}</p>
+            <p className="text-xs text-muted-foreground">Connected voice agents</p>
+          </div>
+        </Card>
+
+        {/* Credits used (if available) */}
+        <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-purple-400" />
+              <p className="text-sm text-muted-foreground">Credits Used</p>
+            </div>
             <div className="flex items-baseline gap-1">
               <p className="text-2xl font-bold">{totalCredits.toLocaleString()}</p>
-              <span className="text-sm text-muted-foreground">credits</span>
             </div>
+            <p className="text-xs text-muted-foreground">ElevenLabs credits consumed</p>
           </div>
         </Card>
 
-        {/* Average cost */}
+        {/* Success rate */}
         <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Average cost</p>
-            <div className="flex items-baseline gap-1">
-              <p className="text-2xl font-bold">{avgCreditsPerCall}</p>
-              <span className="text-sm text-muted-foreground">credits/call</span>
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-purple-400" />
+              <p className="text-sm text-muted-foreground">Success Rate</p>
             </div>
-          </div>
-        </Card>
-
-        {/* Total LLM cost */}
-        <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Total LLM cost</p>
-            <p className="text-2xl font-bold">${(stats as any)?.estimatedCost?.toFixed(3) || '0.000'}</p>
-          </div>
-        </Card>
-
-        {/* Average LLM cost */}
-        <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Avg LLM cost</p>
-            <p className="text-2xl font-bold">${avgCostPerCall}</p>
+            <p className="text-2xl font-bold">
+              {(() => {
+                const logs = Array.isArray(callLogs) ? callLogs : [];
+                const completed = logs.filter((l: any) => l.status === 'completed').length;
+                const rate = logs.length > 0 ? Math.round((completed / logs.length) * 100) : 0;
+                return `${rate}%`;
+              })()}
+            </p>
+            <p className="text-xs text-muted-foreground">Completed calls</p>
           </div>
         </Card>
       </div>
