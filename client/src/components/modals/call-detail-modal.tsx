@@ -122,36 +122,85 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
                       return transcript
                         .filter(turn => turn.message && turn.message.trim())
                         .map((turn, index) => (
-                          <div key={index} className={`p-3 rounded-lg ${
-                            turn.role === 'agent' 
-                              ? 'bg-blue-100 dark:bg-blue-900 ml-4' 
-                              : 'bg-gray-100 dark:bg-gray-600 mr-4'
+                          <div key={index} className={`flex ${
+                            turn.role === 'agent' ? 'justify-start' : 'justify-end'
                           }`}>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`text-xs font-semibold uppercase ${
-                                turn.role === 'agent' 
-                                  ? 'text-blue-700 dark:text-blue-300' 
-                                  : 'text-gray-700 dark:text-gray-300'
-                              }`}>
-                                {turn.role === 'agent' ? '🤖 Agent' : '👤 User'}
-                              </span>
-                              {turn.time_in_call_secs && (
-                                <span className="text-xs text-gray-500">
-                                  {Math.floor(turn.time_in_call_secs / 60)}:{(turn.time_in_call_secs % 60).toString().padStart(2, '0')}
+                            <div className={`max-w-[80%] p-3 rounded-lg ${
+                              turn.role === 'agent' 
+                                ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500' 
+                                : 'bg-gray-50 dark:bg-gray-700 border-r-4 border-gray-400'
+                            }`}>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`text-xs font-semibold ${
+                                  turn.role === 'agent' 
+                                    ? 'text-blue-700 dark:text-blue-300' 
+                                    : 'text-gray-700 dark:text-gray-300'
+                                }`}>
+                                  {turn.role === 'agent' ? 'Agent' : 'User'}
                                 </span>
-                              )}
+                                {turn.time_in_call_secs !== undefined && (
+                                  <span className="text-xs text-gray-500">
+                                    {Math.floor(turn.time_in_call_secs / 60)}:{(turn.time_in_call_secs % 60).toString().padStart(2, '0')}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
+                                {turn.message}
+                              </p>
                             </div>
-                            <p className="text-sm text-gray-900 dark:text-white">
-                              {turn.message}
-                            </p>
                           </div>
                         ));
+                    } else {
+                      // If it's not an array, try to display as a single message
+                      return (
+                        <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <p className="text-sm text-gray-900 dark:text-white">
+                            {JSON.stringify(transcript, null, 2)}
+                          </p>
+                        </div>
+                      );
                     }
                   } catch (e) {
-                    // Fallback for non-JSON transcript
+                    // Check if it's already a formatted string
+                    const lines = callLog.transcript.split('\n').filter(line => line.trim());
+                    if (lines.length > 0) {
+                      return lines.map((line, index) => {
+                        const isAgent = line.toLowerCase().includes('agent') || line.toLowerCase().includes('alexis');
+                        const isUser = line.toLowerCase().includes('user') || (!isAgent && line.trim().length > 0);
+                        
+                        return (
+                          <div key={index} className={`flex ${
+                            isAgent ? 'justify-start' : 'justify-end'
+                          }`}>
+                            <div className={`max-w-[80%] p-3 rounded-lg ${
+                              isAgent 
+                                ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500' 
+                                : 'bg-gray-50 dark:bg-gray-700 border-r-4 border-gray-400'
+                            }`}>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`text-xs font-semibold ${
+                                  isAgent 
+                                    ? 'text-blue-700 dark:text-blue-300' 
+                                    : 'text-gray-700 dark:text-gray-300'
+                                }`}>
+                                  {isAgent ? 'Agent' : 'User'}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
+                                {line.trim()}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      });
+                    }
+                    
+                    // Final fallback for unstructured text
                     return (
-                      <div className="whitespace-pre-wrap text-sm text-gray-900 dark:text-white">
-                        {callLog.transcript}
+                      <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                          {callLog.transcript}
+                        </p>
                       </div>
                     );
                   }
