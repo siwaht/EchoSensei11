@@ -8,7 +8,6 @@ import {
   LayoutDashboard, 
   Bot, 
   History,
-  Headphones, 
   Plug, 
   CreditCard, 
   Settings, 
@@ -24,7 +23,6 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Agents", href: "/agents", icon: Bot },
   { name: "Call History", href: "/history", icon: History },
-  { name: "Recordings", href: "/recordings", icon: Headphones },
   { name: "Integrations", href: "/integrations", icon: Plug },
   { name: "Billing", href: "/billing", icon: CreditCard },
 ];
