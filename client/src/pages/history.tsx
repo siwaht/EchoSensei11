@@ -27,7 +27,7 @@ export default function History() {
   });
 
   const syncCallsMutation = useMutation({
-    mutationFn: () => apiRequest("/api/sync-calls", "POST"),
+    mutationFn: () => apiRequest("POST", "/api/sync-calls"),
     onSuccess: (data: any) => {
       toast({
         title: "Sync Complete",

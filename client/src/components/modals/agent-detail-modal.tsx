@@ -29,7 +29,7 @@ export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModal
   const toggleAgentMutation = useMutation({
     mutationFn: async () => {
       if (!agent) return;
-      await apiRequest("/api/agents/" + agent.id, "PATCH", { isActive: !agent.isActive });
+      await apiRequest("PATCH", "/api/agents/" + agent.id, { isActive: !agent.isActive });
     },
     onSuccess: () => {
       toast({

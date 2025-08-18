@@ -25,7 +25,7 @@ export default function Settings() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { firstName: string; lastName: string }) => {
-      await apiRequest("/api/auth/profile", "PATCH", data);
+      await apiRequest("PATCH", "/api/auth/profile", data);
     },
     onSuccess: () => {
       toast({
