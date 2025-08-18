@@ -7,16 +7,16 @@ export default function Landing() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+      <nav className="bg-card/80 backdrop-blur-sm border-b border-border sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <Mic className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Mic className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">VoiceAI Dashboard</span>
+              <span className="text-xl font-bold text-card-foreground">VoiceAI Dashboard</span>
             </div>
             <div className="flex items-center space-x-4">
               <Button 
@@ -44,10 +44,10 @@ export default function Landing() {
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
         <div className="text-center">
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-            Monitor Your <span className="text-primary-600">VoiceAI</span> Agents
+          <h1 className="text-5xl md:text-6xl font-bold text-card-foreground mb-6">
+            Monitor Your <span className="text-primary">VoiceAI</span> Agents
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto" data-testid="text-hero-description">
+          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto" data-testid="text-hero-description">
             Enterprise-grade monitoring and analytics for ElevenLabs voice agents. Secure BYOK integration, 
             real-time insights, and comprehensive call tracking for your organization.
           </p>
