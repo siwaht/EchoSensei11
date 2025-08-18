@@ -4,9 +4,48 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/components/theme-provider";
 import { Moon, Sun, Shield, TrendingUp, Users, Mic, LogIn, Mail, Lock } from "lucide-react";
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Landing() {
   const { theme, setTheme } = useTheme();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: { email: string; password: string }) => {
+      const res = await apiRequest("POST", "/api/login", credentials);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      setLocation("/");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Login failed",
+        description: "Invalid email or password",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Special case for admin user
+    if (email === "cc@siwaht.com" && password === "Hola173!") {
+      loginMutation.mutate({ email, password });
+    } else {
+      // For demo purposes, allow any other email with any password
+      loginMutation.mutate({ email, password: password || "demo" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -48,10 +87,7 @@ export default function Landing() {
 
             <form 
               className="space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                window.location.href = "/api/login";
-              }}
+              onSubmit={handleSubmit}
             >
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
@@ -65,6 +101,8 @@ export default function Landing() {
                     placeholder="Enter your email"
                     className="pl-10 h-11"
                     data-testid="input-email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
@@ -82,6 +120,8 @@ export default function Landing() {
                     placeholder="Enter your password"
                     className="pl-10 h-11"
                     data-testid="input-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
                   />
                 </div>
@@ -92,9 +132,16 @@ export default function Landing() {
                 className="w-full h-11" 
                 size="lg" 
                 data-testid="button-login"
+                disabled={loginMutation.isPending}
               >
-                <LogIn className="w-5 h-5 mr-2" />
-                Sign In
+                {loginMutation.isPending ? (
+                  "Signing in..."
+                ) : (
+                  <>
+                    <LogIn className="w-5 h-5 mr-2" />
+                    Sign In
+                  </>
+                )}
               </Button>
             </form>
           </Card>

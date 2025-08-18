@@ -19,9 +19,11 @@ import { db } from "./db";
 import { eq, and, desc, count, sum, avg, max } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations (required for Replit Auth)
+  // User operations
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  createUser(user: Partial<User>): Promise<User>;
 
   // Organization operations
   createOrganization(org: InsertOrganization): Promise<Organization>;
@@ -78,9 +80,37 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations (required for Replit Auth)
+  // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(userData: Partial<User>): Promise<User> {
+    // If no organization exists for this user, create one
+    let organizationId = userData.organizationId;
+    
+    if (!organizationId) {
+      const [org] = await db.insert(organizations).values({
+        name: userData.email?.split('@')[0] || 'Personal Organization'
+      }).returning();
+      organizationId = org.id;
+    }
+
+    const [user] = await db.insert(users).values({
+      email: userData.email!,
+      password: userData.password,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      profileImageUrl: userData.profileImageUrl,
+      organizationId,
+      isAdmin: userData.email === "cc@siwaht.com",
+    }).returning();
     return user;
   }
 

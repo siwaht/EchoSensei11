@@ -1,10 +1,20 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth } from "./auth";
 import { insertIntegrationSchema, insertAgentSchema, insertCallLogSchema } from "@shared/schema";
 import { z } from "zod";
 import crypto from "crypto";
+import type { RequestHandler } from "express";
+import { seedAdminUser } from "./seedAdmin";
+
+// Authentication middleware
+const isAuthenticated: RequestHandler = (req, res, next) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+};
 
 // ElevenLabs API helper
 async function callElevenLabsAPI(apiKey: string, endpoint: string, method = "GET", body?: any) {
@@ -87,31 +97,18 @@ function calculateCallCost(durationSeconds: number, costData?: any): number {
   return Math.round(minutes * 0.30 * 100) / 100; // Round to 2 decimal places
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export function registerRoutes(app: Express): Server {
+  // Seed admin user on startup
+  seedAdminUser().catch(console.error);
+  
   // Auth middleware
-  await setupAuth(app);
+  setupAuth(app);
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      console.log("Fetching user for ID:", userId);
-      const user = await storage.getUser(userId);
-      if (!user) {
-        console.log("User not found in database:", userId);
-        return res.status(404).json({ message: "User not found" });
-      }
-      console.log("User found:", user.id, user.email);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // Auth routes already handled by setupAuth in auth.ts
 
   // Admin middleware
   const isAdmin = async (req: any, res: any, next: any) => {
-    const userId = req.user?.claims?.sub;
+    const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -200,7 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Integration routes
   app.post("/api/integrations", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -229,7 +226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/integrations/test", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -258,7 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/integrations", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -284,7 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Agent routes
   app.post("/api/agents/validate", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -326,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/agents", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -356,7 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/agents", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -372,7 +369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/agents/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -399,7 +396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Call logs routes
   app.get("/api/call-logs", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -422,7 +419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/call-logs/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -502,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/sync-calls", isAuthenticated, async (req: any, res) => {
     console.log("=== SYNC CALLS REQUEST STARTED ===");
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       console.log("User ID:", userId);
       
       const user = await storage.getUser(userId);
@@ -648,7 +645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audio proxy endpoint for ElevenLabs recordings
   app.get("/api/audio/:conversationId", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -694,7 +691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Analytics routes
   app.get("/api/analytics/organization", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
