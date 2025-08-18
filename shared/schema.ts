@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   index,
   jsonb,
+  json,
   pgTable,
   timestamp,
   varchar,
@@ -86,6 +87,14 @@ export const agents = pgTable("agents", {
   elevenLabsAgentId: varchar("eleven_labs_agent_id").notNull(),
   name: varchar("name").notNull(),
   description: text("description"),
+  firstMessage: text("first_message"),
+  voiceId: varchar("voice_id"),
+  voiceSettings: json("voice_settings").$type<{
+    stability?: number;
+    similarityBoost?: number;
+    style?: number;
+    useSpeakerBoost?: boolean;
+  }>(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

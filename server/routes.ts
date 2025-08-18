@@ -480,6 +480,62 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get available ElevenLabs voices
+  app.get("/api/elevenlabs/voices", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const decryptedKey = decryptApiKey(integration.apiKey);
+      
+      // Fetch voices from ElevenLabs API
+      const response = await fetch("https://api.elevenlabs.io/v1/voices", {
+        headers: {
+          "xi-api-key": decryptedKey,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`ElevenLabs API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      res.json(data.voices || []);
+    } catch (error) {
+      console.error("Error fetching voices:", error);
+      res.status(500).json({ message: "Failed to fetch voices" });
+    }
+  });
+
+  // Update agent settings
+  app.patch("/api/agents/:agentId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { agentId } = req.params;
+      const updates = req.body;
+
+      const updatedAgent = await storage.updateAgent(user.organizationId, agentId, updates);
+      res.json(updatedAgent);
+    } catch (error) {
+      console.error("Error updating agent:", error);
+      res.status(500).json({ message: "Failed to update agent" });
+    }
+  });
+
   // Call logs routes
   app.get("/api/call-logs", isAuthenticated, async (req: any, res) => {
     try {

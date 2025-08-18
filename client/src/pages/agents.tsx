@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Plus, Trash2, MoreVertical } from "lucide-react";
+import { Bot, Plus, Trash2, MoreVertical, Settings } from "lucide-react";
 import { AddAgentModal } from "@/components/modals/add-agent-modal";
 import { AgentDetailModal } from "@/components/modals/agent-detail-modal";
 import { useToast } from "@/hooks/use-toast";
@@ -153,6 +153,13 @@ export default function Agents() {
                       data-testid={`menu-view-details-${agent.id}`}
                     >
                       View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => window.location.href = `/agents/${agent.id}/settings`}
+                      data-testid={`menu-settings-${agent.id}`}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Settings
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       className="text-red-600 dark:text-red-400"
