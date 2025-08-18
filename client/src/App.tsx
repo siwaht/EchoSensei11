@@ -10,6 +10,7 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Agents from "@/pages/agents";
 import History from "@/pages/history";
+import { Recordings } from "@/pages/recordings";
 import Integrations from "@/pages/integrations";
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
@@ -33,6 +34,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/agents" component={Agents} />
         <Route path="/history" component={History} />
+        <Route path="/recordings" component={Recordings} />
         <Route path="/integrations" component={Integrations} />
         <Route path="/billing" component={Billing} />
         <Route path="/settings" component={Settings} />

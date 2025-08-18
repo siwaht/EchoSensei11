@@ -7,7 +7,8 @@ import {
   Mic, 
   LayoutDashboard, 
   Bot, 
-  History, 
+  History,
+  Headphones, 
   Plug, 
   CreditCard, 
   Settings, 
@@ -23,6 +24,7 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Agents", href: "/agents", icon: Bot },
   { name: "Call History", href: "/history", icon: History },
+  { name: "Recordings", href: "/recordings", icon: Headphones },
   { name: "Integrations", href: "/integrations", icon: Plug },
   { name: "Billing", href: "/billing", icon: CreditCard },
 ];
@@ -140,12 +142,12 @@ export default function AppShell({ children }: AppShellProps) {
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                 <span className="text-primary-foreground text-sm font-medium" data-testid="text-user-initials">
-                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                  {(user as any)?.firstName?.[0]}{(user as any)?.lastName?.[0]}
                 </span>
               </div>
               <div className="hidden sm:block">
                 <div className="text-sm font-medium text-card-foreground" data-testid="text-user-name">
-                  {user?.firstName} {user?.lastName}
+                  {(user as any)?.firstName} {(user as any)?.lastName}
                 </div>
                 <div className="text-xs text-muted-foreground" data-testid="text-organization-name">
                   Organization
