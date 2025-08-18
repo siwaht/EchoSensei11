@@ -99,14 +99,14 @@ export default function Agents() {
                 </p>
               )}
               
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
+              <div className="space-y-3 text-sm">
+                <div className="flex flex-col space-y-1">
                   <span className="text-gray-600 dark:text-gray-400">ElevenLabs ID:</span>
-                  <span className="font-medium font-mono text-xs" data-testid={`text-agent-id-${agent.id}`}>
+                  <span className="font-medium font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded break-all" data-testid={`text-agent-id-${agent.id}`}>
                     {agent.elevenLabsAgentId}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-gray-600 dark:text-gray-400">Created:</span>
                   <span className="font-medium" data-testid={`text-agent-created-${agent.id}`}>
                     {agent.createdAt ? new Date(agent.createdAt).toLocaleDateString() : "Unknown"}
