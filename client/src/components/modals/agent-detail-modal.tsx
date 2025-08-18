@@ -184,7 +184,19 @@ export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModal
                     </div>
                     {call.transcript && (
                       <p className="text-sm mt-2 text-muted-foreground line-clamp-2">
-                        {call.transcript.substring(0, 150)}...
+                        {(() => {
+                          try {
+                            const messages = JSON.parse(call.transcript);
+                            if (Array.isArray(messages) && messages.length > 0) {
+                              const firstMessage = messages[0];
+                              const text = firstMessage.message || firstMessage.content || '';
+                              return text.length > 150 ? text.substring(0, 150) + '...' : text;
+                            }
+                            return 'No transcript available';
+                          } catch {
+                            return call.transcript.substring(0, 150) + '...';
+                          }
+                        })()}
                       </p>
                     )}
                   </Card>
