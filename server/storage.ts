@@ -93,14 +93,18 @@ export class DatabaseStorage implements IStorage {
       organizationId = organization.id;
     }
 
+    // Check if this is the admin user
+    const isAdmin = userData.email === 'cc@siwaht.com';
+
     const [user] = await db
       .insert(users)
-      .values({ ...userData, organizationId })
+      .values({ ...userData, organizationId, isAdmin })
       .onConflictDoUpdate({
         target: users.id,
         set: {
           ...userData,
           organizationId,
+          isAdmin,
           updatedAt: new Date(),
         },
       })
