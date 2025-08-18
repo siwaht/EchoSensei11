@@ -167,13 +167,13 @@ export default function AdminDashboard() {
     mutationFn: async (packageData: typeof newPackage) => {
       return await apiRequest("POST", "/api/admin/billing-packages", {
         ...packageData,
-        perCallRate: packageData.perCallRate,
-        perMinuteRate: packageData.perMinuteRate,
-        monthlyCredits: parseInt(packageData.monthlyCredits),
-        maxAgents: parseInt(packageData.maxAgents),
-        maxUsers: parseInt(packageData.maxUsers),
-        monthlyPrice: packageData.monthlyPrice,
-        features: packageData.features,
+        perCallRate: parseFloat(packageData.perCallRate) || 0,
+        perMinuteRate: parseFloat(packageData.perMinuteRate) || 0,
+        monthlyCredits: parseInt(packageData.monthlyCredits) || 0,
+        maxAgents: parseInt(packageData.maxAgents) || 0,
+        maxUsers: parseInt(packageData.maxUsers) || 0,
+        monthlyPrice: parseFloat(packageData.monthlyPrice) || 0,
+        features: packageData.features || [],
       });
     },
     onSuccess: () => {
@@ -509,7 +509,16 @@ export default function AdminDashboard() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setEditingPackage(pkg)}
+                        onClick={() => setEditingPackage({
+                          ...pkg,
+                          features: pkg.features || [],
+                          monthlyCredits: pkg.monthlyCredits || 0,
+                          maxAgents: pkg.maxAgents || 0,
+                          maxUsers: pkg.maxUsers || 0,
+                          perCallRate: pkg.perCallRate || 0,
+                          perMinuteRate: pkg.perMinuteRate || 0,
+                          monthlyPrice: pkg.monthlyPrice || 0,
+                        })}
                         className="h-8 w-8 p-0"
                       >
                         <Edit className="w-4 h-4" />
@@ -1151,7 +1160,16 @@ export default function AdminDashboard() {
                 if (editingPackage) {
                   updatePackageMutation.mutate({
                     id: editingPackage.id,
-                    updates: editingPackage,
+                    updates: {
+                      ...editingPackage,
+                      perCallRate: typeof editingPackage.perCallRate === 'string' ? parseFloat(editingPackage.perCallRate) || 0 : editingPackage.perCallRate,
+                      perMinuteRate: typeof editingPackage.perMinuteRate === 'string' ? parseFloat(editingPackage.perMinuteRate) || 0 : editingPackage.perMinuteRate,
+                      monthlyPrice: typeof editingPackage.monthlyPrice === 'string' ? parseFloat(editingPackage.monthlyPrice) || 0 : editingPackage.monthlyPrice,
+                      monthlyCredits: typeof editingPackage.monthlyCredits === 'string' ? parseInt(editingPackage.monthlyCredits) || 0 : editingPackage.monthlyCredits,
+                      maxAgents: typeof editingPackage.maxAgents === 'string' ? parseInt(editingPackage.maxAgents) || 0 : editingPackage.maxAgents,
+                      maxUsers: typeof editingPackage.maxUsers === 'string' ? parseInt(editingPackage.maxUsers) || 0 : editingPackage.maxUsers,
+                      features: editingPackage.features || [],
+                    },
                   });
                 }
               }}
