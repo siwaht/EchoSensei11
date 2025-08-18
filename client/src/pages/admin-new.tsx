@@ -249,15 +249,15 @@ export default function AdminDashboard() {
   });
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Admin Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <Shield className="w-8 h-8 text-primary" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
+            <Shield className="w-6 sm:w-8 h-6 sm:h-8 text-primary" />
             Admin Dashboard
           </h1>
-          <p className="text-muted-foreground mt-1">Manage users, organizations, and billing</p>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Manage users, organizations, and billing</p>
         </div>
       </div>
 
@@ -311,20 +311,33 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="users">User Management</TabsTrigger>
-          <TabsTrigger value="billing">Billing & Packages</TabsTrigger>
-          <TabsTrigger value="organizations">Organizations</TabsTrigger>
+        <TabsList className="w-full flex flex-col sm:grid sm:grid-cols-3 gap-1 sm:gap-0 h-auto sm:h-10">
+          <TabsTrigger value="users" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
+            <Users className="w-4 h-4 mr-2 sm:hidden" />
+            <span className="hidden sm:inline">User Management</span>
+            <span className="sm:hidden">Users</span>
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
+            <CreditCard className="w-4 h-4 mr-2 sm:hidden" />
+            <span className="hidden sm:inline">Billing & Packages</span>
+            <span className="sm:hidden">Billing</span>
+          </TabsTrigger>
+          <TabsTrigger value="organizations" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
+            <Building2 className="w-4 h-4 mr-2 sm:hidden" />
+            <span className="hidden sm:inline">Organizations</span>
+            <span className="sm:hidden">Orgs</span>
+          </TabsTrigger>
         </TabsList>
 
         {/* Users Tab */}
         <TabsContent value="users" className="space-y-4">
-          <Card className="p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">User Management</h2>
-              <Button onClick={() => setCreatingUser(true)} className="gap-2">
+          <Card className="p-3 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold">User Management</h2>
+              <Button onClick={() => setCreatingUser(true)} className="gap-2 w-full sm:w-auto">
                 <UserPlus className="w-4 h-4" />
-                Add New User
+                <span className="hidden sm:inline">Add New User</span>
+                <span className="sm:hidden">Add User</span>
               </Button>
             </div>
             
@@ -384,18 +397,18 @@ export default function AdminDashboard() {
                             variant="ghost"
                             onClick={() => setEditingUser(user)}
                             data-testid={`button-edit-user-${user.id}`}
-                            className="h-8 w-8 p-0"
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-red-500 hover:text-red-600 h-8 w-8 p-0"
+                            className="text-red-500 hover:text-red-600 h-7 w-7 sm:h-8 sm:w-8 p-0"
                             onClick={() => setDeletingUser(user)}
                             data-testid={`button-delete-user-${user.id}`}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                           </Button>
                         </div>
                       </td>
@@ -408,9 +421,9 @@ export default function AdminDashboard() {
         </TabsContent>
 
         {/* Billing & Packages Tab */}
-        <TabsContent value="billing" className="space-y-6">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Organization Billing Settings</h2>
+        <TabsContent value="billing" className="space-y-4 sm:space-y-6">
+          <Card className="p-3 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Organization Billing Settings</h2>
             
             <div className="overflow-x-auto">
               <table className="w-full min-w-[700px]">
@@ -487,12 +500,13 @@ export default function AdminDashboard() {
             </div>
           </Card>
 
-          <Card className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Billing Packages</h2>
-              <Button onClick={() => setCreatingPackage(true)} className="gap-2">
+          <Card className="p-3 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-xl font-semibold">Billing Packages</h2>
+              <Button onClick={() => setCreatingPackage(true)} className="gap-2 w-full sm:w-auto">
                 <Plus className="w-4 h-4" />
-                Create Package
+                <span className="hidden sm:inline">Create Package</span>
+                <span className="sm:hidden">Add Package</span>
               </Button>
             </div>
             
@@ -554,9 +568,9 @@ export default function AdminDashboard() {
 
         {/* Organizations Tab */}
         <TabsContent value="organizations" className="space-y-4">
-          <Card className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Organization Overview</h2>
+          <Card className="p-3 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-xl font-semibold">Organization Overview</h2>
               <Badge variant="secondary">{organizations.length} organizations</Badge>
             </div>
             
@@ -610,13 +624,13 @@ export default function AdminDashboard() {
 
       {/* Create User Dialog */}
       <Dialog open={creatingUser} onOpenChange={setCreatingUser}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-lg">
           <DialogHeader>
             <DialogTitle>Create New User</DialogTitle>
             <DialogDescription>Add a new user to the platform</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>First Name</Label>
                 <Input
@@ -692,7 +706,7 @@ export default function AdminDashboard() {
 
       {/* Edit User Dialog */}
       <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
           </DialogHeader>
@@ -749,13 +763,13 @@ export default function AdminDashboard() {
 
       {/* Edit Organization Billing Dialog */}
       <Dialog open={!!editingOrg} onOpenChange={() => setEditingOrg(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Organization Billing Settings</DialogTitle>
             <DialogDescription>Manage billing configuration for {editingOrg?.name}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Organization Name</Label>
                 <Input
@@ -783,7 +797,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Per Call Rate ($)</Label>
                 <Input
@@ -913,13 +927,13 @@ export default function AdminDashboard() {
 
       {/* Create Billing Package Dialog */}
       <Dialog open={creatingPackage} onOpenChange={setCreatingPackage}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl">
           <DialogHeader>
             <DialogTitle>Create Billing Package</DialogTitle>
             <DialogDescription>Define a new billing package with custom rates and limits</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Package ID</Label>
                 <Input
@@ -940,7 +954,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Name (Internal)</Label>
                 <Input
@@ -962,7 +976,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Per Call Rate ($)</Label>
                 <Input
@@ -985,7 +999,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <Label>Monthly Credits</Label>
                 <Input
@@ -1041,14 +1055,14 @@ export default function AdminDashboard() {
 
       {/* Edit Billing Package Dialog */}
       <Dialog open={!!editingPackage} onOpenChange={() => setEditingPackage(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Billing Package</DialogTitle>
             <DialogDescription>Update the billing package settings</DialogDescription>
           </DialogHeader>
           {editingPackage && (
             <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Package ID</Label>
                   <Input
@@ -1068,7 +1082,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Name (Internal)</Label>
                   <Input
@@ -1088,7 +1102,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Per Call Rate ($)</Label>
                   <Input
@@ -1111,7 +1125,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <Label>Monthly Credits</Label>
                   <Input
