@@ -182,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         console.log("Validating agent with ID:", elevenLabsAgentId);
-        const agentData = await callElevenLabsAPI(apiKey, `/v1/agents/${elevenLabsAgentId}`);
+        const agentData = await callElevenLabsAPI(apiKey, `/v1/convai/agents/${elevenLabsAgentId}`);
         console.log("Agent validation successful:", agentData);
         res.json({ 
           message: "Agent validated successfully", 
