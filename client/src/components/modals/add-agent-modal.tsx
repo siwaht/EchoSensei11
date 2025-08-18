@@ -39,7 +39,7 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
   const validateAgentMutation = useMutation({
     mutationFn: async (data: { elevenLabsAgentId: string }) => {
       setIsValidating(true);
-      const response = await apiRequest("POST", "/api/agents/validate", data);
+      const response = await apiRequest("/api/agents/validate", "POST", data);
       return response.json();
     },
     onSuccess: (data) => {
@@ -64,7 +64,7 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
 
   const createAgentMutation = useMutation({
     mutationFn: async (data: AddAgentForm) => {
-      await apiRequest("POST", "/api/agents", {
+      await apiRequest("/api/agents", "POST", {
         elevenLabsAgentId: data.elevenLabsAgentId,
         name: data.name || validatedData?.name || "Unnamed Agent",
         description: validatedData?.description,

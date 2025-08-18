@@ -27,7 +27,7 @@ export default function History() {
   });
 
   const syncCallsMutation = useMutation({
-    mutationFn: () => apiRequest("/api/sync-calls", { method: "POST" }),
+    mutationFn: () => apiRequest("/api/sync-calls", "POST"),
     onSuccess: (data: any) => {
       toast({
         title: "Sync Complete",
@@ -166,7 +166,7 @@ export default function History() {
                           Call #{callLog.id.slice(-6)}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400" data-testid={`text-call-time-${callLog.id}`}>
-                          {new Date(callLog.createdAt).toLocaleString()}
+                          {callLog.createdAt ? new Date(callLog.createdAt).toLocaleString() : "Unknown"}
                         </div>
                       </div>
                     </td>

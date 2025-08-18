@@ -37,7 +37,7 @@ export default function Integrations() {
 
   const saveApiKeyMutation = useMutation({
     mutationFn: async (data: ApiKeyForm) => {
-      await apiRequest("POST", "/api/integrations", data);
+      await apiRequest("/api/integrations", "POST", data);
     },
     onSuccess: () => {
       toast({
@@ -58,7 +58,7 @@ export default function Integrations() {
 
   const testConnectionMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/integrations/test");
+      await apiRequest("/api/integrations/test", "POST");
     },
     onSuccess: () => {
       toast({
@@ -93,7 +93,7 @@ export default function Integrations() {
   const getStatusBadge = () => {
     if (!integration) return null;
     
-    switch (integration.status) {
+    switch ((integration as any)?.status) {
       case "ACTIVE":
         return (
           <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200" data-testid="badge-status-active">
@@ -148,14 +148,14 @@ export default function Integrations() {
           <div>
             <p className="text-gray-600 dark:text-gray-400">API Key Status:</p>
             <p className="font-medium" data-testid="text-api-key-status">
-              {integration?.status === "ACTIVE" ? "Active" : "Inactive"}
+              {(integration as any)?.status === "ACTIVE" ? "Active" : "Inactive"}
             </p>
           </div>
           <div>
             <p className="text-gray-600 dark:text-gray-400">Last Tested:</p>
             <p className="font-medium" data-testid="text-last-tested">
-              {integration?.lastTested 
-                ? new Date(integration.lastTested).toLocaleString()
+              {(integration as any)?.lastTested 
+                ? new Date((integration as any).lastTested).toLocaleString()
                 : "Never"
               }
             </p>
@@ -163,8 +163,8 @@ export default function Integrations() {
           <div>
             <p className="text-gray-600 dark:text-gray-400">Connected Since:</p>
             <p className="font-medium" data-testid="text-connected-since">
-              {integration?.createdAt 
-                ? new Date(integration.createdAt).toLocaleDateString()
+              {(integration as any)?.createdAt 
+                ? new Date((integration as any).createdAt).toLocaleDateString()
                 : "Not connected"
               }
             </p>
@@ -172,7 +172,7 @@ export default function Integrations() {
           <div>
             <p className="text-gray-600 dark:text-gray-400">Webhook Status:</p>
             <p className="font-medium text-green-600" data-testid="text-webhook-status">
-              {integration?.status === "ACTIVE" ? "Receiving data" : "Not configured"}
+              {(integration as any)?.status === "ACTIVE" ? "Receiving data" : "Not configured"}
             </p>
           </div>
         </div>
