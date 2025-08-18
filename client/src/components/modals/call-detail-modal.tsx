@@ -72,7 +72,7 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
             <div>
               <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Timestamp:</span>
               <p className="text-sm text-gray-900 dark:text-white" data-testid="text-call-timestamp">
-                {new Date(callLog.createdAt).toLocaleString()}
+                {callLog.createdAt ? new Date(callLog.createdAt).toLocaleString() : "Unknown"}
               </p>
             </div>
             <div>
@@ -116,8 +116,50 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
             <Card className="p-4 bg-gray-50 dark:bg-gray-700 max-h-64 overflow-y-auto">
               <div className="space-y-3" data-testid="text-call-transcript">
                 {(() => {
+                  console.log("Transcript data:", callLog.transcript);
+                  console.log("Transcript type:", typeof callLog.transcript);
+                  
+                  // First check if it's already an array (direct object)
+                  if (Array.isArray(callLog.transcript)) {
+                    console.log("Transcript is already an array");
+                    return callLog.transcript
+                      .filter(turn => turn.message && turn.message.trim())
+                      .map((turn, index) => (
+                        <div key={index} className={`flex ${
+                          turn.role === 'agent' ? 'justify-start' : 'justify-end'
+                        }`}>
+                          <div className={`max-w-[80%] p-3 rounded-lg ${
+                            turn.role === 'agent' 
+                              ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500' 
+                              : 'bg-gray-50 dark:bg-gray-700 border-r-4 border-gray-400'
+                          }`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`text-xs font-semibold ${
+                                turn.role === 'agent' 
+                                  ? 'text-blue-700 dark:text-blue-300' 
+                                  : 'text-gray-700 dark:text-gray-300'
+                              }`}>
+                                {turn.role === 'agent' ? 'Agent' : 'User'}
+                              </span>
+                              {turn.time_in_call_secs !== undefined && (
+                                <span className="text-xs text-gray-500">
+                                  {Math.floor(turn.time_in_call_secs / 60)}:{(turn.time_in_call_secs % 60).toString().padStart(2, '0')}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
+                              {turn.message}
+                            </p>
+                          </div>
+                        </div>
+                      ));
+                  }
+                  
                   try {
                     const transcript = JSON.parse(callLog.transcript);
+                    console.log("Parsed transcript:", transcript);
+                    console.log("Is array:", Array.isArray(transcript));
+                    
                     if (Array.isArray(transcript)) {
                       return transcript
                         .filter(turn => turn.message && turn.message.trim())
@@ -151,56 +193,31 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
                           </div>
                         ));
                     } else {
-                      // If it's not an array, try to display as a single message
+                      // If it's not an array, show debug info
                       return (
-                        <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                          <p className="text-sm text-gray-900 dark:text-white">
+                        <div className="p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+                          <p className="text-sm text-red-900 dark:text-red-200 mb-2">Debug: Not an array</p>
+                          <pre className="text-xs text-red-700 dark:text-red-300 whitespace-pre-wrap">
                             {JSON.stringify(transcript, null, 2)}
-                          </p>
+                          </pre>
                         </div>
                       );
                     }
                   } catch (e) {
-                    // Check if it's already a formatted string
-                    const lines = callLog.transcript.split('\n').filter(line => line.trim());
-                    if (lines.length > 0) {
-                      return lines.map((line, index) => {
-                        const isAgent = line.toLowerCase().includes('agent') || line.toLowerCase().includes('alexis');
-                        const isUser = line.toLowerCase().includes('user') || (!isAgent && line.trim().length > 0);
-                        
-                        return (
-                          <div key={index} className={`flex ${
-                            isAgent ? 'justify-start' : 'justify-end'
-                          }`}>
-                            <div className={`max-w-[80%] p-3 rounded-lg ${
-                              isAgent 
-                                ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500' 
-                                : 'bg-gray-50 dark:bg-gray-700 border-r-4 border-gray-400'
-                            }`}>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-xs font-semibold ${
-                                  isAgent 
-                                    ? 'text-blue-700 dark:text-blue-300' 
-                                    : 'text-gray-700 dark:text-gray-300'
-                                }`}>
-                                  {isAgent ? 'Agent' : 'User'}
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
-                                {line.trim()}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      });
-                    }
-                    
-                    // Final fallback for unstructured text
+                    console.log("JSON parse error:", e);
+                    // Show debug info
                     return (
-                      <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
-                          {callLog.transcript}
-                        </p>
+                      <div className="space-y-2">
+                        <div className="p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+                          <p className="text-sm text-red-900 dark:text-red-200 mb-2">Debug: JSON Parse Failed</p>
+                          <p className="text-xs text-red-700 dark:text-red-300">Error: {e.message}</p>
+                        </div>
+                        <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Raw Data:</p>
+                          <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                            {callLog.transcript}
+                          </pre>
+                        </div>
                       </div>
                     );
                   }
