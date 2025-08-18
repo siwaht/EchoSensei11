@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Bot, Calendar, Clock, DollarSign, Activity, Settings } from "lucide-react";
+import { Bot, Calendar, Clock, DollarSign, Activity, Settings, X, Phone } from "lucide-react";
 import type { Agent, CallLog } from "@shared/schema";
 
 interface AgentDetailModalProps {
@@ -56,27 +56,37 @@ export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModal
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center">
-              <Bot className="w-5 h-5 text-primary-600" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                {agent.name}
-                <Badge className={agent.isActive ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200" : "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"}>
-                  {agent.isActive ? "Active" : "Inactive"}
-                </Badge>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center">
+                <Bot className="w-5 h-5 text-primary-600" />
               </div>
-              <p className="text-sm text-muted-foreground font-normal">
-                Agent ID: {agent.elevenLabsAgentId}
-              </p>
-            </div>
-          </DialogTitle>
+              <div>
+                <div className="flex items-center gap-2">
+                  {agent.name}
+                  <Badge className={agent.isActive ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200" : "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"}>
+                    {agent.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground font-normal">
+                  Agent ID: {agent.elevenLabsAgentId}
+                </p>
+              </div>
+            </DialogTitle>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => onOpenChange(false)}
+              className="h-8 w-8"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs defaultValue="overview" className="w-full flex-1 overflow-hidden flex flex-col">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="calls">Call History</TabsTrigger>
@@ -152,7 +162,7 @@ export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModal
             </Card>
           </TabsContent>
 
-          <TabsContent value="calls" className="space-y-4">
+          <TabsContent value="calls" className="space-y-4 overflow-hidden flex flex-col">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Recent Calls</h3>
               <p className="text-sm text-muted-foreground">{totalCalls} total calls</p>
@@ -167,8 +177,8 @@ export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModal
                 </p>
               </Card>
             ) : (
-              <div className="space-y-3">
-                {agentCalls.slice(0, 10).map((call) => (
+              <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
+                {agentCalls.map((call) => (
                   <Card key={call.id} className="p-4">
                     <div className="flex justify-between items-start">
                       <div>
