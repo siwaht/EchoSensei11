@@ -117,35 +117,48 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
               <div className="space-y-3" data-testid="text-call-transcript">
                 {(() => {
                   try {
-                    // Parse the transcript data step by step
+                    console.log("=== TRANSCRIPT PARSING DEBUG ===");
+                    console.log("Raw transcript:", callLog.transcript);
+                    console.log("Type:", typeof callLog.transcript);
+                    
                     let transcript = callLog.transcript;
                     
-                    // Step 1: Parse the main JSON string
+                    // Parse the JSON string to get the object
                     if (typeof transcript === 'string') {
                       transcript = JSON.parse(transcript);
+                      console.log("After first parse:", transcript);
+                      console.log("Type after parse:", typeof transcript);
                     }
                     
-                    // Step 2: Extract conversation turns from numbered object keys
                     const conversationTurns = [];
+                    
+                    // Handle the object with numbered keys containing JSON strings
                     if (transcript && typeof transcript === 'object' && !Array.isArray(transcript)) {
-                      // Get keys in numerical order (0, 1, 2, ...)
-                      const orderedKeys = Object.keys(transcript).sort((a, b) => parseInt(a) - parseInt(b));
+                      console.log("Object keys:", Object.keys(transcript));
                       
-                      // Parse each conversation turn
+                      // Get keys and sort numerically
+                      const orderedKeys = Object.keys(transcript).sort((a, b) => parseInt(a) - parseInt(b));
+                      console.log("Ordered keys:", orderedKeys);
+                      
+                      // Parse each turn
                       for (const key of orderedKeys) {
+                        console.log(`Parsing key ${key}:`, transcript[key]);
                         try {
                           const turnData = JSON.parse(transcript[key]);
+                          console.log(`Parsed turn ${key}:`, turnData);
+                          
                           if (turnData && turnData.message && turnData.message.trim()) {
                             conversationTurns.push(turnData);
                           }
-                        } catch (e) {
-                          // Skip invalid turns
-                          continue;
+                        } catch (parseError) {
+                          console.log(`Failed to parse turn ${key}:`, parseError);
                         }
                       }
                     }
                     
-                    // Step 3: Render conversation bubbles
+                    console.log("Final conversation turns:", conversationTurns);
+                    
+                    // Render the conversation
                     if (conversationTurns.length > 0) {
                       return (
                         <div className="space-y-4">
@@ -184,17 +197,31 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
                       );
                     }
                     
-                    // Fallback for no valid conversation turns
+                    // Show debugging info if no turns found
                     return (
-                      <div className="text-center py-8 text-gray-500">
-                        <p>No conversation data available</p>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">Debug: No conversation turns found</p>
+                          <pre className="text-xs text-yellow-700 dark:text-yellow-300 whitespace-pre-wrap overflow-auto max-h-32">
+                            {JSON.stringify(transcript, null, 2)}
+                          </pre>
+                        </div>
                       </div>
                     );
                   } catch (e) {
-                    // Error fallback
+                    console.log("=== TRANSCRIPT PARSING ERROR ===");
+                    console.log("Error:", e);
+                    console.log("Error message:", e.message);
+                    console.log("Stack:", e.stack);
+                    
                     return (
-                      <div className="text-center py-8 text-red-500">
-                        <p>Unable to parse conversation transcript</p>
+                      <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                        <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+                          Parsing Error: {e.message}
+                        </p>
+                        <pre className="text-xs text-red-700 dark:text-red-300 whitespace-pre-wrap overflow-auto max-h-32">
+                          {callLog.transcript}
+                        </pre>
                       </div>
                     );
                   }
