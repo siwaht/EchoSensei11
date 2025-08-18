@@ -53,6 +53,12 @@ function decryptApiKey(encryptedApiKey: string): string {
   return decrypted;
 }
 
+// Cost calculation helper (rough estimate: $0.30 per minute)
+function calculateCallCost(durationSeconds: number): number {
+  const minutes = durationSeconds / 60;
+  return Math.round(minutes * 0.30 * 100) / 100; // Round to 2 decimal places
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -289,6 +295,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching call log:", error);
       res.status(500).json({ message: "Failed to fetch call log" });
+    }
+  });
+
+  // Webhook endpoint for ElevenLabs callbacks
+  app.post("/api/webhooks/elevenlabs", async (req, res) => {
+    try {
+      console.log("ElevenLabs webhook received:", JSON.stringify(req.body, null, 2));
+      
+      const { type, data } = req.body;
+      
+      if (type === "post_call_transcription") {
+        // Extract call data from webhook
+        const {
+          conversation_id,
+          agent_id,
+          transcript,
+          duration_seconds,
+          conversation_metadata,
+          analysis
+        } = data;
+
+        // Find the agent in our system
+        const agent = await storage.getAgentByElevenLabsId(agent_id, "");
+        if (agent) {
+          // Store call log
+          await storage.createCallLog({
+            organizationId: agent.organizationId,
+            agentId: agent.id,
+            elevenLabsCallId: conversation_id,
+            duration: duration_seconds || 0,
+            transcript: transcript,
+            audioUrl: "", // Will be populated from audio webhook if available
+            cost: calculateCallCost(duration_seconds || 0).toString(),
+            status: "completed",
+          });
+          
+          console.log("Call log saved for conversation:", conversation_id);
+        }
+      } else if (type === "post_call_audio") {
+        // Update call log with audio URL
+        const { conversation_id, full_audio } = data;
+        
+        // In production, you'd save the audio to cloud storage
+        // For now, we'll just log that we received it
+        console.log("Audio received for conversation:", conversation_id, "Size:", full_audio?.length || 0);
+      }
+      
+      res.status(200).json({ message: "Webhook processed successfully" });
+    } catch (error) {
+      console.error("Error processing webhook:", error);
+      res.status(500).json({ message: "Failed to process webhook" });
+    }
+  });
+
+  // Sync call logs from ElevenLabs API
+  app.post("/api/sync-calls", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || integration.status !== "ACTIVE") {
+        return res.status(400).json({ message: "Active ElevenLabs integration required" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const agents = await storage.getAgents(user.organizationId);
+      
+      let totalSynced = 0;
+      
+      for (const agent of agents) {
+        try {
+          // Get conversations for this agent
+          const conversations = await callElevenLabsAPI(
+            apiKey, 
+            `/v1/convai/conversations?agent_id=${agent.elevenLabsAgentId}&page_size=100`
+          );
+          
+          for (const conversation of conversations.conversations || []) {
+            // Check if we already have this call log
+            const existing = await storage.getCallLogByElevenLabsId(conversation.conversation_id, user.organizationId);
+            if (existing) continue;
+            
+            // Get detailed conversation data
+            const details = await callElevenLabsAPI(
+              apiKey,
+              `/v1/convai/conversations/${conversation.conversation_id}`
+            );
+            
+            // Create call log
+            await storage.createCallLog({
+              organizationId: user.organizationId,
+              agentId: agent.id,
+              elevenLabsCallId: conversation.conversation_id,
+              duration: details.duration_seconds || 0,
+              transcript: details.transcript || "",
+              audioUrl: details.audio_url || "",
+              cost: calculateCallCost(details.duration_seconds || 0).toString(),
+              status: "completed",
+            });
+            
+            totalSynced++;
+          }
+        } catch (error) {
+          console.error(`Error syncing calls for agent ${agent.id}:`, error);
+        }
+      }
+      
+      res.json({ message: `Synced ${totalSynced} new call logs` });
+    } catch (error) {
+      console.error("Error syncing calls:", error);
+      res.status(500).json({ message: "Failed to sync calls" });
     }
   });
 

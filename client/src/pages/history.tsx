@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Bot, Calendar } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Bot, Calendar, RefreshCw } from "lucide-react";
 import { CallDetailModal } from "@/components/modals/call-detail-modal";
 import type { CallLog, Agent } from "@shared/schema";
 
@@ -13,6 +15,8 @@ export default function History() {
   const [selectedAgent, setSelectedAgent] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: callLogs, isLoading } = useQuery<CallLog[]>({
     queryKey: ["/api/call-logs"],
@@ -20,6 +24,25 @@ export default function History() {
 
   const { data: agents } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
+  });
+
+  const syncCallsMutation = useMutation({
+    mutationFn: () => apiRequest("/api/sync-calls", { method: "POST" }),
+    onSuccess: (data: any) => {
+      toast({
+        title: "Sync Complete",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/call-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics/organization"] });
+    },
+    onError: () => {
+      toast({
+        title: "Sync Failed",
+        description: "Failed to sync call logs from ElevenLabs",
+        variant: "destructive",
+      });
+    },
   });
 
   const getStatusColor = (status: string) => {
@@ -68,6 +91,15 @@ export default function History() {
           </p>
         </div>
         <div className="flex items-center space-x-3">
+          <Button
+            onClick={() => syncCallsMutation.mutate()}
+            disabled={syncCallsMutation.isPending}
+            className="flex items-center gap-2"
+            data-testid="button-sync-calls"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncCallsMutation.isPending ? 'animate-spin' : ''}`} />
+            {syncCallsMutation.isPending ? 'Syncing...' : 'Sync Calls'}
+          </Button>
           <Select value={selectedAgent} onValueChange={setSelectedAgent}>
             <SelectTrigger className="w-48" data-testid="select-agent-filter">
               <SelectValue placeholder="All Agents" />

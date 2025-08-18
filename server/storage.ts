@@ -201,6 +201,14 @@ export class DatabaseStorage implements IStorage {
     return callLog;
   }
 
+  async getCallLogByElevenLabsId(elevenLabsCallId: string, organizationId: string): Promise<CallLog | undefined> {
+    const [callLog] = await db
+      .select()
+      .from(callLogs)
+      .where(and(eq(callLogs.elevenLabsCallId, elevenLabsCallId), eq(callLogs.organizationId, organizationId)));
+    return callLog;
+  }
+
   // Analytics operations
   async getOrganizationStats(organizationId: string): Promise<{
     totalCalls: number;

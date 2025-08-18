@@ -48,10 +48,12 @@ Secure authentication system with multi-tenant support:
 ### ElevenLabs Integration
 BYOK integration pattern for secure third-party service access:
 
-- **API Key Management**: Client-provided API keys encrypted and stored securely
-- **Agent Validation**: Real-time validation of ElevenLabs agent IDs
-- **Data Synchronization**: Webhook handling and periodic API polling for call logs
-- **Monitoring**: Real-time status tracking of integration health
+- **API Key Management**: Client-provided API keys encrypted and stored securely using AES-256-CBC
+- **Agent Validation**: Real-time validation of ElevenLabs conversational AI agent IDs via `/v1/convai/agents/` API
+- **Call Data Collection**: Webhook endpoint `/api/webhooks/elevenlabs` for real-time call transcripts and audio
+- **Manual Sync**: User-triggered sync button to fetch historical call logs from ElevenLabs API
+- **Data Storage**: Complete call logs with transcripts, duration, costs, and audio URLs stored in PostgreSQL
+- **Analytics**: Real-time dashboard showing total calls, minutes, estimated costs, and active agents
 
 ## External Dependencies
 
