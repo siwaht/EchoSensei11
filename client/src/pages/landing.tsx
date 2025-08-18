@@ -96,10 +96,6 @@ export default function Landing() {
                 <LogIn className="w-5 h-5 mr-2" />
                 Sign In
               </Button>
-
-              <p className="text-xs text-center text-muted-foreground pt-2">
-                Admin users (cc@siwaht.com) will be automatically granted admin privileges upon login.
-              </p>
             </form>
           </Card>
 
