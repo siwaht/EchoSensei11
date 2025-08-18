@@ -44,6 +44,8 @@ Secure authentication system with multi-tenant support:
 - **Session Storage**: PostgreSQL-backed sessions with TTL support
 - **Multi-tenancy**: Organization-based data isolation with user-organization relationships
 - **Security**: Encrypted API key storage for third-party service integration
+- **Admin System**: Role-based access control with dedicated admin dashboard
+- **Admin User**: cc@siwaht.com has full administrative privileges
 
 ### ElevenLabs Integration
 BYOK integration pattern for secure third-party service access:
