@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Bot, Calendar, Clock, DollarSign, Activity, Settings, X, Phone } from "lucide-react";
+import { Bot, Calendar, Clock, DollarSign, Activity, Settings, Phone } from "lucide-react";
 import type { Agent, CallLog } from "@shared/schema";
 
 interface AgentDetailModalProps {
@@ -58,32 +58,22 @@ export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModal
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center">
-                <Bot className="w-5 h-5 text-primary-600" />
+          <DialogTitle className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center">
+              <Bot className="w-5 h-5 text-primary-600" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                {agent.name}
+                <Badge className={agent.isActive ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200" : "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"}>
+                  {agent.isActive ? "Active" : "Inactive"}
+                </Badge>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  {agent.name}
-                  <Badge className={agent.isActive ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200" : "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"}>
-                    {agent.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground font-normal">
-                  Agent ID: {agent.elevenLabsAgentId}
-                </p>
-              </div>
-            </DialogTitle>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => onOpenChange(false)}
-              className="h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+              <p className="text-sm text-muted-foreground font-normal">
+                Agent ID: {agent.elevenLabsAgentId}
+              </p>
+            </div>
+          </DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="w-full flex-1 overflow-hidden flex flex-col">
