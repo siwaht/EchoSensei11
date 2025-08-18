@@ -42,6 +42,7 @@ export interface IStorage {
   // Call log operations
   getCallLogs(organizationId: string, limit?: number, offset?: number, agentId?: string): Promise<CallLog[]>;
   getCallLog(id: string, organizationId: string): Promise<CallLog | undefined>;
+  getCallLogByElevenLabsId(elevenLabsCallId: string, organizationId: string): Promise<CallLog | undefined>;
   createCallLog(callLog: InsertCallLog): Promise<CallLog>;
 
   // Analytics operations
