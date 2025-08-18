@@ -2,7 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { StatsCard } from "@/components/ui/stats-card";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Clock, DollarSign, Bot, TrendingUp, PhoneCall, MessageSquare, AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Phone, Clock, DollarSign, Bot, TrendingUp, PhoneCall, MessageSquare, AlertCircle, BarChart3 } from "lucide-react";
+import { useState } from "react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 // Recent Activity Component
 function RecentActivity() {
@@ -147,6 +150,172 @@ function RecentActivity() {
   );
 }
 
+// Call Volume Chart Component
+function CallVolumeChart() {
+  const [timeRange, setTimeRange] = useState('daily');
+  
+  const { data: callLogs } = useQuery({
+    queryKey: ["/api/call-logs"],
+  });
+
+  // Process call logs based on selected time range
+  const processCallData = (logs: any[], range: string) => {
+    if (!logs || logs.length === 0) return [];
+
+    const now = new Date();
+    const data: any[] = [];
+    let days = 7; // Default for daily view
+    let formatKey = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    switch (range) {
+      case 'daily':
+        days = 7;
+        formatKey = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        break;
+      case 'weekly':
+        days = 28; // 4 weeks
+        formatKey = (date: Date) => `Week ${Math.ceil(date.getDate() / 7)}, ${date.toLocaleDateString('en-US', { month: 'short' })}`;
+        break;
+      case 'monthly':
+        days = 90; // 3 months
+        formatKey = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+        break;
+      case 'quarterly':
+        days = 365; // 1 year
+        formatKey = (date: Date) => `Q${Math.ceil((date.getMonth() + 1) / 3)} ${date.getFullYear()}`;
+        break;
+    }
+
+    // Generate date ranges
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      
+      let periodKey: string;
+      let periodStart: Date;
+      let periodEnd: Date;
+
+      if (range === 'daily') {
+        periodKey = formatKey(date);
+        periodStart = new Date(date);
+        periodStart.setHours(0, 0, 0, 0);
+        periodEnd = new Date(date);
+        periodEnd.setHours(23, 59, 59, 999);
+      } else if (range === 'weekly') {
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        periodKey = formatKey(weekStart);
+        periodStart = weekStart;
+        periodEnd = new Date(weekStart);
+        periodEnd.setDate(weekStart.getDate() + 6);
+      } else if (range === 'monthly') {
+        periodKey = formatKey(new Date(date.getFullYear(), date.getMonth(), 1));
+        periodStart = new Date(date.getFullYear(), date.getMonth(), 1);
+        periodEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+      } else { // quarterly
+        const quarter = Math.ceil((date.getMonth() + 1) / 3);
+        periodKey = `Q${quarter} ${date.getFullYear()}`;
+        periodStart = new Date(date.getFullYear(), (quarter - 1) * 3, 1);
+        periodEnd = new Date(date.getFullYear(), quarter * 3, 0);
+      }
+
+      // Count calls in this period
+      const callsInPeriod = logs.filter((call: any) => {
+        const callDate = new Date(call.createdAt);
+        return callDate >= periodStart && callDate <= periodEnd;
+      });
+
+      const totalCost = callsInPeriod.reduce((sum: number, call: any) => sum + (Number(call.cost) || 0), 0);
+      const totalDuration = callsInPeriod.reduce((sum: number, call: any) => sum + (call.duration || 0), 0);
+
+      // Only add unique periods (avoid duplicates in weekly/monthly/quarterly views)
+      if (!data.find(item => item.period === periodKey)) {
+        data.push({
+          period: periodKey,
+          calls: callsInPeriod.length,
+          cost: totalCost,
+          duration: Math.round(totalDuration / 60), // Convert to minutes
+        });
+      }
+    }
+
+    return data.slice(-10); // Show last 10 periods
+  };
+
+  const chartData = processCallData(callLogs || [], timeRange);
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-card-foreground" data-testid="text-chart-title-usage">
+          Call Volume
+        </h3>
+        <Select value={timeRange} onValueChange={setTimeRange}>
+          <SelectTrigger className="w-32" data-testid="select-time-range">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="daily">Daily</SelectItem>
+            <SelectItem value="weekly">Weekly</SelectItem>
+            <SelectItem value="monthly">Monthly</SelectItem>
+            <SelectItem value="quarterly">Quarterly</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {chartData.length > 0 ? (
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis 
+                dataKey="period" 
+                stroke="#666"
+                fontSize={12}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis stroke="#666" fontSize={12} />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#fff', 
+                  border: '1px solid #ccc',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+                formatter={(value: any, name: string) => [
+                  name === 'calls' ? `${value} calls` :
+                  name === 'cost' ? `$${Number(value).toFixed(4)}` :
+                  `${value} min`,
+                  name === 'calls' ? 'Calls' :
+                  name === 'cost' ? 'Cost' : 'Duration'
+                ]}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="calls" 
+                stroke="#3b82f6" 
+                strokeWidth={2}
+                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg">
+          <div className="text-center text-muted-foreground">
+            <BarChart3 className="w-12 h-12 mx-auto mb-2" />
+            <p data-testid="text-chart-placeholder">No call data available</p>
+            <p className="text-sm">Data will appear after calls are made</p>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function Dashboard() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["/api/analytics/organization"],
@@ -211,19 +380,20 @@ export default function Dashboard() {
 
       {/* Charts Row */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Usage Chart */}
+        {/* Call Volume Chart */}
+        <CallVolumeChart />
+        
+        {/* Cost Analysis Chart */}
         <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 text-card-foreground" data-testid="text-chart-title-usage">Daily Call Volume</h3>
+          <h3 className="text-lg font-semibold mb-4 text-card-foreground">Cost Analysis</h3>
           <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg">
             <div className="text-center text-muted-foreground">
-              <TrendingUp className="w-12 h-12 mx-auto mb-2" />
-              <p data-testid="text-chart-placeholder">Interactive chart will be rendered here</p>
-              <p className="text-sm">Using Recharts library</p>
+              <DollarSign className="w-12 h-12 mx-auto mb-2" />
+              <p>Cost breakdown chart</p>
+              <p className="text-sm">Coming soon</p>
             </div>
           </div>
         </Card>
-
-
       </div>
 
       {/* Recent Activity */}
