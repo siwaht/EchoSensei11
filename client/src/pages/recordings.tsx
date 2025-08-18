@@ -20,7 +20,7 @@ export function Recordings() {
     recording.elevenLabsCallId?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalDuration = recordings.reduce((acc, rec) => acc + rec.duration, 0);
+  const totalDuration = recordings.reduce((acc, rec) => acc + (rec.duration || 0), 0);
   const totalRecordings = recordings.length;
 
   if (isLoading) {
@@ -92,7 +92,7 @@ export function Recordings() {
               <div>
                 <p className="text-gray-400 text-sm">Latest Recording</p>
                 <p className="text-sm font-medium text-white">
-                  {recordings[0] ? format(new Date(recordings[0].createdAt), "MMM d, h:mm a") : "None"}
+                  {recordings[0]?.createdAt ? format(new Date(recordings[0].createdAt), "MMM d, h:mm a") : "None"}
                 </p>
               </div>
               <Calendar className="h-8 w-8 text-orange-600" />
@@ -136,7 +136,7 @@ export function Recordings() {
                 <div key={recording.id} className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-400">
-                      {format(new Date(recording.createdAt), "MMM d, yyyy h:mm a")}
+                      {recording.createdAt ? format(new Date(recording.createdAt), "MMM d, yyyy h:mm a") : "Unknown date"}
                     </span>
                     <span className="text-xs text-purple-400 font-mono">
                       {recording.elevenLabsCallId}
@@ -148,7 +148,7 @@ export function Recordings() {
                       audioUrl={recording.audioUrl}
                       title={recording.transcript?.substring(0, 100) || "Call Recording"}
                       callId={recording.elevenLabsCallId || recording.id}
-                      duration={recording.duration}
+                      duration={recording.duration || 0}
                     />
                   ) : (
                     <div className="p-4 rounded-lg bg-gray-800/50 border border-gray-700">
