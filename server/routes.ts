@@ -197,12 +197,30 @@ export function registerRoutes(app: Express): Server {
   // Admin routes - Create new user
   app.post('/api/admin/users', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const { email, firstName, lastName, password, organizationId, isAdmin } = req.body;
+      const { email, firstName, lastName, password, companyName, isAdmin } = req.body;
       
       // Check if user exists
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
         return res.status(400).json({ message: "User with this email already exists" });
+      }
+
+      // If company name is provided, find or create organization
+      let organizationId = undefined;
+      if (companyName && companyName.trim()) {
+        // Try to find existing organization
+        const organizations = await storage.getAllOrganizations();
+        const existingOrg = organizations.find(org => 
+          org.name.toLowerCase() === companyName.toLowerCase()
+        );
+        
+        if (existingOrg) {
+          organizationId = existingOrg.id;
+        } else {
+          // Create new organization
+          const newOrg = await storage.createOrganization({ name: companyName });
+          organizationId = newOrg.id;
+        }
       }
 
       // Create new user

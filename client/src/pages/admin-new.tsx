@@ -45,7 +45,21 @@ export default function AdminDashboard() {
   // State management
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
-  const [editingOrg, setEditingOrg] = useState<any>(null);
+  const [editingOrg, setEditingOrg] = useState<{
+    id: string;
+    name: string;
+    billingPackage: string;
+    perCallRate: string;
+    perMinuteRate: string;
+    monthlyCredits: string;
+    maxAgents: string;
+    maxUsers: string;
+    customRateEnabled: boolean;
+    userCount?: number;
+    totalCalls?: number;
+    usedCredits?: number;
+    estimatedCost?: number;
+  } | null>(null);
   const [creatingUser, setCreatingUser] = useState(false);
   const [newUser, setNewUser] = useState({
     email: "",
@@ -235,7 +249,7 @@ export default function AdminDashboard() {
                   <tr className="border-b">
                     <th className="text-left py-3 px-4">User</th>
                     <th className="text-left py-3 px-4">Email</th>
-                    <th className="text-left py-3 px-4">Organization</th>
+                    <th className="text-left py-3 px-4">Company</th>
                     <th className="text-left py-3 px-4">Role</th>
                     <th className="text-left py-3 px-4">Created</th>
                     <th className="text-left py-3 px-4">Actions</th>
@@ -348,7 +362,21 @@ export default function AdminDashboard() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => setEditingOrg({ ...orgDetails, ...org })}
+                            onClick={() => setEditingOrg({
+                              id: org.id,
+                              name: org.name,
+                              billingPackage: org.billingPackage || 'starter',
+                              perCallRate: String(org.perCallRate || '0.30'),
+                              perMinuteRate: String(org.perMinuteRate || '0.30'),
+                              monthlyCredits: String(org.monthlyCredits || 0),
+                              maxAgents: String(org.maxAgents || 5),
+                              maxUsers: String(org.maxUsers || 10),
+                              customRateEnabled: org.customRateEnabled || false,
+                              userCount: orgDetails?.userCount,
+                              totalCalls: orgDetails?.totalCalls,
+                              usedCredits: orgDetails?.usedCredits,
+                              estimatedCost: orgDetails?.estimatedCost,
+                            })}
                             data-testid={`button-edit-billing-${org.id}`}
                           >
                             <Settings className="w-4 h-4" />
@@ -512,22 +540,13 @@ export default function AdminDashboard() {
               />
             </div>
             <div>
-              <Label>Organization</Label>
-              <Select
-                value={newUser.organizationId}
-                onValueChange={(value) => setNewUser({ ...newUser, organizationId: value })}
-              >
-                <SelectTrigger data-testid="select-new-user-org">
-                  <SelectValue placeholder="Select organization" />
-                </SelectTrigger>
-                <SelectContent>
-                  {organizations.map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Company Name (Optional)</Label>
+              <Input
+                value={newUser.companyName}
+                onChange={(e) => setNewUser({ ...newUser, companyName: e.target.value })}
+                placeholder="Acme Corp (optional)"
+                data-testid="input-new-user-company"
+              />
             </div>
             <div className="flex items-center gap-2">
               <Switch
@@ -676,7 +695,7 @@ export default function AdminDashboard() {
                 <Input
                   type="number"
                   value={editingOrg?.monthlyCredits || "0"}
-                  onChange={(e) => setEditingOrg(editingOrg ? { ...editingOrg, monthlyCredits: parseInt(e.target.value) } : null)}
+                  onChange={(e) => setEditingOrg(editingOrg ? { ...editingOrg, monthlyCredits: e.target.value } : null)}
                   data-testid="input-org-monthly-credits"
                 />
               </div>
@@ -685,7 +704,7 @@ export default function AdminDashboard() {
                 <Input
                   type="number"
                   value={editingOrg?.maxAgents || "5"}
-                  onChange={(e) => setEditingOrg(editingOrg ? { ...editingOrg, maxAgents: parseInt(e.target.value) } : null)}
+                  onChange={(e) => setEditingOrg(editingOrg ? { ...editingOrg, maxAgents: e.target.value } : null)}
                   data-testid="input-org-max-agents"
                 />
               </div>
@@ -697,7 +716,7 @@ export default function AdminDashboard() {
                 <Input
                   type="number"
                   value={editingOrg?.maxUsers || "10"}
-                  onChange={(e) => setEditingOrg(editingOrg ? { ...editingOrg, maxUsers: parseInt(e.target.value) } : null)}
+                  onChange={(e) => setEditingOrg(editingOrg ? { ...editingOrg, maxUsers: e.target.value } : null)}
                   data-testid="input-org-max-users"
                 />
               </div>
@@ -735,9 +754,9 @@ export default function AdminDashboard() {
                       billingPackage: editingOrg.billingPackage,
                       perCallRate: parseFloat(editingOrg.perCallRate),
                       perMinuteRate: parseFloat(editingOrg.perMinuteRate),
-                      monthlyCredits: editingOrg.monthlyCredits,
-                      maxAgents: editingOrg.maxAgents,
-                      maxUsers: editingOrg.maxUsers,
+                      monthlyCredits: parseInt(editingOrg.monthlyCredits),
+                      maxAgents: parseInt(editingOrg.maxAgents),
+                      maxUsers: parseInt(editingOrg.maxUsers),
                       customRateEnabled: editingOrg.customRateEnabled,
                     },
                   });
