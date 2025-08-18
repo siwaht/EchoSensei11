@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Headphones, Search, Mic, Clock, Calendar, FileAudio } from "lucide-react";
 import { format } from "date-fns";
 import { AudioPlayer } from "@/components/audio-player";
+import { TranscriptViewer } from "@/components/transcript-viewer";
 import type { CallLog } from "@shared/schema";
 
 export function Recordings() {
@@ -156,11 +157,7 @@ export function Recordings() {
                   )}
 
                   {recording.transcript && (
-                    <div className="p-3 rounded-lg bg-gray-800/30 border border-gray-700">
-                      <p className="text-sm text-gray-300 line-clamp-2">
-                        {recording.transcript}
-                      </p>
-                    </div>
+                    <TranscriptViewer transcript={recording.transcript} />
                   )}
                 </div>
               ))
