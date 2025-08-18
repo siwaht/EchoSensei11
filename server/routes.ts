@@ -26,7 +26,7 @@ async function callElevenLabsAPI(apiKey: string, endpoint: string, method = "GET
 
 // Encryption helpers
 function encryptApiKey(apiKey: string): string {
-  const algorithm = "aes-256-gcm";
+  const algorithm = "aes-256-cbc";
   const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || "default-key", "salt", 32);
   const iv = crypto.randomBytes(16);
   
@@ -38,7 +38,7 @@ function encryptApiKey(apiKey: string): string {
 }
 
 function decryptApiKey(encryptedApiKey: string): string {
-  const algorithm = "aes-256-gcm";
+  const algorithm = "aes-256-cbc";
   const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || "default-key", "salt", 32);
   
   const [ivHex, encrypted] = encryptedApiKey.split(":");
@@ -59,7 +59,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log("Fetching user for ID:", userId);
       const user = await storage.getUser(userId);
+      if (!user) {
+        console.log("User not found in database:", userId);
+        return res.status(404).json({ message: "User not found" });
+      }
+      console.log("User found:", user.id, user.email);
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);

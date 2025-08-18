@@ -34,7 +34,7 @@ export default function Landing() {
                 Pricing
               </Button>
               <Button asChild data-testid="button-get-started">
-                <a href="/api/auth/login">Get Started</a>
+                <a href="/api/login">Get Started</a>
               </Button>
             </div>
           </div>
@@ -53,7 +53,7 @@ export default function Landing() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button size="lg" asChild data-testid="button-start-monitoring">
-              <a href="/api/auth/login">Start Monitoring</a>
+              <a href="/api/login">Start Monitoring</a>
             </Button>
             <Button variant="outline" size="lg" data-testid="button-view-demo">
               View Demo

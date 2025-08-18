@@ -157,7 +157,7 @@ export default function AppShell({ children }: AppShellProps) {
                 asChild
                 data-testid="button-logout"
               >
-                <a href="/api/auth/logout">
+                <a href="/api/logout">
                   <LogOut className="w-4 h-4" />
                 </a>
               </Button>

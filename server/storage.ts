@@ -61,13 +61,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    // If no organizationId provided, create a new organization for the user
+    let organizationId = userData.organizationId;
+    if (!organizationId) {
+      const orgName = userData.email ? userData.email.split('@')[0] + "'s Organization" : "Personal Organization";
+      const organization = await this.createOrganization({ name: orgName });
+      organizationId = organization.id;
+    }
+
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values({ ...userData, organizationId })
       .onConflictDoUpdate({
         target: users.id,
         set: {
           ...userData,
+          organizationId,
           updatedAt: new Date(),
         },
       })
