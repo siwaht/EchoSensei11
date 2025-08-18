@@ -177,48 +177,48 @@ export default function AdminDashboard() {
       </div>
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-6 bg-gradient-to-br from-blue-500/10 to-blue-600/10 dark:from-blue-500/20 dark:to-blue-600/20 border-blue-500/20">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4 bg-gradient-to-br from-blue-500/10 to-blue-600/10 dark:from-blue-500/20 dark:to-blue-600/20 border-blue-500/20">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-500/20">
-              <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 rounded-lg bg-blue-500/20 flex-shrink-0">
+              <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Users</p>
-              <p className="text-3xl font-bold">{billingData?.totalUsers || 0}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground truncate">Total Users</p>
+              <p className="text-2xl font-bold truncate">{billingData?.totalUsers || 0}</p>
             </div>
           </div>
         </Card>
-        <Card className="p-6 bg-gradient-to-br from-green-500/10 to-green-600/10 dark:from-green-500/20 dark:to-green-600/20 border-green-500/20">
+        <Card className="p-4 bg-gradient-to-br from-green-500/10 to-green-600/10 dark:from-green-500/20 dark:to-green-600/20 border-green-500/20">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-green-500/20">
-              <Building2 className="w-8 h-8 text-green-600 dark:text-green-400" />
+            <div className="p-2 rounded-lg bg-green-500/20 flex-shrink-0">
+              <Building2 className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Organizations</p>
-              <p className="text-3xl font-bold">{billingData?.totalOrganizations || 0}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground truncate">Organizations</p>
+              <p className="text-2xl font-bold truncate">{billingData?.totalOrganizations || 0}</p>
             </div>
           </div>
         </Card>
-        <Card className="p-6 bg-gradient-to-br from-purple-500/10 to-purple-600/10 dark:from-purple-500/20 dark:to-purple-600/20 border-purple-500/20">
+        <Card className="p-4 bg-gradient-to-br from-purple-500/10 to-purple-600/10 dark:from-purple-500/20 dark:to-purple-600/20 border-purple-500/20">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-500/20">
-              <Phone className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 rounded-lg bg-purple-500/20 flex-shrink-0">
+              <Phone className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Calls</p>
-              <p className="text-3xl font-bold">{billingData?.totalCalls || 0}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground truncate">Total Calls</p>
+              <p className="text-2xl font-bold truncate">{billingData?.totalCalls || 0}</p>
             </div>
           </div>
         </Card>
-        <Card className="p-6 bg-gradient-to-br from-amber-500/10 to-amber-600/10 dark:from-amber-500/20 dark:to-amber-600/20 border-amber-500/20">
+        <Card className="p-4 bg-gradient-to-br from-amber-500/10 to-amber-600/10 dark:from-amber-500/20 dark:to-amber-600/20 border-amber-500/20">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/20">
-              <DollarSign className="w-8 h-8 text-amber-600 dark:text-amber-400" />
+            <div className="p-2 rounded-lg bg-amber-500/20 flex-shrink-0">
+              <DollarSign className="w-6 h-6 text-amber-600 dark:text-amber-400" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Revenue</p>
-              <p className="text-3xl font-bold">${billingData?.totalRevenue?.toFixed(2) || "0.00"}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground truncate">Total Revenue</p>
+              <p className="text-2xl font-bold truncate">${billingData?.totalRevenue?.toFixed(2) || "0.00"}</p>
             </div>
           </div>
         </Card>
@@ -244,62 +244,69 @@ export default function AdminDashboard() {
             </div>
             
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[600px]">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 px-4">User</th>
-                    <th className="text-left py-3 px-4">Email</th>
-                    <th className="text-left py-3 px-4">Company</th>
-                    <th className="text-left py-3 px-4">Role</th>
-                    <th className="text-left py-3 px-4">Created</th>
-                    <th className="text-left py-3 px-4">Actions</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">User</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Email</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium hidden md:table-cell">Company</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Role</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium hidden lg:table-cell">Created</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((user) => (
                     <tr key={user.id} className="border-b hover:bg-muted/50">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
+                      <td className="py-3 px-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           {user.profileImageUrl ? (
-                            <img src={user.profileImageUrl} alt="" className="w-8 h-8 rounded-full" />
+                            <img src={user.profileImageUrl} alt="" className="w-8 h-8 rounded-full flex-shrink-0" />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                               <span className="text-xs font-semibold">
                                 {user.firstName?.[0]}{user.lastName?.[0]}
                               </span>
                             </div>
                           )}
-                          <span>{user.firstName} {user.lastName}</span>
+                          <span className="truncate text-sm">{user.firstName} {user.lastName}</span>
                         </div>
                       </td>
-                      <td className="py-3 px-4">{user.email}</td>
-                      <td className="py-3 px-4">
-                        {organizations.find(org => org.id === user.organizationId)?.name || "N/A"}
+                      <td className="py-3 px-2">
+                        <span className="block truncate text-sm max-w-[200px]">{user.email}</span>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-2 hidden md:table-cell">
+                        <span className="block truncate text-sm max-w-[150px]">
+                          {organizations.find(org => org.id === user.organizationId)?.name || "N/A"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2">
                         {user.isAdmin ? (
-                          <Badge className="bg-gradient-to-r from-purple-500 to-purple-600">Admin</Badge>
+                          <Badge className="bg-gradient-to-r from-purple-500 to-purple-600 text-xs">Admin</Badge>
                         ) : (
-                          <Badge variant="secondary">User</Badge>
+                          <Badge variant="secondary" className="text-xs">User</Badge>
                         )}
                       </td>
-                      <td className="py-3 px-4">
-                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A"}
+                      <td className="py-3 px-2 hidden lg:table-cell">
+                        <span className="text-sm">
+                          {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A"}
+                        </span>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-2">
+                      <td className="py-3 px-2">
+                        <div className="flex gap-1">
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => setEditingUser(user)}
                             data-testid={`button-edit-user-${user.id}`}
+                            className="h-8 w-8 p-0"
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-red-500 hover:text-red-600"
+                            className="text-red-500 hover:text-red-600 h-8 w-8 p-0"
                             onClick={() => setDeletingUser(user)}
                             data-testid={`button-delete-user-${user.id}`}
                           >
@@ -321,16 +328,16 @@ export default function AdminDashboard() {
             <h2 className="text-xl font-semibold mb-4">Organization Billing Settings</h2>
             
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[700px]">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 px-4">Organization</th>
-                    <th className="text-left py-3 px-4">Package</th>
-                    <th className="text-left py-3 px-4">Per Call Rate</th>
-                    <th className="text-left py-3 px-4">Per Minute Rate</th>
-                    <th className="text-left py-3 px-4">Monthly Credits</th>
-                    <th className="text-left py-3 px-4">Used Credits</th>
-                    <th className="text-left py-3 px-4">Actions</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Organization</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Package</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Per Call</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Per Min</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Credits</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Used</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -338,18 +345,20 @@ export default function AdminDashboard() {
                     const orgDetails = organizations.find(o => o.id === org.id);
                     return (
                       <tr key={org.id} className="border-b hover:bg-muted/50">
-                        <td className="py-3 px-4 font-medium">{org.name}</td>
-                        <td className="py-3 px-4">
-                          <Badge variant="outline">{org.billingPackage || 'Starter'}</Badge>
+                        <td className="py-3 px-2">
+                          <span className="font-medium text-sm truncate block max-w-[150px]">{org.name}</span>
                         </td>
-                        <td className="py-3 px-4">${org.perCallRate || '0.30'}</td>
-                        <td className="py-3 px-4">${org.perMinuteRate || '0.30'}</td>
-                        <td className="py-3 px-4">{org.monthlyCredits || 0}</td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-2">
+                          <Badge variant="outline" className="text-xs">{org.billingPackage || 'Starter'}</Badge>
+                        </td>
+                        <td className="py-3 px-2 text-sm">${org.perCallRate || '0.30'}</td>
+                        <td className="py-3 px-2 text-sm">${org.perMinuteRate || '0.30'}</td>
+                        <td className="py-3 px-2 text-sm">{org.monthlyCredits || 0}</td>
+                        <td className="py-3 px-2">
                           <div className="flex items-center gap-2">
-                            <span>{org.usedCredits || 0}</span>
+                            <span className="text-sm">{org.usedCredits || 0}</span>
                             {org.monthlyCredits && org.monthlyCredits > 0 && (
-                              <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden hidden lg:block">
                                 <div 
                                   className="h-full bg-primary"
                                   style={{ width: `${Math.min(100, ((org.usedCredits || 0) / org.monthlyCredits) * 100)}%` }}
@@ -358,25 +367,28 @@ export default function AdminDashboard() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-2">
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => setEditingOrg({
-                              id: org.id,
-                              name: org.name,
-                              billingPackage: org.billingPackage || 'starter',
-                              perCallRate: String(org.perCallRate || '0.30'),
-                              perMinuteRate: String(org.perMinuteRate || '0.30'),
-                              monthlyCredits: String(org.monthlyCredits || 0),
-                              maxAgents: String(org.maxAgents || 5),
-                              maxUsers: String(org.maxUsers || 10),
-                              customRateEnabled: org.customRateEnabled || false,
-                              userCount: orgDetails?.userCount,
-                              totalCalls: orgDetails?.totalCalls,
-                              usedCredits: orgDetails?.usedCredits,
-                              estimatedCost: orgDetails?.estimatedCost,
-                            })}
+                            onClick={() => {
+                              const orgDetails = organizations.find(o => o.id === org.id);
+                              setEditingOrg({
+                                id: org.id,
+                                name: org.name,
+                                billingPackage: String(org.billingPackage || 'starter'),
+                                perCallRate: String(org.perCallRate || '0.30'),
+                                perMinuteRate: String(org.perMinuteRate || '0.30'),
+                                monthlyCredits: String(org.monthlyCredits || 0),
+                                maxAgents: String(orgDetails?.maxAgents || 5),
+                                maxUsers: String(orgDetails?.maxUsers || 10),
+                                customRateEnabled: orgDetails?.customRateEnabled || false,
+                                userCount: org.userCount,
+                                totalCalls: org.totalCalls,
+                                usedCredits: org.usedCredits || 0,
+                                estimatedCost: org.estimatedCost,
+                              });
+                            }}
                             data-testid={`button-edit-billing-${org.id}`}
                           >
                             <Settings className="w-4 h-4" />
@@ -392,37 +404,37 @@ export default function AdminDashboard() {
 
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Billing Packages</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <Card className="p-4 border-2 border-blue-500/20">
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-lg">Starter</h3>
-                  <p className="text-2xl font-bold">$0/mo</p>
-                  <ul className="space-y-1 text-sm">
-                    <li>• $0.30 per call</li>
-                    <li>• $0.30 per minute</li>
-                    <li>• 5 agents max</li>
-                    <li>• 10 users max</li>
+                  <h3 className="font-semibold text-base">Starter</h3>
+                  <p className="text-xl font-bold">$0/mo</p>
+                  <ul className="space-y-1 text-xs">
+                    <li className="truncate">• $0.30 per call</li>
+                    <li className="truncate">• $0.30 per minute</li>
+                    <li className="truncate">• 5 agents max</li>
+                    <li className="truncate">• 10 users max</li>
                   </ul>
                 </div>
               </Card>
               <Card className="p-4 border-2 border-purple-500/20">
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-lg">Professional</h3>
-                  <p className="text-2xl font-bold">$99/mo</p>
-                  <ul className="space-y-1 text-sm">
-                    <li>• $0.25 per call</li>
-                    <li>• $0.25 per minute</li>
-                    <li>• 20 agents max</li>
-                    <li>• 50 users max</li>
-                    <li>• 500 monthly credits</li>
+                  <h3 className="font-semibold text-base">Professional</h3>
+                  <p className="text-xl font-bold">$99/mo</p>
+                  <ul className="space-y-1 text-xs">
+                    <li className="truncate">• $0.25 per call</li>
+                    <li className="truncate">• $0.25 per minute</li>
+                    <li className="truncate">• 20 agents max</li>
+                    <li className="truncate">• 50 users max</li>
+                    <li className="truncate">• 500 monthly credits</li>
                   </ul>
                 </div>
               </Card>
               <Card className="p-4 border-2 border-amber-500/20">
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-lg">Enterprise</h3>
-                  <p className="text-2xl font-bold">Custom</p>
-                  <ul className="space-y-1 text-sm">
+                  <h3 className="font-semibold text-base">Enterprise</h3>
+                  <p className="text-xl font-bold">Custom</p>
+                  <ul className="space-y-1 text-xs">
                     <li>• Custom rates</li>
                     <li>• Unlimited agents</li>
                     <li>• Unlimited users</li>
@@ -751,9 +763,9 @@ export default function AdminDashboard() {
                     id: editingOrg.id,
                     updates: {
                       name: editingOrg.name,
-                      billingPackage: editingOrg.billingPackage,
-                      perCallRate: parseFloat(editingOrg.perCallRate),
-                      perMinuteRate: parseFloat(editingOrg.perMinuteRate),
+                      billingPackage: editingOrg.billingPackage as "starter" | "professional" | "enterprise" | "custom",
+                      perCallRate: String(parseFloat(editingOrg.perCallRate)),
+                      perMinuteRate: String(parseFloat(editingOrg.perMinuteRate)),
                       monthlyCredits: parseInt(editingOrg.monthlyCredits),
                       maxAgents: parseInt(editingOrg.maxAgents),
                       maxUsers: parseInt(editingOrg.maxUsers),
