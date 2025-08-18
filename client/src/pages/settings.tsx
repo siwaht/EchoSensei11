@@ -15,9 +15,9 @@ export default function Settings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
-    firstName: user?.firstName || "",
-    lastName: user?.lastName || "",
-    email: user?.email || "",
+    firstName: (user as any)?.firstName || "",
+    lastName: (user as any)?.lastName || "",
+    email: (user as any)?.email || "",
     notifications: true,
     emailAlerts: true,
     webhookNotifications: false,
@@ -195,14 +195,14 @@ export default function Settings() {
             <div className="space-y-2">
               <Label>Account ID</Label>
               <div className="p-3 bg-muted rounded-md">
-                <p className="text-sm font-mono" data-testid="text-account-id">{user?.id}</p>
+                <p className="text-sm font-mono" data-testid="text-account-id">{(user as any)?.id}</p>
               </div>
             </div>
 
             <div className="space-y-2">
               <Label>Organization</Label>
               <div className="p-3 bg-muted rounded-md">
-                <p className="text-sm" data-testid="text-organization-id">{user?.organizationId}</p>
+                <p className="text-sm" data-testid="text-organization-id">{(user as any)?.organizationId}</p>
               </div>
             </div>
 

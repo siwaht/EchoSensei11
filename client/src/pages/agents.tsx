@@ -109,7 +109,7 @@ export default function Agents() {
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Created:</span>
                   <span className="font-medium" data-testid={`text-agent-created-${agent.id}`}>
-                    {new Date(agent.createdAt).toLocaleDateString()}
+                    {agent.createdAt ? new Date(agent.createdAt).toLocaleDateString() : "Unknown"}
                   </span>
                 </div>
               </div>
