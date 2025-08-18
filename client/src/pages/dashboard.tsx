@@ -709,7 +709,7 @@ export default function Dashboard() {
       {/* ElevenLabs-style Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {/* Number of calls */}
-        <Card className="p-4">
+        <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Number of calls</p>
             <p className="text-2xl font-bold">{(stats as any)?.totalCalls || 0}</p>
@@ -717,7 +717,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Average duration */}
-        <Card className="p-4">
+        <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Average duration</p>
             <p className="text-2xl font-bold">{avgMinutes}:{String(avgSeconds).padStart(2, '0')}</p>
@@ -725,7 +725,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Total cost */}
-        <Card className="p-4">
+        <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Total cost</p>
             <div className="flex items-baseline gap-1">
@@ -736,7 +736,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Average cost */}
-        <Card className="p-4">
+        <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Average cost</p>
             <div className="flex items-baseline gap-1">
@@ -747,7 +747,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Total LLM cost */}
-        <Card className="p-4">
+        <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Total LLM cost</p>
             <p className="text-2xl font-bold">${(stats as any)?.estimatedCost?.toFixed(3) || '0.000'}</p>
@@ -755,7 +755,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Average LLM cost */}
-        <Card className="p-4">
+        <Card className="p-4 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Avg LLM cost</p>
             <p className="text-2xl font-bold">${avgCostPerCall}</p>
@@ -764,7 +764,7 @@ export default function Dashboard() {
       </div>
 
       {/* Call Volume Line Chart */}
-      <Card className="p-6">
+      <Card className="p-6 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={(() => {
@@ -786,23 +786,23 @@ export default function Dashboard() {
               });
               return Object.entries(dailyVolume).map(([date, count]) => ({ date, calls: count }));
             })()} margin={{ top: 5, right: 5, left: 5, bottom: 25 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" vertical={false} />
-              <XAxis dataKey="date" stroke="#666" fontSize={10} angle={0} textAnchor="middle" interval={4} tick={{ fontSize: 10 }} />
-              <YAxis stroke="#666" fontSize={10} domain={[0, 'dataMax + 1']} ticks={[0, 1, 2, 3, 4]} />
-              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px' }} />
-              <Line type="monotone" dataKey="calls" stroke="#666" strokeWidth={1.5} dot={{ fill: '#666', strokeWidth: 1, r: 3 }} activeDot={{ r: 4, stroke: '#666', strokeWidth: 2 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(139, 92, 246, 0.1)" vertical={false} />
+              <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} angle={0} textAnchor="middle" interval={4} tick={{ fontSize: 10 }} />
+              <YAxis stroke="#94a3b8" fontSize={10} domain={[0, 'dataMax + 1']} ticks={[0, 1, 2, 3, 4]} />
+              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: '8px', fontSize: '12px' }} />
+              <Line type="monotone" dataKey="calls" stroke="#8b5cf6" strokeWidth={2} dot={{ fill: '#8b5cf6', strokeWidth: 1, r: 3 }} activeDot={{ r: 5, fill: '#a78bfa', stroke: '#8b5cf6', strokeWidth: 2 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </Card>
 
       {/* Overall Success Rate with Agent Table and Language */}
-      <Card className="p-6">
+      <Card className="p-6 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
         <div className="space-y-6">
           {/* Success Rate Chart */}
           <div>
             <h3 className="text-lg font-semibold mb-4 text-card-foreground flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-green-400 to-emerald-500"></div>
               Overall success rate
             </h3>
             <SuccessRateChart />
@@ -816,7 +816,7 @@ export default function Dashboard() {
             <div className="lg:col-span-2">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-card-foreground">Most called agents</h3>
-                <button className="text-sm text-blue-500 hover:text-blue-600">
+                <button className="text-sm text-purple-400 hover:text-purple-300 transition-colors">
                   See all 4 agents
                 </button>
               </div>
