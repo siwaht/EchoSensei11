@@ -8,12 +8,17 @@ import crypto from "crypto";
 
 // ElevenLabs API helper
 async function callElevenLabsAPI(apiKey: string, endpoint: string, method = "GET", body?: any) {
+  const headers: any = {
+    "xi-api-key": apiKey,
+  };
+  
+  if (method !== "GET" && body) {
+    headers["Content-Type"] = "application/json";
+  }
+
   const response = await fetch(`https://api.elevenlabs.io${endpoint}`, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      "xi-api-key": apiKey,
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -432,19 +437,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 hasAudio: !!(details.audio_url || details.recording_url || details.audio || details.media_url)
               });
               
-              // Extract audio URL from various possible field names
-              const audioUrl = details.audio_url || 
-                             details.recording_url || 
-                             details.audio || 
-                             details.media_url ||
-                             details.call_recording_url ||
-                             "";
+              // Try to get audio URL from the conversation details
+              let audioUrl = "";
               
-              // For ElevenLabs, if we have a conversation ID, we can construct the audio URL
-              // ElevenLabs provides audio through their API endpoint
-              const elevenLabsAudioUrl = conversation.conversation_id 
-                ? `https://api.elevenlabs.io/v1/convai/conversations/${conversation.conversation_id}/audio`
-                : "";
+              // Check for audio in the response
+              if (details.audio_url) {
+                audioUrl = details.audio_url;
+              } else if (details.recording_url) {
+                audioUrl = details.recording_url;
+              } else if (details.recordings && details.recordings.length > 0) {
+                // Sometimes recordings are in an array
+                audioUrl = details.recordings[0].url || details.recordings[0].recording_url || "";
+              }
+              
+              // If no direct audio URL, use our proxy endpoint
+              if (!audioUrl && conversation.conversation_id) {
+                // Use our proxy endpoint that will fetch the audio with authentication
+                audioUrl = `/api/audio/${conversation.conversation_id}`;
+                console.log(`  Using proxy audio URL for conversation: ${conversation.conversation_id}`);
+              }
+              
+              console.log(`  Audio URL found: ${audioUrl ? 'Yes' : 'No'}`);
               
               // Create call log with proper field mapping
               const callData = {
@@ -453,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 elevenLabsCallId: conversation.conversation_id,
                 duration: details.call_duration_secs || conversation.call_duration_secs || 0,
                 transcript: details.transcript || "",
-                audioUrl: audioUrl || elevenLabsAudioUrl,
+                audioUrl: audioUrl || "",
                 cost: calculateCallCost(details.call_duration_secs || conversation.call_duration_secs || 0).toString(),
                 status: "completed",
               };
@@ -488,6 +501,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("=== SYNC FAILED ===", error);
       res.status(500).json({ message: `Failed to sync calls: ${error.message}` });
+    }
+  });
+
+  // Audio proxy endpoint for ElevenLabs recordings
+  app.get("/api/audio/:conversationId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { conversationId } = req.params;
+      
+      // Get the ElevenLabs integration to get the API key
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || integration.status !== "ACTIVE") {
+        return res.status(400).json({ message: "Active ElevenLabs integration required" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      
+      // Fetch the audio from ElevenLabs
+      const audioResponse = await fetch(
+        `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}/audio`,
+        {
+          headers: {
+            "xi-api-key": apiKey,
+          },
+        }
+      );
+
+      if (!audioResponse.ok) {
+        console.error(`Failed to fetch audio for conversation ${conversationId}: ${audioResponse.status}`);
+        return res.status(404).json({ message: "Audio not found" });
+      }
+
+      // Stream the audio response to the client
+      res.setHeader("Content-Type", audioResponse.headers.get("Content-Type") || "audio/mpeg");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      
+      const audioBuffer = await audioResponse.arrayBuffer();
+      res.send(Buffer.from(audioBuffer));
+    } catch (error) {
+      console.error("Error fetching audio:", error);
+      res.status(500).json({ message: "Failed to fetch audio" });
     }
   });
 
