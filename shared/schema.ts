@@ -41,10 +41,22 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Billing package enum
+export const billingPackageEnum = pgEnum("billing_package", ["starter", "professional", "enterprise", "custom"]);
+
 // Organizations table for multi-tenancy
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
+  billingPackage: billingPackageEnum("billing_package").default("starter"),
+  perCallRate: decimal("per_call_rate", { precision: 10, scale: 4 }).default('0.30'),
+  perMinuteRate: decimal("per_minute_rate", { precision: 10, scale: 4 }).default('0.30'),
+  monthlyCredits: integer("monthly_credits").default(0),
+  usedCredits: integer("used_credits").default(0),
+  creditResetDate: timestamp("credit_reset_date"),
+  customRateEnabled: boolean("custom_rate_enabled").default(false),
+  maxAgents: integer("max_agents").default(5),
+  maxUsers: integer("max_users").default(10),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -164,6 +176,22 @@ export const insertCallLogSchema = createInsertSchema(callLogs).omit({
   createdAt: true,
 });
 
+// Billing Packages table
+export const billingPackages = pgTable("billing_packages", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name").notNull(),
+  displayName: varchar("display_name").notNull(),
+  perCallRate: decimal("per_call_rate", { precision: 10, scale: 4 }).notNull(),
+  perMinuteRate: decimal("per_minute_rate", { precision: 10, scale: 4 }).notNull(),
+  monthlyCredits: integer("monthly_credits").notNull(),
+  maxAgents: integer("max_agents").notNull(),
+  maxUsers: integer("max_users").notNull(),
+  features: jsonb("features").notNull().default('[]'),
+  monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Types
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -175,3 +203,4 @@ export type Agent = typeof agents.$inferSelect;
 export type InsertAgent = z.infer<typeof insertAgentSchema>;
 export type CallLog = typeof callLogs.$inferSelect;
 export type InsertCallLog = z.infer<typeof insertCallLogSchema>;
+export type BillingPackage = typeof billingPackages.$inferSelect;

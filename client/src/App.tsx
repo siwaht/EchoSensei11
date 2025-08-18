@@ -13,7 +13,7 @@ import History from "@/pages/history";
 import Integrations from "@/pages/integrations";
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
-import Admin from "@/pages/admin";
+import Admin from "@/pages/admin-new";
 import AppShell from "@/components/layout/app-shell";
 
 function Router() {

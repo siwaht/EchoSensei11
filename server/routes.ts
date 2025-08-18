@@ -194,6 +194,75 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Admin routes - Create new user
+  app.post('/api/admin/users', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { email, firstName, lastName, password, organizationId, isAdmin } = req.body;
+      
+      // Check if user exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User with this email already exists" });
+      }
+
+      // Create new user
+      const newUser = await storage.createUser({
+        email,
+        firstName,
+        lastName,
+        password,
+        organizationId,
+        isAdmin: isAdmin || false,
+      });
+
+      res.json(newUser);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  // Admin routes - Billing Package Management
+  app.get('/api/admin/billing-packages', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const packages = await storage.getBillingPackages();
+      res.json(packages);
+    } catch (error) {
+      console.error("Error fetching billing packages:", error);
+      res.status(500).json({ message: "Failed to fetch billing packages" });
+    }
+  });
+
+  app.post('/api/admin/billing-packages', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const newPackage = await storage.createBillingPackage(req.body);
+      res.json(newPackage);
+    } catch (error) {
+      console.error("Error creating billing package:", error);
+      res.status(500).json({ message: "Failed to create billing package" });
+    }
+  });
+
+  app.patch('/api/admin/billing-packages/:pkgId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const updatedPackage = await storage.updateBillingPackage(req.params.pkgId, req.body);
+      res.json(updatedPackage);
+    } catch (error) {
+      console.error("Error updating billing package:", error);
+      res.status(500).json({ message: "Failed to update billing package" });
+    }
+  });
+
+  app.delete('/api/admin/billing-packages/:pkgId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      await storage.deleteBillingPackage(req.params.pkgId);
+      res.json({ message: "Billing package deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting billing package:", error);
+      res.status(500).json({ message: "Failed to delete billing package" });
+    }
+  });
+
   // Integration routes
   app.post("/api/integrations", isAuthenticated, async (req: any, res) => {
     try {

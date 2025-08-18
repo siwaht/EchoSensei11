@@ -6,12 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { Users, Building2, DollarSign, Phone, Edit, Trash2, Plus, Shield, Activity, TrendingUp } from "lucide-react";
-import type { User, Organization } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Users, Building2, DollarSign, Phone, Edit, Trash2, Plus, Shield, Activity, TrendingUp, Package, CreditCard, UserPlus, Settings } from "lucide-react";
+import type { User, Organization, BillingPackage } from "@shared/schema";
 
 interface BillingData {
   totalUsers: number;
@@ -30,10 +32,18 @@ interface BillingData {
 
 export default function AdminDashboard() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [editingOrg, setEditingOrg] = useState<any>(null);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [newUser, setNewUser] = useState({
+    email: "",
+    firstName: "",
+    lastName: "",
+    password: "",
+    organizationId: "",
+    isAdmin: false,
+  });
 
   // Fetch all users
   const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
@@ -50,10 +60,43 @@ export default function AdminDashboard() {
     queryKey: ["/api/admin/billing"],
   });
 
+  // Fetch billing packages
+  const { data: billingPackages = [], isLoading: packagesLoading } = useQuery<BillingPackage[]>({
+    queryKey: ["/api/admin/billing-packages"],
+  });
+
+  // Create user mutation
+  const createUserMutation = useMutation({
+    mutationFn: async (userData: typeof newUser) => {
+      return await apiRequest("POST", "/api/admin/users", userData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/billing"] });
+      toast({ title: "User created successfully" });
+      setCreatingUser(false);
+      setNewUser({
+        email: "",
+        firstName: "",
+        lastName: "",
+        password: "",
+        organizationId: "",
+        isAdmin: false,
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to create user", 
+        description: error.message || "An error occurred",
+        variant: "destructive" 
+      });
+    },
+  });
+
   // Update user mutation
   const updateUserMutation = useMutation({
     mutationFn: async (data: { id: string; updates: Partial<User> }) => {
-      return await apiRequest(`/api/admin/users/${data.id}`, "PATCH", data.updates);
+      return await apiRequest("PATCH", `/api/admin/users/${data.id}`, data.updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
@@ -68,7 +111,7 @@ export default function AdminDashboard() {
   // Delete user mutation
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      return await apiRequest(`/api/admin/users/${userId}`, "DELETE");
+      return await apiRequest("DELETE", `/api/admin/users/${userId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
@@ -84,7 +127,7 @@ export default function AdminDashboard() {
   // Update organization mutation
   const updateOrgMutation = useMutation({
     mutationFn: async (data: { id: string; updates: Partial<Organization> }) => {
-      return await apiRequest(`/api/admin/organizations/${data.id}`, "PATCH", data.updates);
+      return await apiRequest("PATCH", `/api/admin/organizations/${data.id}`, data.updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/organizations"] });

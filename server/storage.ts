@@ -4,6 +4,7 @@ import {
   integrations,
   agents,
   callLogs,
+  billingPackages,
   type User,
   type UpsertUser,
   type Organization,
@@ -14,6 +15,7 @@ import {
   type InsertAgent,
   type CallLog,
   type InsertCallLog,
+  type BillingPackage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sum, avg, max } from "drizzle-orm";
@@ -75,8 +77,20 @@ export interface IStorage {
       totalCalls: number;
       totalMinutes: number;
       estimatedCost: number;
+      billingPackage?: string;
+      perCallRate?: number;
+      perMinuteRate?: number;
+      monthlyCredits?: number;
+      usedCredits?: number;
     }>;
   }>;
+  
+  // Billing operations
+  getBillingPackages(): Promise<BillingPackage[]>;
+  getBillingPackage(id: string): Promise<BillingPackage | undefined>;
+  createBillingPackage(pkg: Partial<BillingPackage>): Promise<BillingPackage>;
+  updateBillingPackage(id: string, updates: Partial<BillingPackage>): Promise<BillingPackage>;
+  deleteBillingPackage(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -356,6 +370,11 @@ export class DatabaseStorage implements IStorage {
       totalCalls: number;
       totalMinutes: number;
       estimatedCost: number;
+      billingPackage?: string;
+      perCallRate?: number;
+      perMinuteRate?: number;
+      monthlyCredits?: number;
+      usedCredits?: number;
     }>;
   }> {
     // Get total counts
@@ -391,6 +410,11 @@ export class DatabaseStorage implements IStorage {
           totalCalls: Number(callStats.totalCalls) || 0,
           totalMinutes: Math.round(Number(callStats.totalMinutes) / 60) || 0,
           estimatedCost: Number(callStats.estimatedCost) || 0,
+          billingPackage: org.billingPackage || 'starter',
+          perCallRate: Number(org.perCallRate) || 0.30,
+          perMinuteRate: Number(org.perMinuteRate) || 0.30,
+          monthlyCredits: org.monthlyCredits || 0,
+          usedCredits: org.usedCredits || 0,
         };
       })
     );
@@ -402,6 +426,37 @@ export class DatabaseStorage implements IStorage {
       totalRevenue: Number(callCount.totalCost) || 0,
       organizationsData,
     };
+  }
+
+  // Billing operations
+  async getBillingPackages(): Promise<BillingPackage[]> {
+    return await db.select().from(billingPackages);
+  }
+
+  async getBillingPackage(id: string): Promise<BillingPackage | undefined> {
+    const [pkg] = await db.select().from(billingPackages).where(eq(billingPackages.id, id));
+    return pkg;
+  }
+
+  async createBillingPackage(pkg: Partial<BillingPackage>): Promise<BillingPackage> {
+    const [newPkg] = await db.insert(billingPackages).values(pkg as any).returning();
+    return newPkg;
+  }
+
+  async updateBillingPackage(id: string, updates: Partial<BillingPackage>): Promise<BillingPackage> {
+    const [updatedPkg] = await db
+      .update(billingPackages)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(billingPackages.id, id))
+      .returning();
+    if (!updatedPkg) {
+      throw new Error("Billing package not found");
+    }
+    return updatedPkg;
+  }
+
+  async deleteBillingPackage(id: string): Promise<void> {
+    await db.delete(billingPackages).where(eq(billingPackages.id, id));
   }
 }
 
