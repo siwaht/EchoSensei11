@@ -117,69 +117,53 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
               <div className="space-y-3" data-testid="text-call-transcript">
                 {(() => {
                   try {
-                    // Handle double-encoded JSON strings from ElevenLabs
+                    // Start with the raw transcript
                     let transcript = callLog.transcript;
+                    console.log("Raw transcript:", transcript);
                     
-                    // First check if it's already an array (direct object)
-                    if (Array.isArray(transcript)) {
-                      return transcript
-                        .filter(turn => turn.message && turn.message.trim())
-                        .map((turn, index) => (
-                          <div key={index} className={`flex ${
-                            turn.role === 'agent' ? 'justify-start' : 'justify-end'
-                          }`}>
-                            <div className={`max-w-[80%] p-3 rounded-lg ${
-                              turn.role === 'agent' 
-                                ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500' 
-                                : 'bg-gray-50 dark:bg-gray-700 border-r-4 border-gray-400'
-                            }`}>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-xs font-semibold ${
-                                  turn.role === 'agent' 
-                                    ? 'text-blue-700 dark:text-blue-300' 
-                                    : 'text-gray-700 dark:text-gray-300'
-                                }`}>
-                                  {turn.role === 'agent' ? 'Agent' : 'User'}
-                                </span>
-                                {turn.time_in_call_secs !== undefined && (
-                                  <span className="text-xs text-gray-500">
-                                    {Math.floor(turn.time_in_call_secs / 60)}:{(turn.time_in_call_secs % 60).toString().padStart(2, '0')}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
-                                {turn.message}
-                              </p>
-                            </div>
-                          </div>
-                        ));
-                    }
-                    
-                    // Try to parse as JSON
+                    // Parse the JSON string to get the object with numbered keys
                     if (typeof transcript === 'string') {
-                      try {
-                        transcript = JSON.parse(transcript);
-                      } catch (e) {
-                        // If first parse fails, it might be double-encoded
-                        transcript = JSON.parse(JSON.parse(transcript));
-                      }
+                      transcript = JSON.parse(transcript);
+                      console.log("Parsed transcript object:", transcript);
                     }
                     
-                    // Handle different transcript formats
-                    if (Array.isArray(transcript)) {
-                      // Direct array of conversation turns
-                      return transcript
-                        .filter(turn => turn.message && turn.message.trim())
+                    // Extract the conversation turns from the object
+                    let conversationTurns = [];
+                    
+                    if (transcript && typeof transcript === 'object' && !Array.isArray(transcript)) {
+                      // Get the keys in order (0, 1, 2, etc.)
+                      const orderedKeys = Object.keys(transcript).sort((a, b) => parseInt(a) - parseInt(b));
+                      console.log("Ordered keys:", orderedKeys);
+                      
+                      // Parse each JSON string in the object
+                      conversationTurns = orderedKeys.map(key => {
+                        try {
+                          const turnData = JSON.parse(transcript[key]);
+                          console.log(`Turn ${key}:`, turnData);
+                          return turnData;
+                        } catch (e) {
+                          console.log(`Failed to parse turn ${key}:`, e);
+                          return null;
+                        }
+                      }).filter(Boolean);
+                    }
+                    
+                    console.log("Final conversation turns:", conversationTurns);
+                    
+                    // Render the conversation turns
+                    if (conversationTurns.length > 0) {
+                      return conversationTurns
+                        .filter(turn => turn && turn.message && turn.message.trim())
                         .map((turn, index) => (
                           <div key={index} className={`flex ${
                             turn.role === 'agent' ? 'justify-start' : 'justify-end'
-                          }`}>
+                          } mb-3`}>
                             <div className={`max-w-[80%] p-3 rounded-lg ${
                               turn.role === 'agent' 
                                 ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500' 
                                 : 'bg-gray-50 dark:bg-gray-700 border-r-4 border-gray-400'
                             }`}>
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-2 mb-2">
                                 <span className={`text-xs font-semibold ${
                                   turn.role === 'agent' 
                                     ? 'text-blue-700 dark:text-blue-300' 
@@ -189,7 +173,7 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
                                 </span>
                                 {turn.time_in_call_secs !== undefined && (
                                   <span className="text-xs text-gray-500">
-                                    {Math.floor(turn.time_in_call_secs / 60)}:{(turn.time_in_call_secs % 60).toString().padStart(2, '0')}
+                                    {Math.floor(turn.time_in_call_secs / 60)}:{String(turn.time_in_call_secs % 60).padStart(2, '0')}
                                   </span>
                                 )}
                               </div>
@@ -199,107 +183,25 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
                             </div>
                           </div>
                         ));
-                    } else if (transcript && typeof transcript === 'object') {
-                      // Handle object with conversation data
-                      const messages = transcript.messages || transcript.conversation || transcript.turns || [];
-                      if (Array.isArray(messages)) {
-                        return messages
-                          .filter(turn => turn.message && turn.message.trim())
-                          .map((turn, index) => (
-                            <div key={index} className={`flex ${
-                              turn.role === 'agent' ? 'justify-start' : 'justify-end'
-                            }`}>
-                              <div className={`max-w-[80%] p-3 rounded-lg ${
-                                turn.role === 'agent' 
-                                  ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500' 
-                                  : 'bg-gray-50 dark:bg-gray-700 border-r-4 border-gray-400'
-                              }`}>
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className={`text-xs font-semibold ${
-                                    turn.role === 'agent' 
-                                      ? 'text-blue-700 dark:text-blue-300' 
-                                      : 'text-gray-700 dark:text-gray-300'
-                                  }`}>
-                                    {turn.role === 'agent' ? 'Agent' : 'User'}
-                                  </span>
-                                  {turn.time_in_call_secs !== undefined && (
-                                    <span className="text-xs text-gray-500">
-                                      {Math.floor(turn.time_in_call_secs / 60)}:{(turn.time_in_call_secs % 60).toString().padStart(2, '0')}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
-                                  {turn.message}
-                                </p>
-                              </div>
-                            </div>
-                          ));
-                      }
                     }
                     
-                    // Fallback: try to parse as array of JSON strings
-                    if (typeof transcript === 'object' && !Array.isArray(transcript)) {
-                      const entries = Object.values(transcript);
-                      if (entries.length > 0 && typeof entries[0] === 'string') {
-                        const parsedEntries = entries.map(entry => {
-                          try {
-                            return JSON.parse(entry);
-                          } catch (e) {
-                            return null;
-                          }
-                        }).filter(Boolean);
-                        
-                        if (parsedEntries.length > 0) {
-                          return parsedEntries
-                            .filter(turn => turn.message && turn.message.trim())
-                            .map((turn, index) => (
-                              <div key={index} className={`flex ${
-                                turn.role === 'agent' ? 'justify-start' : 'justify-end'
-                              }`}>
-                                <div className={`max-w-[80%] p-3 rounded-lg ${
-                                  turn.role === 'agent' 
-                                    ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500' 
-                                    : 'bg-gray-50 dark:bg-gray-700 border-r-4 border-gray-400'
-                                }`}>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className={`text-xs font-semibold ${
-                                      turn.role === 'agent' 
-                                        ? 'text-blue-700 dark:text-blue-300' 
-                                        : 'text-gray-700 dark:text-gray-300'
-                                    }`}>
-                                      {turn.role === 'agent' ? 'Agent' : 'User'}
-                                    </span>
-                                    {turn.time_in_call_secs !== undefined && (
-                                      <span className="text-xs text-gray-500">
-                                        {Math.floor(turn.time_in_call_secs / 60)}:{(turn.time_in_call_secs % 60).toString().padStart(2, '0')}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
-                                    {turn.message}
-                                  </p>
-                                </div>
-                              </div>
-                            ));
-                        }
-                      }
-                    }
-                    
-                    // Final fallback: display as plain text
+                    // Fallback: show the raw data for debugging
                     return (
-                      <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
-                          {typeof transcript === 'string' ? transcript : JSON.stringify(transcript, null, 2)}
-                        </p>
+                      <div className="p-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg">
+                        <p className="text-sm text-yellow-900 dark:text-yellow-200 mb-2">No conversation turns found</p>
+                        <pre className="text-xs text-yellow-700 dark:text-yellow-300 whitespace-pre-wrap">
+                          {JSON.stringify(transcript, null, 2)}
+                        </pre>
                       </div>
                     );
                   } catch (e) {
-                    // Final error fallback
+                    console.log("Error in transcript parsing:", e);
                     return (
-                      <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                      <div className="p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+                        <p className="text-sm text-red-900 dark:text-red-200 mb-2">Error parsing transcript: {e.message}</p>
+                        <pre className="text-xs text-red-700 dark:text-red-300 whitespace-pre-wrap">
                           {callLog.transcript}
-                        </p>
+                        </pre>
                       </div>
                     );
                   }
