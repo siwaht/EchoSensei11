@@ -130,7 +130,7 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
                   </audio>
                   
                   <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                    <span>Duration: {Math.floor(callLog.duration / 60)}:{String(callLog.duration % 60).padStart(2, '0')}</span>
+                    <span>Duration: {callLog.duration ? `${Math.floor(callLog.duration / 60)}:${String(callLog.duration % 60).padStart(2, '0')}` : 'N/A'}</span>
                     <a
                       href={callLog.audioUrl}
                       download={`call-recording-${callLog.elevenLabsCallId}.mp3`}

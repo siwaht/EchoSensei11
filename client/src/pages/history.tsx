@@ -150,6 +150,9 @@ export default function History() {
                     Duration
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Recording
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -182,6 +185,40 @@ export default function History() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900 dark:text-white" data-testid={`text-duration-${callLog.id}`}>
                       {formatDuration(callLog.duration)}
+                    </td>
+                    <td className="px-6 py-4">
+                      {callLog.audioUrl ? (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="group hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                            onClick={() => {
+                              const audio = new Audio(callLog.audioUrl!);
+                              audio.play();
+                            }}
+                            data-testid={`button-play-audio-${callLog.id}`}
+                          >
+                            <svg className="w-4 h-4 mr-1 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                            </svg>
+                            Play
+                          </Button>
+                          <a
+                            href={callLog.audioUrl}
+                            download={`call-${callLog.id.slice(-6)}.mp3`}
+                            className="text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors"
+                            title="Download recording"
+                            data-testid={`link-download-audio-${callLog.id}`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400 dark:text-gray-500">No recording</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <Badge className={getStatusColor(callLog.status)} data-testid={`badge-status-${callLog.id}`}>
