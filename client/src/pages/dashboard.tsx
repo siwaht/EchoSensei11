@@ -683,9 +683,20 @@ export default function Dashboard() {
   // Sync mutation
   const syncMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/sync-calls", {
+      const response = await fetch("/api/sync-calls", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to sync");
+      }
+      
+      return await response.json();
     },
     onSuccess: (data) => {
       setLastSyncTime(new Date());

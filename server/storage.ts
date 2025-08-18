@@ -38,6 +38,7 @@ export interface IStorage {
   getAgentByElevenLabsId(elevenLabsAgentId: string, organizationId: string): Promise<Agent | undefined>;
   createAgent(agent: InsertAgent): Promise<Agent>;
   updateAgent(id: string, organizationId: string, updates: Partial<InsertAgent>): Promise<Agent>;
+  deleteAgent(id: string, organizationId: string): Promise<void>;
 
   // Call log operations
   getCallLogs(organizationId: string, limit?: number, offset?: number, agentId?: string): Promise<CallLog[]>;
@@ -165,6 +166,12 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(agents.id, id), eq(agents.organizationId, organizationId)))
       .returning();
     return agent;
+  }
+
+  async deleteAgent(id: string, organizationId: string): Promise<void> {
+    await db
+      .delete(agents)
+      .where(and(eq(agents.id, id), eq(agents.organizationId, organizationId)));
   }
 
   // Call log operations

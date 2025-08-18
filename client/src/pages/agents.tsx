@@ -1,22 +1,74 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Plus } from "lucide-react";
+import { Bot, Plus, Trash2, MoreVertical } from "lucide-react";
 import { AddAgentModal } from "@/components/modals/add-agent-modal";
 import { AgentDetailModal } from "@/components/modals/agent-detail-modal";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Agent } from "@shared/schema";
 
 export default function Agents() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const { data: agents, isLoading } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (agentId: string) => {
+      const response = await fetch(`/api/agents/${agentId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete agent");
+      }
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Agent Removed",
+        description: "The agent has been successfully removed.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/call-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics/organization"] });
+      setAgentToDelete(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to Remove Agent",
+        description: error.message || "Could not remove the agent. Please try again.",
+        variant: "destructive",
+      });
+      setAgentToDelete(null);
+    },
   });
 
   const getStatusColor = (isActive: boolean) => {
@@ -81,12 +133,37 @@ export default function Agents() {
           agents.map((agent) => (
             <Card key={agent.id} className="p-6 border border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-xl flex items-center justify-center">
-                  <Bot className="w-6 h-6 text-primary-600" />
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-xl flex items-center justify-center">
+                    <Bot className="w-6 h-6 text-primary-600" />
+                  </div>
+                  <Badge className={getStatusColor(agent.isActive)} data-testid={`badge-status-${agent.id}`}>
+                    {getStatusText(agent.isActive)}
+                  </Badge>
                 </div>
-                <Badge className={getStatusColor(agent.isActive)} data-testid={`badge-status-${agent.id}`}>
-                  {getStatusText(agent.isActive)}
-                </Badge>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem 
+                      onClick={() => setSelectedAgent(agent)}
+                      data-testid={`menu-view-details-${agent.id}`}
+                    >
+                      View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="text-red-600 dark:text-red-400"
+                      onClick={() => setAgentToDelete(agent)}
+                      data-testid={`menu-delete-${agent.id}`}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Remove Agent
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               
               <h3 className="text-lg font-semibold mb-2" data-testid={`text-agent-name-${agent.id}`}>
@@ -114,16 +191,7 @@ export default function Agents() {
                 </div>
               </div>
               
-              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setSelectedAgent(agent)}
-                  data-testid={`button-view-details-${agent.id}`}
-                >
-                  View Details
-                </Button>
-              </div>
+
             </Card>
           ))
         )}
@@ -139,6 +207,29 @@ export default function Agents() {
         open={!!selectedAgent}
         onOpenChange={(open) => !open && setSelectedAgent(null)}
       />
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!agentToDelete} onOpenChange={(open) => !open && setAgentToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Agent</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{agentToDelete?.name}</strong>? 
+              This action cannot be undone. Call logs associated with this agent will be preserved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => agentToDelete && deleteMutation.mutate(agentToDelete.id)}
+              disabled={deleteMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteMutation.isPending ? "Removing..." : "Remove Agent"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
