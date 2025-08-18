@@ -54,6 +54,27 @@ export interface IStorage {
     activeAgents: number;
     lastSync?: Date;
   }>;
+  
+  // Admin operations
+  getAllUsers(): Promise<User[]>;
+  updateUser(id: string, updates: Partial<User>): Promise<User>;
+  deleteUser(id: string): Promise<void>;
+  getAllOrganizations(): Promise<Organization[]>;
+  updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization>;
+  getAdminBillingData(): Promise<{
+    totalUsers: number;
+    totalOrganizations: number;
+    totalCalls: number;
+    totalRevenue: number;
+    organizationsData: Array<{
+      id: string;
+      name: string;
+      userCount: number;
+      totalCalls: number;
+      totalMinutes: number;
+      estimatedCost: number;
+    }>;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -249,6 +270,103 @@ export class DatabaseStorage implements IStorage {
       estimatedCost: Number(callStats.estimatedCost) || 0,
       activeAgents: Number(agentStats.activeAgents) || 0,
       lastSync: callStats.lastSync || undefined,
+    };
+  }
+
+  // Admin operations
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    if (!updatedUser) {
+      throw new Error("User not found");
+    }
+    return updatedUser;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
+  async getAllOrganizations(): Promise<Organization[]> {
+    return await db.select().from(organizations);
+  }
+
+  async updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization> {
+    const [updatedOrg] = await db
+      .update(organizations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(organizations.id, id))
+      .returning();
+    if (!updatedOrg) {
+      throw new Error("Organization not found");
+    }
+    return updatedOrg;
+  }
+
+  async getAdminBillingData(): Promise<{
+    totalUsers: number;
+    totalOrganizations: number;
+    totalCalls: number;
+    totalRevenue: number;
+    organizationsData: Array<{
+      id: string;
+      name: string;
+      userCount: number;
+      totalCalls: number;
+      totalMinutes: number;
+      estimatedCost: number;
+    }>;
+  }> {
+    // Get total counts
+    const [userCount] = await db.select({ count: count(users.id) }).from(users);
+    const [orgCount] = await db.select({ count: count(organizations.id) }).from(organizations);
+    const [callCount] = await db.select({ 
+      count: count(callLogs.id),
+      totalCost: sum(callLogs.cost) 
+    }).from(callLogs);
+
+    // Get organization-specific data
+    const orgs = await db.select().from(organizations);
+    const organizationsData = await Promise.all(
+      orgs.map(async (org) => {
+        const [userStats] = await db
+          .select({ count: count(users.id) })
+          .from(users)
+          .where(eq(users.organizationId, org.id));
+
+        const [callStats] = await db
+          .select({
+            totalCalls: count(callLogs.id),
+            totalMinutes: sum(callLogs.duration),
+            estimatedCost: sum(callLogs.cost),
+          })
+          .from(callLogs)
+          .where(eq(callLogs.organizationId, org.id));
+
+        return {
+          id: org.id,
+          name: org.name,
+          userCount: Number(userStats.count) || 0,
+          totalCalls: Number(callStats.totalCalls) || 0,
+          totalMinutes: Math.round(Number(callStats.totalMinutes) / 60) || 0,
+          estimatedCost: Number(callStats.estimatedCost) || 0,
+        };
+      })
+    );
+
+    return {
+      totalUsers: Number(userCount.count) || 0,
+      totalOrganizations: Number(orgCount.count) || 0,
+      totalCalls: Number(callCount.count) || 0,
+      totalRevenue: Number(callCount.totalCost) || 0,
+      organizationsData,
     };
   }
 }

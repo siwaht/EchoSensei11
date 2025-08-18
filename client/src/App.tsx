@@ -13,6 +13,7 @@ import History from "@/pages/history";
 import Integrations from "@/pages/integrations";
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
+import Admin from "@/pages/admin";
 import AppShell from "@/components/layout/app-shell";
 
 function Router() {
@@ -36,6 +37,7 @@ function Router() {
         <Route path="/integrations" component={Integrations} />
         <Route path="/billing" component={Billing} />
         <Route path="/settings" component={Settings} />
+        <Route path="/admin" component={Admin} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>

@@ -14,7 +14,8 @@ import {
   Menu, 
   Moon, 
   Sun,
-  LogOut
+  LogOut,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -87,6 +88,21 @@ export default function AppShell({ children }: AppShellProps) {
 
           <div className="mt-8 pt-6 border-t border-border">
             <div className="space-y-1">
+              {user?.isAdmin && (
+                <Link
+                  href="/admin"
+                  className={cn(
+                    "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    location === "/admin"
+                      ? "text-primary bg-primary/10"
+                      : "text-muted-foreground hover:text-card-foreground hover:bg-muted/50"
+                  )}
+                  data-testid="nav-admin"
+                >
+                  <Shield className="w-5 h-5" />
+                  <span>Admin</span>
+                </Link>
+              )}
               {secondaryNavigation.map((item) => {
                 const Icon = item.icon;
                 return (
