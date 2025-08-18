@@ -1,0 +1,125 @@
+# Prompt: Build a Multi-Tenant VoiceAI Monitoring SaaS (ElevenLabs BYOK Integration)
+
+## I. Project Overview
+
+**Objective:** Develop a full-stack, multi-tenant SaaS application ("VoiceAI Dashboard").
+
+**Core Functionality:** Allow organizations (clients) to sign up, securely connect their *own* ElevenLabs account (Bring Your Own Key - BYOK), register their existing ElevenLabs Agent IDs, and monitor agent performance, view conversation history (transcripts and audio), analyze usage, and manage billing.
+
+**Key Architecture:**
+1.  **Multi-tenancy:** Strict data isolation by Organization ID is paramount.
+2.  **BYOK:** Clients use their own ElevenLabs API keys. The platform securely stores and uses these keys on the backend.
+3.  **Monitoring:** Data synchronization relies on receiving webhooks from ElevenLabs and periodic API calls.
+
+## II. Technology Stack
+
+*   **Frontend:** Vite, React, TypeScript, Tailwind CSS, Shadcn/UI, Wouter, TanStack Query, Recharts.
+*   **Backend:** Node.js, Express, TypeScript, Drizzle ORM, Passport.js (OpenID Connect/Replit Auth).
+*   **Database:** PostgreSQL (NeonDB recommended).
+*   **Tools:** Zod (validation).
+
+## III. Execution Plan (Step-by-Step)
+
+Please execute the following steps sequentially.
+
+### Step 1: Project Initialization and Configuration
+
+1.  **Create Directory Structure:**
+    ```bash
+    mkdir -p voiceai-platform/{client/src/{components/{ui,layout,admin,agents},hooks,lib,pages},server,shared,attached_assets}
+    cd voiceai-platform
+    ```
+2.  **Initialize `package.json` and Install Dependencies:**
+    *(Use the comprehensive dependency list provided in the analyzed data)*.
+    ```bash
+    npm init -y
+    npm install [List all dependencies from the analyzed prompt]
+    ```
+3.  **Create Configuration Files:**
+    *   `vite.config.ts`: Configure React plugin, path aliases (`@`, `@shared`, `@assets`), and server settings (as provided in the analyzed data).
+    *   `tailwind.config.ts`: Configure content paths and extend the theme for Shadcn/UI compatibility (as provided).
+    *   `tsconfig.json`: Set up strict mode, module resolution, and path aliases (as provided).
+    *   `drizzle.config.ts`: Configure schema path, dialect (postgresql), and database credentials via `DATABASE_URL` (as provided).
+4.  **Update `package.json` scripts:**
+    ```json
+    "scripts": {
+      "dev": "NODE_ENV=development tsx server/index.ts",
+      "build": "tsc && vite build",
+      "db:generate": "drizzle-kit generate",
+      "db:push": "drizzle-kit push"
+    }
+    ```
+
+### Step 2: Database Schema and Backend Core
+
+1.  **Define Schema (`shared/schema.ts`):** Implement the Drizzle schema as provided in the analyzed data (`Step 3: Database Schema`), including:
+    *   Tables: `users`, `organizations`, `integrations` (for API keys), `agents`, `call_logs`, `sessions`.
+    *   Enums, Relations, and Zod validation schemas.
+2.  **Database Connection (`server/db.ts`):** Set up the Drizzle connection using `@neondatabase/serverless` (as provided).
+3.  **Storage Layer (`server/storage.ts`):** Implement the `DatabaseStorage` class (as provided in `Step 4: Server Implementation`).
+    *   **CRITICAL:** Ensure all methods strictly enforce multi-tenancy using the `organizationId` in the `WHERE` clause.
+    *   Include methods for User/Auth management, CRUD operations, and analytics (`getOrganizationStats`, `getPlatformStats`).
+
+### Step 3: Authentication and Server Setup
+
+1.  **Server Entrypoint (`server/index.ts`):** Initialize Express, configure session management (`connect-pg-simple`), and set up middleware for serving static files or Vite (as provided).
+2.  **Authentication (`server/replitAuth.ts`):**
+    *   Configure Passport with `openid-client` (as provided in `Step 5: Authentication`).
+    *   **Onboarding Logic:** In the auth callback, create a new `Organization` for new users and `upsertUser` with the correct `organizationId`.
+    *   Define auth routes (`/api/auth/login`, `/callback`, `/user`, `/logout`).
+    *   Include the `/api/dev-admin-login` route for development testing.
+
+### Step 4: API Routes and Business Logic (`server/routes.ts`)
+
+Implement the API routes as defined in `Step 6: API Routes`.
+
+1.  **Middleware:** Implement `isAuthenticated` and `isAdmin`.
+2.  **Integrations Routes (`/api/integrations`):**
+    *   `POST /`: Save the ElevenLabs API key securely.
+    *   `POST /test`: Validate the API key by calling ElevenLabs (`/v1/user`). Update the integration status (ACTIVE/ERROR). **Security:** Never return the API key to the frontend.
+3.  **Agent Routes (`/api/agents`):**
+    *   `POST /validate`: Takes an `elevenLabsAgentId`. Retrieves the organization's stored API key. Calls ElevenLabs API to validate the ID and fetch details.
+    *   `POST /`: Creates the agent record locally after validation.
+    *   `GET /`: List agents for the organization, enhancing data with fresh API calls if an active key exists.
+4.  **Webhook Listener (`/api/webhooks/elevenlabs`):**
+    *   Receive payload (duration, `agent_id`, transcript, audio).
+    *   Find the local `Agent` and identify the `Organization`.
+    *   Record the interaction in `CallLogs`.
+5.  **Analytics & History Routes:**
+    *   `GET /api/call-logs`: Paginated/filterable history.
+    *   `GET /api/analytics/organization`: Dashboard statistics.
+    *   Admin routes for platform stats and management.
+
+### Step 5: Frontend Initialization and Layout
+
+1.  **`client/src/main.tsx` & `App.tsx`:** Set up providers (QueryClient, Theme, Toaster) and the main router (`wouter`) as provided in `Step 7: Frontend Setup`.
+2.  **`client/src/hooks/useAuth.ts`:** Implement authentication state management using TanStack Query.
+3.  **`client/src/lib/queryClient.ts`:** Initialize `QueryClient` and the `apiRequest` helper.
+4.  **Landing Page (`client/src/pages/landing.tsx`):** Implement the marketing page with a "Get Started" button linking to `/api/auth/login` (as provided in `Step 8: Core Components`).
+5.  **App Shell (`components/layout/app-shell.tsx`):** Implement the main dashboard layout with sidebar navigation (Dashboard, Agents, History, Integrations, Billing) and header (user profile, theme toggle). *(Create placeholder if necessary)*.
+
+### Step 6: Frontend Feature Implementation
+
+1.  **Integrations Page (`pages/integrations.tsx`):**
+    *   Form to input ElevenLabs API Key (`react-hook-form`).
+    *   "Test Connection" button utilizing `/api/integrations/test`.
+    *   Display connection status (Active/Error) with clear feedback.
+2.  **Agents Page (`pages/agents.tsx`):**
+    *   "Add Agent" dialog: Input for `elevenLabsAgentId`.
+    *   Implement the validation flow (call `/validate` then `/create`).
+    *   Display agents in a table/grid with basic stats (Calls Today).
+3.  **Dashboard Page (`pages/dashboard.tsx`):**
+    *   Fetch organization analytics.
+    *   Display Key Metrics (Total Calls, Total Minutes, Estimated Cost) using Stat Cards.
+    *   Implement usage graphs (Recharts) for daily volume.
+4.  **History Page (`pages/history.tsx`):**
+    *   Data table (Shadcn/UI Table) for `CallLogs` with pagination and filters.
+    *   **Detail Modal:** Display the full transcript and an embedded `<audio>` player for the `audioUrl`.
+5.  **Billing Page (`pages/billing.tsx`):**
+    *   Display usage breakdown and billing information.
+
+## IV. Final Steps and Deliverables
+
+1.  **Environment Variables:** Ensure the application relies on environment variables (e.g., `DATABASE_URL`, `SESSION_SECRET`, OAuth credentials).
+2.  **Database Setup:** The database schema must be manageable using `npm run db:push`.
+3.  **Deliverable:** The complete source code organized as defined, implementing the BYOK architecture and features described.
