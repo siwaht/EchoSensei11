@@ -30,8 +30,7 @@ function encryptApiKey(apiKey: string): string {
   const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || "default-key", "salt", 32);
   const iv = crypto.randomBytes(16);
   
-  const cipher = crypto.createCipher(algorithm, key);
-  cipher.setAutoPadding(true);
+  const cipher = crypto.createCipheriv(algorithm, key, iv);
   let encrypted = cipher.update(apiKey, "utf8", "hex");
   encrypted += cipher.final("hex");
   
@@ -45,8 +44,7 @@ function decryptApiKey(encryptedApiKey: string): string {
   const [ivHex, encrypted] = encryptedApiKey.split(":");
   const iv = Buffer.from(ivHex, "hex");
   
-  const decipher = crypto.createDecipher(algorithm, key);
-  decipher.setAutoPadding(true);
+  const decipher = crypto.createDecipheriv(algorithm, key, iv);
   let decrypted = decipher.update(encrypted, "hex", "utf8");
   decrypted += decipher.final("utf8");
   

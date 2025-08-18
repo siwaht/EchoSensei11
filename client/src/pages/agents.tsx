@@ -5,11 +5,13 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Bot, Plus } from "lucide-react";
 import { AddAgentModal } from "@/components/modals/add-agent-modal";
+import { AgentDetailModal } from "@/components/modals/agent-detail-modal";
 import { useToast } from "@/hooks/use-toast";
 import type { Agent } from "@shared/schema";
 
 export default function Agents() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -113,7 +115,12 @@ export default function Agents() {
               </div>
               
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <Button variant="outline" size="sm" data-testid={`button-view-details-${agent.id}`}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setSelectedAgent(agent)}
+                  data-testid={`button-view-details-${agent.id}`}
+                >
                   View Details
                 </Button>
               </div>
@@ -125,6 +132,12 @@ export default function Agents() {
       <AddAgentModal 
         open={showAddModal} 
         onOpenChange={setShowAddModal}
+      />
+      
+      <AgentDetailModal
+        agent={selectedAgent}
+        open={!!selectedAgent}
+        onOpenChange={(open) => !open && setSelectedAgent(null)}
       />
     </div>
   );
