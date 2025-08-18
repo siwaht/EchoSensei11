@@ -428,8 +428,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 id: details.conversation_id || details.id,
                 duration: details.call_duration_secs,
                 hasTranscript: !!details.transcript,
-                transcriptLength: details.transcript?.length || 0
+                transcriptLength: details.transcript?.length || 0,
+                hasAudio: !!(details.audio_url || details.recording_url || details.audio || details.media_url)
               });
+              
+              // Extract audio URL from various possible field names
+              const audioUrl = details.audio_url || 
+                             details.recording_url || 
+                             details.audio || 
+                             details.media_url ||
+                             details.call_recording_url ||
+                             "";
+              
+              // For ElevenLabs, if we have a conversation ID, we can construct the audio URL
+              // ElevenLabs provides audio through their API endpoint
+              const elevenLabsAudioUrl = conversation.conversation_id 
+                ? `https://api.elevenlabs.io/v1/convai/conversations/${conversation.conversation_id}/audio`
+                : "";
               
               // Create call log with proper field mapping
               const callData = {
@@ -438,7 +453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 elevenLabsCallId: conversation.conversation_id,
                 duration: details.call_duration_secs || conversation.call_duration_secs || 0,
                 transcript: details.transcript || "",
-                audioUrl: details.audio_url || "",
+                audioUrl: audioUrl || elevenLabsAudioUrl,
                 cost: calculateCallCost(details.call_duration_secs || conversation.call_duration_secs || 0).toString(),
                 status: "completed",
               };
