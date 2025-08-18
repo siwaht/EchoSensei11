@@ -37,7 +37,7 @@ export default function Integrations() {
 
   const saveApiKeyMutation = useMutation({
     mutationFn: async (data: ApiKeyForm) => {
-      await apiRequest("/api/integrations", "POST", data);
+      await apiRequest("POST", "/api/integrations", data);
     },
     onSuccess: () => {
       toast({
@@ -58,7 +58,7 @@ export default function Integrations() {
 
   const testConnectionMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("/api/integrations/test", "POST");
+      await apiRequest("POST", "/api/integrations/test");
     },
     onSuccess: () => {
       toast({
