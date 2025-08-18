@@ -181,7 +181,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const apiKey = decryptApiKey(integration.apiKey);
       
       try {
+        console.log("Validating agent with ID:", elevenLabsAgentId);
         const agentData = await callElevenLabsAPI(apiKey, `/v1/agents/${elevenLabsAgentId}`);
+        console.log("Agent validation successful:", agentData);
         res.json({ 
           message: "Agent validated successfully", 
           agentData: {
@@ -190,8 +192,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             description: agentData.description,
           }
         });
-      } catch (error) {
-        res.status(400).json({ message: "Invalid agent ID or API error" });
+      } catch (error: any) {
+        console.error("Agent validation failed:", error?.message || error);
+        res.status(400).json({ message: `Invalid agent ID or API error: ${error?.message || 'Unknown error'}` });
       }
     } catch (error) {
       console.error("Error validating agent:", error);
