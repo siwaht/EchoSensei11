@@ -16,7 +16,7 @@ import {
   type InsertCallLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count, sum, avg } from "drizzle-orm";
+import { eq, and, desc, count, sum, avg, max } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -51,6 +51,7 @@ export interface IStorage {
     totalMinutes: number;
     estimatedCost: number;
     activeAgents: number;
+    lastSync?: Date;
   }>;
 }
 
@@ -216,12 +217,14 @@ export class DatabaseStorage implements IStorage {
     totalMinutes: number;
     estimatedCost: number;
     activeAgents: number;
+    lastSync?: Date;
   }> {
     const [callStats] = await db
       .select({
         totalCalls: count(callLogs.id),
         totalMinutes: sum(callLogs.duration),
         estimatedCost: sum(callLogs.cost),
+        lastSync: max(callLogs.createdAt),
       })
       .from(callLogs)
       .where(eq(callLogs.organizationId, organizationId));
@@ -238,6 +241,7 @@ export class DatabaseStorage implements IStorage {
       totalMinutes: Math.round(Number(callStats.totalMinutes) / 60) || 0,
       estimatedCost: Number(callStats.estimatedCost) || 0,
       activeAgents: Number(agentStats.activeAgents) || 0,
+      lastSync: callStats.lastSync || undefined,
     };
   }
 }

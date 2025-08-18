@@ -72,7 +72,17 @@ function decryptApiKey(encryptedApiKey: string): string {
 }
 
 // Cost calculation helper (rough estimate: $0.30 per minute)
-function calculateCallCost(durationSeconds: number): number {
+function calculateCallCost(durationSeconds: number, costData?: any): number {
+  // If ElevenLabs provides actual cost data, use it
+  if (costData?.llm_cost) {
+    return Number(costData.llm_cost);
+  }
+  if (costData?.cost) {
+    return Number(costData.cost);
+  }
+  
+  // Otherwise, calculate estimated cost based on ElevenLabs pricing
+  // ElevenLabs charges approximately $0.30 per minute for conversational AI
   const minutes = durationSeconds / 60;
   return Math.round(minutes * 0.30 * 100) / 100; // Round to 2 decimal places
 }
@@ -337,6 +347,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Find the agent in our system
         const agent = await storage.getAgentByElevenLabsId(agent_id, "");
         if (agent) {
+          // Extract cost data if available from webhook
+          const costData = {
+            llm_cost: data.llm_cost,
+            cost: data.cost,
+            credits_used: data.credits_used,
+          };
+          
           // Store call log
           await storage.createCallLog({
             organizationId: agent.organizationId,
@@ -345,7 +362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             duration: duration_seconds || 0,
             transcript: transcript,
             audioUrl: "", // Will be populated from audio webhook if available
-            cost: calculateCallCost(duration_seconds || 0).toString(),
+            cost: calculateCallCost(duration_seconds || 0, costData).toString(),
             status: "completed",
           });
           
@@ -459,6 +476,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               console.log(`  Audio URL found: ${audioUrl ? 'Yes' : 'No'}`);
               
+              // Extract cost data from ElevenLabs response
+              const costData = {
+                llm_cost: details.llm_cost || conversation.llm_cost,
+                cost: details.cost || conversation.cost,
+                credits_used: details.credits_used || conversation.credits_used,
+              };
+              
               // Create call log with proper field mapping
               const callData = {
                 organizationId: user.organizationId,
@@ -467,7 +491,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 duration: details.call_duration_secs || conversation.call_duration_secs || 0,
                 transcript: details.transcript || "",
                 audioUrl: audioUrl || "",
-                cost: calculateCallCost(details.call_duration_secs || conversation.call_duration_secs || 0).toString(),
+                cost: calculateCallCost(
+                  details.call_duration_secs || conversation.call_duration_secs || 0,
+                  costData
+                ).toString(),
                 status: "completed",
               };
               

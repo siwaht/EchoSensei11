@@ -1,12 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { StatsCard } from "@/components/ui/stats-card";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Phone, Clock, DollarSign, Bot, TrendingUp, PhoneCall, MessageSquare, AlertCircle, BarChart3, Activity } from "lucide-react";
+import { Phone, Clock, DollarSign, Bot, TrendingUp, PhoneCall, MessageSquare, AlertCircle, BarChart3, Activity, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 // Success Rate Chart Component
 function SuccessRateChart() {
@@ -666,12 +669,42 @@ function CallVolumeChart() {
 }
 
 export default function Dashboard() {
-  const { data: stats, isLoading } = useQuery({
+  const { toast } = useToast();
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  
+  const { data: stats, isLoading, refetch: refetchStats } = useQuery({
     queryKey: ["/api/analytics/organization"],
   });
   
-  const { data: callLogs } = useQuery({
+  const { data: callLogs, refetch: refetchCallLogs } = useQuery({
     queryKey: ["/api/call-logs"],
+  });
+
+  // Sync mutation
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("/api/sync-calls", {
+        method: "POST",
+      });
+    },
+    onSuccess: (data) => {
+      setLastSyncTime(new Date());
+      toast({
+        title: "Sync Successful",
+        description: data.message || "Data has been synced with ElevenLabs",
+      });
+      // Refresh all data after sync
+      refetchStats();
+      refetchCallLogs();
+      queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to sync with ElevenLabs",
+        variant: "destructive",
+      });
+    },
   });
 
   if (isLoading) {
@@ -706,6 +739,48 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Sync Section */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-2xl font-bold">Dashboard</h2>
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-purple-400" />
+            <span className="text-sm text-muted-foreground">
+              {lastSyncTime || (stats as any)?.lastSync 
+                ? `Last synced: ${(lastSyncTime || new Date((stats as any)?.lastSync)).toLocaleString()}` 
+                : 'Click sync to update data from ElevenLabs'}
+            </span>
+          </div>
+        </div>
+        <Button
+          onClick={() => syncMutation.mutate()}
+          disabled={syncMutation.isPending}
+          size="sm"
+          className="gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+          data-testid="button-sync-data"
+        >
+          <RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+          {syncMutation.isPending ? 'Syncing...' : 'Sync with ElevenLabs'}
+        </Button>
+      </div>
+      
+      {/* Data Accuracy Notice */}
+      {!(stats as any)?.lastSync && !lastSyncTime && (
+        <Card className="p-4 bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
+                Data Not Yet Synced
+              </p>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                Click the "Sync with ElevenLabs" button above to fetch your latest call data and ensure all metrics are accurate.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+      
       {/* ElevenLabs-style Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {/* Number of calls */}
