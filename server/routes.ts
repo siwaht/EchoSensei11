@@ -370,16 +370,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       for (const agent of agents) {
         try {
+          console.log(`Syncing calls for agent: ${agent.name} (${agent.elevenLabsAgentId})`);
+          
           // Get conversations for this agent
           const conversations = await callElevenLabsAPI(
             apiKey, 
             `/v1/convai/conversations?agent_id=${agent.elevenLabsAgentId}&page_size=100`
           );
           
+          console.log(`Found ${conversations.conversations?.length || 0} conversations for agent ${agent.name}`);
+          
           for (const conversation of conversations.conversations || []) {
             // Check if we already have this call log
             const existing = await storage.getCallLogByElevenLabsId(conversation.conversation_id, user.organizationId);
-            if (existing) continue;
+            if (existing) {
+              console.log(`Conversation ${conversation.conversation_id} already exists, skipping`);
+              continue;
+            }
+            
+            console.log(`Fetching details for conversation: ${conversation.conversation_id}`);
             
             // Get detailed conversation data
             const details = await callElevenLabsAPI(
@@ -387,17 +396,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
               `/v1/convai/conversations/${conversation.conversation_id}`
             );
             
-            // Create call log
-            await storage.createCallLog({
+            console.log(`Conversation details:`, {
+              id: details.conversation_id,
+              duration: details.call_duration_secs,
+              transcript: details.transcript?.length || 0
+            });
+            
+            // Create call log with proper field mapping
+            const callData = {
               organizationId: user.organizationId,
               agentId: agent.id,
               elevenLabsCallId: conversation.conversation_id,
-              duration: details.duration_seconds || 0,
+              duration: details.call_duration_secs || conversation.call_duration_secs || 0,
               transcript: details.transcript || "",
               audioUrl: details.audio_url || "",
-              cost: calculateCallCost(details.duration_seconds || 0).toString(),
+              cost: calculateCallCost(details.call_duration_secs || conversation.call_duration_secs || 0).toString(),
               status: "completed",
-            });
+            };
+            
+            console.log("Creating call log with data:", callData);
+            await storage.createCallLog(callData);
             
             totalSynced++;
           }
