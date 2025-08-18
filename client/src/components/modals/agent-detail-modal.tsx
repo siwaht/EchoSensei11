@@ -77,9 +77,8 @@ export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModal
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="w-full flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="calls">Call History</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -150,59 +149,6 @@ export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModal
                 </div>
               </div>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="calls" className="space-y-4 overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Recent Calls</h3>
-              <p className="text-sm text-muted-foreground">{totalCalls} total calls</p>
-            </div>
-            
-            {agentCalls.length === 0 ? (
-              <Card className="p-8 text-center">
-                <Bot className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h4 className="font-medium mb-2">No calls yet</h4>
-                <p className="text-sm text-muted-foreground">
-                  Calls will appear here once your agent starts receiving interactions.
-                </p>
-              </Card>
-            ) : (
-              <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
-                {agentCalls.map((call) => (
-                  <Card key={call.id} className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-medium">Call #{call.elevenLabsCallId?.slice(-8) || "Unknown"}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {call.createdAt ? new Date(call.createdAt).toLocaleString() : "Unknown"}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">{Math.round((call.duration || 0) / 60)} min</p>
-                        <p className="text-sm text-muted-foreground">${call.cost || "0.00"}</p>
-                      </div>
-                    </div>
-                    {call.transcript && (
-                      <p className="text-sm mt-2 text-muted-foreground line-clamp-2">
-                        {(() => {
-                          try {
-                            const messages = JSON.parse(call.transcript);
-                            if (Array.isArray(messages) && messages.length > 0) {
-                              const firstMessage = messages[0];
-                              const text = firstMessage.message || firstMessage.content || '';
-                              return text.length > 150 ? text.substring(0, 150) + '...' : text;
-                            }
-                            return 'No transcript available';
-                          } catch {
-                            return call.transcript.substring(0, 150) + '...';
-                          }
-                        })()}
-                      </p>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            )}
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
