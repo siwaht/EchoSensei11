@@ -35,6 +35,8 @@ export default function Playground() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
+  const audioQueueRef = useRef<string[]>([]);
+  const isPlayingRef = useRef(false);
   
   const { toast } = useToast();
 
@@ -223,19 +225,19 @@ export default function Playground() {
               }
             }, 500);
           } else if (data.audio || data.audio_event) {
-            // Agent audio response
+            // Agent audio response - queue it for sequential playback
             const audioData = data.audio || data.audio_event?.audio_base_64 || data.audio_event?.audio || data.audio_base_64;
             if (audioData && isSpeakerOn) {
-              console.log("Playing agent audio, length:", audioData.length);
-              playAudio(audioData);
+              console.log("Queueing agent audio, length:", audioData.length);
+              queueAudio(audioData);
             } else if (audioData) {
               console.log("Received audio but speaker is off");
             }
           } else if (data.audio_base_64) {
             // Some agents send audio directly as audio_base_64
             if (isSpeakerOn) {
-              console.log("Playing agent audio (direct), length:", data.audio_base_64.length);
-              playAudio(data.audio_base_64);
+              console.log("Queueing agent audio (direct), length:", data.audio_base_64.length);
+              queueAudio(data.audio_base_64);
             }
           } else if (data.transcript_event || data.user_transcription_event) {
             // Handle transcript events
@@ -342,6 +344,10 @@ export default function Playground() {
   };
 
   const endCall = () => {
+    // Clear audio queue
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    
     // Close WebSocket
     if (wsRef.current) {
       wsRef.current.close();
@@ -468,8 +474,19 @@ export default function Playground() {
     console.log("Audio streaming setup complete with 250ms chunking");
   };
 
-  const playAudio = async (audioData: string) => {
-    if (!isSpeakerOn) return;
+  // Queue audio chunks and play them sequentially
+  const queueAudio = (audioData: string) => {
+    audioQueueRef.current.push(audioData);
+    processAudioQueue();
+  };
+  
+  const processAudioQueue = async () => {
+    if (isPlayingRef.current || audioQueueRef.current.length === 0 || !isSpeakerOn) {
+      return;
+    }
+    
+    isPlayingRef.current = true;
+    const audioData = audioQueueRef.current.shift()!;
     
     try {
       // VoiceAI sends PCM 16-bit audio at 16kHz encoded in base64
@@ -491,14 +508,25 @@ export default function Playground() {
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
       
+      // When audio ends, process next in queue
       audio.addEventListener('ended', () => {
         URL.revokeObjectURL(audioUrl);
+        isPlayingRef.current = false;
+        processAudioQueue(); // Process next audio in queue
+      });
+      
+      audio.addEventListener('error', () => {
+        console.error('Audio playback error');
+        isPlayingRef.current = false;
+        processAudioQueue(); // Continue with next audio even on error
       });
       
       await audio.play();
-      console.log('Successfully played PCM audio as WAV');
+      console.log('Playing audio chunk from queue');
     } catch (error) {
       console.error('Error playing audio:', error);
+      isPlayingRef.current = false;
+      processAudioQueue(); // Continue processing queue on error
     }
   };
   
