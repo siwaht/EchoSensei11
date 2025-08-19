@@ -423,6 +423,14 @@ export default function AgentSettings() {
     <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
       {/* Header */}
       <div className="mb-4 sm:mb-6">
+        {hasUnsavedChanges && (
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-4 py-3 mb-4">
+            <p className="text-sm text-yellow-600 dark:text-yellow-500 font-medium flex items-center gap-2">
+              <span className="text-lg">⚠️</span>
+              You have unsaved changes. Click "Save All Changes" button to sync with ElevenLabs.
+            </p>
+          </div>
+        )}
         <Button
           variant="ghost"
           size="sm"
@@ -445,11 +453,17 @@ export default function AgentSettings() {
           <Button
             onClick={handleSave}
             disabled={updateAgentMutation.isPending || !hasUnsavedChanges}
-            className="gap-2 w-full sm:w-auto"
+            className={`gap-2 w-full sm:w-auto transition-all ${
+              hasUnsavedChanges 
+                ? 'bg-primary hover:bg-primary/90 animate-pulse' 
+                : ''
+            }`}
+            variant={hasUnsavedChanges ? "default" : "outline"}
             data-testid="button-save-settings"
           >
             <Save className="w-4 h-4" />
-            {updateAgentMutation.isPending ? "Saving..." : "Save All Changes"}
+            {updateAgentMutation.isPending ? "Saving..." : 
+             hasUnsavedChanges ? "Save All Changes (Required)" : "No Changes"}
           </Button>
         </div>
       </div>
