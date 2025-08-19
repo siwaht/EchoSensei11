@@ -45,7 +45,22 @@ export default function AppShell({ children }: AppShellProps) {
 
   const getPageTitle = () => {
     const currentNav = navigation.find(item => item.href === location);
-    return currentNav?.name || "Dashboard";
+    if (currentNav) return currentNav.name;
+    
+    // Check for admin route
+    if (location === "/admin") return "Admin";
+    
+    // Check for settings route
+    if (location === "/settings") return "Settings";
+    
+    // Check for checkout route
+    if (location === "/checkout") return "Checkout";
+    
+    // Check for agent settings route
+    if (location.startsWith("/agents/") && location.includes("/settings")) return "Agent Settings";
+    
+    // Default to "Page Not Found" for unknown routes
+    return "Page Not Found";
   };
 
   return (
