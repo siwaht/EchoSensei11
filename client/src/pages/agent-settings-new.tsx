@@ -279,8 +279,8 @@ export default function AgentSettingsNew() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/agents">
-                <a className="text-sm text-muted-foreground hover:text-foreground">Agents</a>
+              <Link href="/agents" className="text-sm text-muted-foreground hover:text-foreground">
+                Agents
               </Link>
               <span className="text-muted-foreground">/</span>
               <h1 className="text-xl font-semibold">{agent.name}</h1>

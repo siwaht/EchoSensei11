@@ -5,33 +5,40 @@ import { useTheme } from "@/components/theme-provider";
 import { useAuth } from "@/hooks/useAuth";
 import { 
   Mic, 
-  LayoutDashboard, 
+  Home, 
   Bot, 
-  History,
+  BookOpen,
+  Wrench,
+  AudioWaveform,
+  MessageSquare,
   Plug, 
-  CreditCard, 
+  Phone,
+  PhoneOutgoing,
   Settings, 
   Menu, 
   Moon, 
   Sun,
   LogOut,
   Shield,
-  FlaskConical
+  ChevronDown,
+  ChevronRight,
+  Bell,
+  CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Agents", href: "/agents", icon: Bot },
-  { name: "Playground", href: "/playground", icon: FlaskConical },
-  { name: "Call History", href: "/history", icon: History },
-  { name: "Integrations", href: "/integrations", icon: Plug },
-  { name: "Billing", href: "/billing", icon: CreditCard },
-];
-
-const secondaryNavigation = [
-  { name: "Settings", href: "/settings", icon: Settings },
-];
+interface NavItem {
+  name: string;
+  href?: string;
+  icon: any;
+  children?: { name: string; href: string }[];
+  badge?: string;
+}
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -42,10 +49,68 @@ export default function AppShell({ children }: AppShellProps) {
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
   const { user } = useAuth();
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    Build: true,
+    Evaluate: false,
+    Telephony: false,
+  });
+
+  const navigation: NavItem[] = [
+    { name: "Home", href: "/", icon: Home },
+    { 
+      name: "Build", 
+      icon: Bot,
+      children: [
+        { name: "Agents", href: "/agents" },
+        { name: "Knowledge Base", href: "/knowledge-base" },
+        { name: "Tools", href: "/tools" },
+        { name: "Voices", href: "/voices" },
+      ]
+    },
+    { 
+      name: "Evaluate",
+      icon: MessageSquare,
+      children: [
+        { name: "Conversations", href: "/conversations" },
+      ]
+    },
+    { name: "Integrations", href: "/integrations", icon: Plug },
+    { 
+      name: "Telephony",
+      icon: Phone,
+      children: [
+        { name: "Phone Numbers", href: "/phone-numbers" },
+        { name: "Outbound", href: "/outbound" },
+      ]
+    },
+  ];
+
+  const toggleSection = (name: string) => {
+    setExpandedSections(prev => ({ ...prev, [name]: !prev[name] }));
+  };
 
   const getPageTitle = () => {
-    const currentNav = navigation.find(item => item.href === location);
-    return currentNav?.name || "Dashboard";
+    // Check direct matches
+    const directMatch = navigation.find(item => item.href === location);
+    if (directMatch) return directMatch.name;
+    
+    // Check children
+    for (const item of navigation) {
+      if (item.children) {
+        const childMatch = item.children.find(child => child.href === location);
+        if (childMatch) return childMatch.name;
+      }
+    }
+    
+    // Special cases
+    if (location.startsWith('/agents/')) return 'Agent Settings';
+    if (location === '/playground') return 'Playground';
+    if (location === '/settings') return 'Settings';
+    if (location === '/admin') return 'Admin';
+    if (location === '/billing') return 'Billing';
+    if (location === '/checkout') return 'Checkout';
+    
+    return 'Home';
   };
 
   return (
@@ -60,85 +125,180 @@ export default function AppShell({ children }: AppShellProps) {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out",
+        "fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-950 border-r transform transition-transform duration-200 ease-in-out",
         sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="flex items-center h-16 px-6 border-b border-border">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Mic className="w-4 h-4 text-primary-foreground" />
+        <div className="h-14 px-4 border-b flex items-center">
+          <div className="flex items-center gap-2">
+            <div className="text-xl font-bold">IIElevenLabs</div>
+          </div>
+        </div>
+        
+        <div className="px-3 py-2">
+          <div className="bg-gray-100 dark:bg-gray-900 rounded-lg p-2 flex items-center gap-2">
+            <div className="flex -space-x-1">
+              <div className="w-5 h-5 rounded-full bg-blue-500" />
+              <div className="w-5 h-5 rounded-full bg-green-500" />
             </div>
-            <span className="text-lg font-semibold text-card-foreground" data-testid="text-app-title">VoiceAI Dashboard</span>
+            <span className="text-sm font-medium flex-1">Conversational AI</span>
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
           </div>
         </div>
 
-        <nav className="mt-6 px-3">
-          <div className="space-y-1">
+        <nav className="mt-2 px-3 pb-8">
+          <div className="space-y-0.5">
             {navigation.map((item) => {
               const Icon = item.icon;
-              const isActive = location === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={cn(
-                    "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    isActive
-                      ? "text-primary bg-primary/10"
-                      : "text-muted-foreground hover:text-card-foreground hover:bg-muted/50"
-                  )}
-                  data-testid={`nav-${item.name.toLowerCase().replace(' ', '-')}`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-border">
-            <div className="space-y-1">
-              {user?.isAdmin && (
-                <Link
-                  href="/admin"
-                  onClick={() => setSidebarOpen(false)}
-                  className={cn(
-                    "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    location === "/admin"
-                      ? "text-primary bg-primary/10"
-                      : "text-muted-foreground hover:text-card-foreground hover:bg-muted/50"
-                  )}
-                  data-testid="nav-admin"
-                >
-                  <Shield className="w-5 h-5" />
-                  <span>Admin</span>
-                </Link>
-              )}
-              {secondaryNavigation.map((item) => {
-                const Icon = item.icon;
+              const isActive = item.href ? location === item.href : false;
+              const hasActiveChild = item.children?.some(child => location === child.href) || false;
+              const isExpanded = expandedSections[item.name];
+              
+              if (item.href) {
+                // Simple link
                 return (
                   <Link
                     key={item.name}
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
-                    className="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-card-foreground hover:bg-muted/50 transition-colors"
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                      isActive
+                        ? "bg-gray-100 dark:bg-gray-900 text-black dark:text-white"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50"
+                    )}
                     data-testid={`nav-${item.name.toLowerCase()}`}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-4 h-4" />
                     <span>{item.name}</span>
                   </Link>
                 );
-              })}
-            </div>
+              }
+              
+              // Collapsible section
+              return (
+                <Collapsible key={item.name} open={isExpanded}>
+                  <CollapsibleTrigger
+                    onClick={() => toggleSection(item.name)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                      hasActiveChild
+                        ? "text-black dark:text-white"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50"
+                    )}
+                    data-testid={`nav-${item.name.toLowerCase()}`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="flex-1 text-left">{item.name}</span>
+                    {item.badge && (
+                      <span className="text-xs bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                        {item.badge}
+                      </span>
+                    )}
+                    {isExpanded ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="ml-7 mt-1 space-y-0.5">
+                      {item.children?.map((child) => {
+                        const childActive = location === child.href;
+                        return (
+                          <Link
+                            key={child.name}
+                            href={child.href}
+                            onClick={() => setSidebarOpen(false)}
+                            className={cn(
+                              "block px-3 py-1.5 rounded-lg text-sm transition-all",
+                              childActive
+                                ? "bg-gray-100 dark:bg-gray-900 text-black dark:text-white font-medium"
+                                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                            )}
+                            data-testid={`nav-${child.name.toLowerCase().replace(' ', '-')}`}
+                          >
+                            {child.name}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
           </div>
+
         </nav>
+        
+        {/* Footer section */}
+        <div className="absolute bottom-0 left-0 right-0 p-3 border-t">
+          <div className="space-y-0.5">
+            <Link
+              href="/notifications"
+              onClick={() => setSidebarOpen(false)}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                location === "/notifications"
+                  ? "bg-gray-100 dark:bg-gray-900 text-black dark:text-white"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50"
+              )}
+              data-testid="nav-notifications"
+            >
+              <Bell className="w-4 h-4" />
+              <span>Notifications</span>
+            </Link>
+            <Link
+              href="/billing"
+              onClick={() => setSidebarOpen(false)}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                location === "/billing"
+                  ? "bg-gray-100 dark:bg-gray-900 text-black dark:text-white"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50"
+              )}
+              data-testid="nav-billing"
+            >
+              <CreditCard className="w-4 h-4" />
+              <span>Billing</span>
+            </Link>
+            {user?.isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setSidebarOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                  location === "/admin"
+                    ? "bg-gray-100 dark:bg-gray-900 text-black dark:text-white"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50"
+                )}
+                data-testid="nav-admin"
+              >
+                <Shield className="w-4 h-4" />
+                <span>Admin</span>
+              </Link>
+            )}
+            <Link
+              href="/settings"
+              onClick={() => setSidebarOpen(false)}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                location === "/settings"
+                  ? "bg-gray-100 dark:bg-gray-900 text-black dark:text-white"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50"
+              )}
+              data-testid="nav-settings"
+            >
+              <Settings className="w-4 h-4" />
+              <span>Settings</span>
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Main Content */}
       <div className="lg:pl-64">
         {/* Header */}
-        <header className="bg-card border-b border-border px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <header className="bg-white dark:bg-gray-950 border-b px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <div className="flex items-center">
             <Button
               variant="ghost"

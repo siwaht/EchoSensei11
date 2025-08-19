@@ -17,6 +17,12 @@ import Settings from "@/pages/settings";
 import Admin from "@/pages/admin-new";
 import Checkout from "@/pages/checkout";
 import Playground from "@/pages/playground";
+import KnowledgeBase from "@/pages/knowledge-base";
+import Tools from "@/pages/tools";
+import Voices from "@/pages/voices";
+import Conversations from "@/pages/conversations";
+import PhoneNumbers from "@/pages/phone-numbers";
+import Outbound from "@/pages/outbound";
 import AppShell from "@/components/layout/app-shell";
 
 function Router() {
@@ -39,6 +45,12 @@ function Router() {
         <Route path="/agents/:agentId/settings" component={AgentSettings} />
         <Route path="/playground" component={Playground} />
         <Route path="/history" component={History} />
+        <Route path="/knowledge-base" component={KnowledgeBase} />
+        <Route path="/tools" component={Tools} />
+        <Route path="/voices" component={Voices} />
+        <Route path="/conversations" component={Conversations} />
+        <Route path="/phone-numbers" component={PhoneNumbers} />
+        <Route path="/outbound" component={Outbound} />
         <Route path="/integrations" component={Integrations} />
         <Route path="/billing" component={Billing} />
         <Route path="/checkout" component={Checkout} />
