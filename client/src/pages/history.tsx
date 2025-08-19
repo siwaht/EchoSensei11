@@ -13,7 +13,8 @@ import type { CallLog, Agent } from "@shared/schema";
 
 export default function History() {
   const [selectedAgent, setSelectedAgent] = useState<string>("all");
-  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -106,17 +107,22 @@ export default function History() {
     });
   };
 
-  // Filter call logs based on selected agent and date
+  // Filter call logs based on selected agent and date range
   const filteredCallLogs = callLogs?.filter((log) => {
     // Filter by agent
     if (selectedAgent !== "all" && log.agentId !== selectedAgent) {
       return false;
     }
     
-    // Filter by date
-    if (selectedDate && log.createdAt) {
+    // Filter by date range
+    if ((startDate || endDate) && log.createdAt) {
       const logDate = new Date(log.createdAt).toISOString().split('T')[0];
-      if (logDate !== selectedDate) {
+      
+      // Check if log date is within the range
+      if (startDate && logDate < startDate) {
+        return false;
+      }
+      if (endDate && logDate > endDate) {
         return false;
       }
     }
@@ -167,13 +173,41 @@ export default function History() {
               ))}
             </SelectContent>
           </Select>
-          <Input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-full sm:w-48"
-            data-testid="input-date-filter"
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              max={endDate || undefined}
+              className="w-full sm:w-36"
+              placeholder="Start date"
+              data-testid="input-start-date"
+            />
+            <span className="text-gray-500 dark:text-gray-400 text-sm">to</span>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={startDate || undefined}
+              className="w-full sm:w-36"
+              placeholder="End date"
+              data-testid="input-end-date"
+            />
+            {(startDate || endDate) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                data-testid="button-clear-date-range"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
