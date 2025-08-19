@@ -23,7 +23,7 @@ import {
 import { 
   Save, ArrowLeft, Mic, Settings2, MessageSquare, Zap, Search, Play, 
   Volume2, Check, X, RotateCcw, Brain, Database, Wrench, Plus, Trash2,
-  Globe, ChevronDown, ChevronRight, FileText, Link, Code, Upload, AlertCircle, Eye
+  Globe, ChevronDown, ChevronRight, FileText, Link, Code, Upload, AlertCircle, Eye, Edit2
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -106,6 +106,10 @@ export default function AgentSettings() {
   const [documentTitle, setDocumentTitle] = useState('');
   const [viewDocumentOpen, setViewDocumentOpen] = useState(false);
   const [viewingDocument, setViewingDocument] = useState<any>(null);
+  const [editDocumentOpen, setEditDocumentOpen] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<any>(null);
+  const [editDocumentTitle, setEditDocumentTitle] = useState('');
+  const [editDocumentContent, setEditDocumentContent] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch agent data
@@ -1028,6 +1032,70 @@ export default function AgentSettings() {
                           </div>
                         </DialogContent>
                       </Dialog>
+                      
+                      {/* Edit Document Dialog */}
+                      <Dialog open={editDocumentOpen} onOpenChange={setEditDocumentOpen}>
+                        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                          <DialogHeader>
+                            <DialogTitle>Edit Document</DialogTitle>
+                            <DialogDescription>
+                              Modify your knowledge base document
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 overflow-y-auto flex-1">
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-document-title">Document Title</Label>
+                              <Input
+                                id="edit-document-title"
+                                placeholder="Enter document title"
+                                value={editDocumentTitle}
+                                onChange={(e) => setEditDocumentTitle(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-document-content">Document Content</Label>
+                              <Textarea
+                                id="edit-document-content"
+                                placeholder="Enter document content..."
+                                value={editDocumentContent}
+                                onChange={(e) => setEditDocumentContent(e.target.value)}
+                                className="min-h-[300px] font-mono text-sm"
+                              />
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setEditDocumentOpen(false)}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                type="button"
+                                onClick={() => {
+                                  if (editingDocument && editDocumentTitle.trim() && editDocumentContent.trim()) {
+                                    const updatedDocuments = settings.documents.map(doc => 
+                                      doc.id === editingDocument.id 
+                                        ? { ...doc, name: editDocumentTitle, content: editDocumentContent, size: editDocumentContent.length }
+                                        : doc
+                                    );
+                                    setSettings({ ...settings, documents: updatedDocuments });
+                                    setHasUnsavedChanges(true);
+                                    setEditDocumentOpen(false);
+                                    toast({
+                                      title: "Document updated",
+                                      description: "Your knowledge base document has been updated. Remember to save all changes.",
+                                    });
+                                  }
+                                }}
+                                disabled={!editDocumentTitle.trim() || !editDocumentContent.trim()}
+                              >
+                                Save Changes
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                     {settings.documents.length === 0 ? (
                       <div className="text-center py-8 border-2 border-dashed rounded-lg">
@@ -1065,18 +1133,34 @@ export default function AgentSettings() {
                             </div>
                             <div className="flex items-center gap-1 ml-2">
                               {doc.type === 'text' && doc.content && (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    setViewingDocument(doc);
-                                    setViewDocumentOpen(true);
-                                  }}
-                                  title="View content"
-                                >
-                                  <Eye className="w-3 h-3" />
-                                </Button>
+                                <>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setViewingDocument(doc);
+                                      setViewDocumentOpen(true);
+                                    }}
+                                    title="View content"
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setEditingDocument(doc);
+                                      setEditDocumentTitle(doc.name);
+                                      setEditDocumentContent(doc.content || '');
+                                      setEditDocumentOpen(true);
+                                    }}
+                                    title="Edit document"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </Button>
+                                </>
                               )}
                               <Button
                                 type="button"
