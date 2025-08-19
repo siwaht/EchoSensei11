@@ -83,7 +83,7 @@ export default function AgentSettings() {
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
       toast({ title: "Agent settings updated successfully" });
       setHasUnsavedChanges(false);
-      setLocation("/dashboard");
+      setLocation("/agents");
     },
     onError: (error: any) => {
       toast({ 
