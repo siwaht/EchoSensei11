@@ -36,18 +36,18 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle data-testid="text-modal-title">
+          <DialogTitle className="text-base sm:text-lg" data-testid="text-modal-title">
             Call Details #{callLog.id.slice(-6)}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             View detailed information about this voice agent call including transcript, duration, and status.
           </DialogDescription>
         </DialogHeader>
         
         {/* Call Info */}
-        <div className="grid md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
           <div className="space-y-3">
             <div>
               <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Agent:</span>
@@ -94,15 +94,15 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
 
         {/* Call Recording with Professional Audio Player */}
         {callLog.audioUrl && (
-          <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Call Recording</h4>
-            <Card className="p-4 bg-gray-50 dark:bg-gray-700">
-              <div className="space-y-4">
+          <div className="mb-4 sm:mb-6">
+            <h4 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 sm:mb-3">Call Recording</h4>
+            <Card className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700">
+              <div className="space-y-3 sm:space-y-4">
                 {/* Waveform Visualization */}
-                <div className="h-16 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 rounded-lg flex items-center justify-center relative overflow-hidden">
+                <div className="h-12 sm:h-16 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 rounded-lg flex items-center justify-center relative overflow-hidden">
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="flex items-end gap-1 h-12">
-                      {Array.from({ length: 60 }, (_, i) => (
+                    <div className="flex items-end gap-0.5 sm:gap-1 h-8 sm:h-12">
+                      {Array.from({ length: 30 }, (_, i) => (
                         <div
                           key={i}
                           className="bg-blue-500 dark:bg-blue-400 opacity-70 hover:opacity-100 transition-opacity"
@@ -115,22 +115,22 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
                       ))}
                     </div>
                   </div>
-                  <div className="absolute bottom-2 left-4 text-xs text-blue-600 dark:text-blue-300 font-medium">
+                  <div className="absolute bottom-1 sm:bottom-2 left-2 sm:left-4 text-[10px] sm:text-xs text-blue-600 dark:text-blue-300 font-medium">
                     Audio Waveform
                   </div>
                 </div>
                 
                 {/* Audio Controls */}
-                <div className="flex items-center justify-between">
-                  <audio controls className="flex-1 max-w-md" data-testid="audio-call-recording">
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                  <audio controls className="w-full sm:flex-1 sm:max-w-md" data-testid="audio-call-recording">
                     <source src={callLog.audioUrl} type="audio/mpeg" />
                     <source src={callLog.audioUrl} type="audio/wav" />
                     <source src={callLog.audioUrl} type="audio/mp4" />
                     Your browser does not support the audio element.
                   </audio>
                   
-                  <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                    <span>Duration: {callLog.duration ? `${Math.floor(callLog.duration / 60)}:${String(callLog.duration % 60).padStart(2, '0')}` : 'N/A'}</span>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    <span className="block sm:inline">Duration: {callLog.duration ? `${Math.floor(callLog.duration / 60)}:${String(callLog.duration % 60).padStart(2, '0')}` : 'N/A'}</span>
                     <a
                       href={callLog.audioUrl}
                       download={`call-recording-${callLog.elevenLabsCallId}.mp3`}
@@ -146,7 +146,7 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
                 </div>
                 
                 {/* Recording Info */}
-                <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-600">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-600">
                   <span>High-quality audio recording</span>
                   <span>Encrypted & secure storage</span>
                 </div>
@@ -158,8 +158,8 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
         {/* Transcript */}
         {callLog.transcript && (
           <div>
-            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Call Transcript</h4>
-            <Card className="p-4 bg-gray-50 dark:bg-gray-700 max-h-64 overflow-y-auto">
+            <h4 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 sm:mb-3">Call Transcript</h4>
+            <Card className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 max-h-48 sm:max-h-64 overflow-y-auto">
               <div className="space-y-3" data-testid="text-call-transcript">
                 {(() => {
                   try {
@@ -215,24 +215,24 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
                     // Render professional ElevenLabs-style conversation
                     if (conversationTurns.length > 0) {
                       return (
-                        <div className="space-y-4">
+                        <div className="space-y-3 sm:space-y-4">
                           {conversationTurns.map((turn, index) => (
                             <div key={index} className={`flex ${
                               turn.role === 'agent' ? 'justify-start' : 'justify-end'
                             }`}>
-                              <div className={`max-w-[75%] ${
-                                turn.role === 'agent' ? 'mr-8' : 'ml-8'
+                              <div className={`max-w-[85%] sm:max-w-[75%] ${
+                                turn.role === 'agent' ? 'mr-2 sm:mr-8' : 'ml-2 sm:ml-8'
                               }`}>
-                                <div className={`px-4 py-3 rounded-2xl shadow-sm ${
+                                <div className={`px-3 py-2 sm:px-4 sm:py-3 rounded-2xl shadow-sm ${
                                   turn.role === 'agent' 
                                     ? 'bg-blue-500 text-white' 
                                     : 'bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-white'
                                 }`}>
-                                  <p className="text-sm leading-relaxed">
+                                  <p className="text-xs sm:text-sm leading-relaxed">
                                     {turn.message}
                                   </p>
                                 </div>
-                                <div className={`flex items-center gap-2 mt-1 text-xs text-gray-500 ${
+                                <div className={`flex items-center gap-1 sm:gap-2 mt-1 text-[10px] sm:text-xs text-gray-500 ${
                                   turn.role === 'agent' ? 'justify-start' : 'justify-end'
                                 }`}>
                                   <span className="font-medium">
@@ -271,19 +271,19 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
         )}
 
         {!callLog.transcript && !callLog.audioUrl && (
-          <Card className="p-8 text-center">
-            <Bot className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2" data-testid="text-no-data-title">
+          <Card className="p-6 sm:p-8 text-center">
+            <Bot className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-gray-400 mb-3 sm:mb-4" />
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2" data-testid="text-no-data-title">
               No additional data available
             </h3>
-            <p className="text-gray-600 dark:text-gray-400" data-testid="text-no-data-description">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400" data-testid="text-no-data-description">
               This call log contains basic information only. Audio and transcript data may be available for newer calls.
             </p>
           </Card>
         )}
 
-        <div className="mt-6 flex justify-end">
-          <Button onClick={() => onOpenChange(false)} data-testid="button-close-modal">
+        <div className="mt-4 sm:mt-6 flex justify-end">
+          <Button onClick={() => onOpenChange(false)} className="w-full sm:w-auto" data-testid="button-close-modal">
             Close
           </Button>
         </div>
