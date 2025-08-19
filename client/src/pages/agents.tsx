@@ -129,7 +129,7 @@ export default function Agents() {
           agents.map((agent) => (
             <Card 
               key={agent.id} 
-              className="group relative flex flex-col h-full p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-primary-500 dark:hover:border-primary-400 transition-all cursor-pointer"
+              className="group relative flex flex-col h-full p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-primary-500 dark:hover:border-primary-400 transition-all cursor-pointer overflow-hidden"
               onClick={() => setLocation(`/agents/${agent.id}/settings`)}
             >
               <div className="flex items-start justify-between mb-4">
@@ -153,11 +153,11 @@ export default function Agents() {
                 )}
                 
                 <div className="space-y-3 text-sm">
-                <div className="flex flex-col space-y-1">
-                  <span className="text-gray-600 dark:text-gray-400">ElevenLabs ID:</span>
-                  <span className="font-medium font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded break-all" data-testid={`text-agent-id-${agent.id}`}>
-                    {agent.elevenLabsAgentId}
-                  </span>
+                <div className="flex flex-col space-y-1 min-w-0">
+                  <span className="text-gray-600 dark:text-gray-400 text-xs">ElevenLabs ID:</span>
+                  <div className="font-medium font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded overflow-hidden" data-testid={`text-agent-id-${agent.id}`}>
+                    <span className="block truncate">{agent.elevenLabsAgentId}</span>
+                  </div>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 dark:text-gray-400">Created:</span>
