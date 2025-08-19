@@ -182,14 +182,35 @@ export default function Playground() {
         const hasCustomSettings = agentSettings?.firstMessage || 
                                  agentSettings?.systemPrompt || 
                                  agentSettings?.voiceId ||
-                                 agentSettings?.voiceSettings;
+                                 agentSettings?.voiceSettings ||
+                                 (agentSettings?.knowledgeBase?.documents && agentSettings.knowledgeBase.documents.length > 0);
         
-        if (hasCustomSettings) {
+        if (hasCustomSettings && agentSettings) {
+          // Build the prompt with knowledge base content if available
+          let finalPrompt = agentSettings.systemPrompt || "";
+          
+          if (agentSettings.knowledgeBase?.documents && agentSettings.knowledgeBase.documents.length > 0) {
+            let knowledgeBaseContext = "\n\n### KNOWLEDGE BASE ###\n";
+            knowledgeBaseContext += "You have access to the following information. Use this knowledge to answer questions accurately:\n\n";
+            
+            for (const doc of agentSettings.knowledgeBase.documents) {
+              if (doc.type === 'text' && doc.content) {
+                knowledgeBaseContext += `**${doc.name}:**\n${doc.content}\n\n`;
+              } else if (doc.type === 'url' && doc.url) {
+                knowledgeBaseContext += `**${doc.name}:** Reference URL: ${doc.url}\n\n`;
+              }
+            }
+            
+            knowledgeBaseContext += "Always refer to this knowledge base when answering questions about the information contained within.\n";
+            knowledgeBaseContext += "### END KNOWLEDGE BASE ###\n";
+            
+            finalPrompt = finalPrompt + knowledgeBaseContext;
+            console.log("Knowledge base content added to prompt");
+          }
+          
           initMessage.conversation_config_override = {
             agent: {
-              prompt: {
-                prompt: agentSettings.systemPrompt || ""
-              },
+              prompt: finalPrompt,  // Fixed: removed nested prompt object
               first_message: agentSettings.firstMessage || "",
               language: agentSettings.language || "en"
             }
