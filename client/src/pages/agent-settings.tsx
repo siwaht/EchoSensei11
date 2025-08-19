@@ -161,42 +161,43 @@ export default function AgentSettings() {
         </Button>
       </div>
 
-      <Card className="p-6 mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-blue-500/10 rounded-lg">
-            <Settings2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+      <Card className="p-4 sm:p-6 mb-4 sm:mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+          <div className="p-2 sm:p-3 bg-blue-500/10 rounded-lg">
+            <Settings2 className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
           </div>
-          <div>
-            <h2 className="text-xl font-semibold">{agent.name}</h2>
-            <p className="text-muted-foreground">{agent.description || "No description"}</p>
-            <p className="text-sm text-muted-foreground mt-1">Agent ID: {agent.elevenLabsAgentId}</p>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg sm:text-xl font-semibold">{agent.name}</h2>
+            <p className="text-sm sm:text-base text-muted-foreground">{agent.description || "No description"}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 break-all">Agent ID: {agent.elevenLabsAgentId}</p>
           </div>
         </div>
       </Card>
 
-      <Tabs defaultValue="conversation" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="conversation" className="gap-2">
-            <MessageSquare className="w-4 h-4" />
-            Conversation
+      <Tabs defaultValue="conversation" className="space-y-4 sm:space-y-6">
+        <TabsList className="w-full grid grid-cols-3">
+          <TabsTrigger value="conversation" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden xs:inline">Conversation</span>
+            <span className="xs:hidden">Chat</span>
           </TabsTrigger>
-          <TabsTrigger value="voice" className="gap-2">
-            <Mic className="w-4 h-4" />
-            Voice Settings
+          <TabsTrigger value="voice" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Mic className="w-3 h-3 sm:w-4 sm:h-4" />
+            Voice
           </TabsTrigger>
-          <TabsTrigger value="advanced" className="gap-2">
-            <Zap className="w-4 h-4" />
+          <TabsTrigger value="advanced" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
             Advanced
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="conversation" className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Conversation Settings</h3>
+        <TabsContent value="conversation" className="space-y-4 sm:space-y-6">
+          <Card className="p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Conversation Settings</h3>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="first-message">First Message</Label>
-                <p className="text-sm text-muted-foreground mb-2">
+                <Label htmlFor="first-message" className="text-sm sm:text-base">First Message</Label>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-2">
                   The initial greeting your agent will say when starting a conversation
                 </p>
                 <Textarea
@@ -205,7 +206,7 @@ export default function AgentSettings() {
                   onChange={(e) => setSettings({ ...settings, firstMessage: e.target.value })}
                   placeholder="Hello! How can I help you today?"
                   rows={4}
-                  className="resize-none"
+                  className="resize-none text-sm sm:text-base"
                   data-testid="textarea-first-message"
                 />
               </div>
@@ -213,30 +214,30 @@ export default function AgentSettings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="voice" className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Voice Selection</h3>
+        <TabsContent value="voice" className="space-y-4 sm:space-y-6">
+          <Card className="p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Voice Selection</h3>
             {voicesLoading ? (
               <p className="text-muted-foreground">Loading available voices...</p>
             ) : (
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="voice-select">Choose Voice</Label>
+                  <Label htmlFor="voice-select" className="text-sm sm:text-base">Choose Voice</Label>
                   <Select
                     value={settings.voiceId}
                     onValueChange={(value) => setSettings({ ...settings, voiceId: value })}
                   >
-                    <SelectTrigger id="voice-select" data-testid="select-voice">
+                    <SelectTrigger id="voice-select" className="w-full" data-testid="select-voice">
                       <SelectValue placeholder="Select a voice" />
                     </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
+                    <SelectContent className="max-h-[250px] sm:max-h-[300px]">
                       {voices.map((voice) => (
                         <SelectItem key={voice.voice_id} value={voice.voice_id}>
                           <div className="flex items-center justify-between w-full">
-                            <div>
-                              <span className="font-medium">{voice.name}</span>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium text-sm">{voice.name}</span>
                               {voice.labels && (
-                                <span className="text-xs text-muted-foreground ml-2">
+                                <span className="block sm:inline text-xs text-muted-foreground mt-1 sm:mt-0 sm:ml-2">
                                   {[voice.labels.gender, voice.labels.age, voice.labels.accent]
                                     .filter(Boolean)
                                     .join(" • ")}
@@ -266,12 +267,12 @@ export default function AgentSettings() {
 
                 {settings.voiceId && (
                   <div className="space-y-4 pt-4 border-t">
-                    <h4 className="font-medium">Voice Fine-tuning</h4>
+                    <h4 className="text-sm sm:text-base font-medium">Voice Fine-tuning</h4>
                     
                     <div>
                       <div className="flex justify-between mb-2">
-                        <Label>Stability</Label>
-                        <span className="text-sm text-muted-foreground">
+                        <Label className="text-xs sm:text-sm">Stability</Label>
+                        <span className="text-xs sm:text-sm text-muted-foreground">
                           {Math.round(settings.stability * 100)}%
                         </span>
                       </div>
@@ -283,15 +284,15 @@ export default function AgentSettings() {
                         className="w-full"
                         data-testid="slider-stability"
                       />
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                         Lower values make the voice more expressive, higher values make it more stable
                       </p>
                     </div>
 
                     <div>
                       <div className="flex justify-between mb-2">
-                        <Label>Similarity Boost</Label>
-                        <span className="text-sm text-muted-foreground">
+                        <Label className="text-xs sm:text-sm">Similarity Boost</Label>
+                        <span className="text-xs sm:text-sm text-muted-foreground">
                           {Math.round(settings.similarityBoost * 100)}%
                         </span>
                       </div>
@@ -303,15 +304,15 @@ export default function AgentSettings() {
                         className="w-full"
                         data-testid="slider-similarity"
                       />
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                         Higher values make the voice closer to the original, may reduce stability
                       </p>
                     </div>
 
                     <div>
                       <div className="flex justify-between mb-2">
-                        <Label>Style Exaggeration</Label>
-                        <span className="text-sm text-muted-foreground">
+                        <Label className="text-xs sm:text-sm">Style Exaggeration</Label>
+                        <span className="text-xs sm:text-sm text-muted-foreground">
                           {Math.round(settings.style * 100)}%
                         </span>
                       </div>
@@ -323,15 +324,15 @@ export default function AgentSettings() {
                         className="w-full"
                         data-testid="slider-style"
                       />
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                         Higher values make the voice more expressive and animated
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="speaker-boost">Speaker Boost</Label>
-                        <p className="text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1">
+                        <Label htmlFor="speaker-boost" className="text-xs sm:text-sm">Speaker Boost</Label>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">
                           Enhance voice clarity and presence
                         </p>
                       </div>
@@ -349,10 +350,10 @@ export default function AgentSettings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="advanced" className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Advanced Settings</h3>
-            <p className="text-muted-foreground">
+        <TabsContent value="advanced" className="space-y-4 sm:space-y-6">
+          <Card className="p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Advanced Settings</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Additional configuration options will be available here in future updates.
             </p>
           </Card>
