@@ -187,23 +187,32 @@ export default function Playground() {
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
+        console.log("WebSocket message received:", data.type, data);
         
         switch (data.type) {
           case "conversation_initiation_metadata":
             // Connection established
-            console.log("Conversation initialized:", data.conversation_id);
+            console.log("Conversation initialized:", data);
+            // Start audio streaming after initialization
+            if (mediaStreamRef.current) {
+              startAudioStreaming(mediaStreamRef.current, ws);
+            }
             break;
             
+          case "audio":
           case "agent_response_audio_chunk":
             // Play audio if speaker is on
-            if (isSpeakerOn && data.audio_chunk) {
-              playAudio(data.audio_chunk);
+            const audioChunk = data.audio_chunk || data.audio;
+            if (isSpeakerOn && audioChunk) {
+              console.log("Playing audio chunk");
+              playAudio(audioChunk);
             }
             break;
             
           case "user_transcript":
             // User speech transcript
             if (data.transcript) {
+              console.log("User transcript:", data.transcript);
               setTranscript(prev => [...prev, {
                 role: "user",
                 message: data.transcript,
@@ -213,11 +222,14 @@ export default function Playground() {
             break;
             
           case "agent_response":
+          case "agent_transcript":
             // Agent text response
-            if (data.text) {
+            const text = data.text || data.transcript;
+            if (text) {
+              console.log("Agent response:", text);
               setTranscript(prev => [...prev, {
                 role: "assistant",
-                message: data.text,
+                message: text,
                 timestamp: new Date()
               }]);
             }
@@ -227,6 +239,9 @@ export default function Playground() {
             // Keep connection alive
             ws.send(JSON.stringify({ type: "pong", event_id: data.event_id }));
             break;
+            
+          default:
+            console.log("Unknown message type:", data.type);
         }
       };
 
@@ -245,8 +260,7 @@ export default function Playground() {
         setIsConnecting(false);
       };
 
-      // Start sending audio
-      startAudioStreaming(stream, ws);
+      // Audio streaming will start after conversation initialization
 
     } catch (error) {
       console.error("Error starting call:", error);
@@ -321,39 +335,59 @@ export default function Playground() {
   };
 
   const startAudioStreaming = (stream: MediaStream, ws: WebSocket) => {
-    const audioContext = new AudioContext({ sampleRate: 16000 });
+    console.log("Starting audio streaming to WebSocket");
+    
+    // Create audio context with 16kHz sample rate as required by ElevenLabs
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
     const source = audioContext.createMediaStreamSource(stream);
-    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    
+    // Use ScriptProcessor for now (will be replaced with AudioWorklet in production)
+    const bufferSize = 2048; // Smaller buffer for lower latency
+    const processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+    
+    let isProcessing = false;
     
     processor.onaudioprocess = (e) => {
-      if (ws.readyState === WebSocket.OPEN && !isMuted) {
-        const inputData = e.inputBuffer.getChannelData(0);
+      if (ws.readyState === WebSocket.OPEN && !isMuted && !isProcessing) {
+        isProcessing = true;
         
-        // Convert float32 to int16
-        const int16Array = new Int16Array(inputData.length);
-        for (let i = 0; i < inputData.length; i++) {
-          const s = Math.max(-1, Math.min(1, inputData[i]));
-          int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        try {
+          const inputData = e.inputBuffer.getChannelData(0);
+          
+          // Convert float32 to int16
+          const int16Array = new Int16Array(inputData.length);
+          for (let i = 0; i < inputData.length; i++) {
+            const s = Math.max(-1, Math.min(1, inputData[i]));
+            int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
+          
+          // Convert to base64
+          const uint8Array = new Uint8Array(int16Array.buffer);
+          let binaryString = '';
+          for (let i = 0; i < uint8Array.length; i++) {
+            binaryString += String.fromCharCode(uint8Array[i]);
+          }
+          const base64 = btoa(binaryString);
+          
+          // Send audio chunk to WebSocket
+          const message = {
+            type: "user_audio_chunk",
+            audio_chunk: base64
+          };
+          
+          ws.send(JSON.stringify(message));
+        } catch (error) {
+          console.error("Error processing audio:", error);
         }
         
-        // Convert to base64
-        const uint8Array = new Uint8Array(int16Array.buffer);
-        let binaryString = '';
-        for (let i = 0; i < uint8Array.length; i++) {
-          binaryString += String.fromCharCode(uint8Array[i]);
-        }
-        const base64 = btoa(binaryString);
-        
-        // Send audio chunk to WebSocket
-        ws.send(JSON.stringify({
-          type: "user_audio_chunk",
-          audio_chunk: base64
-        }));
+        isProcessing = false;
       }
     };
     
     source.connect(processor);
     processor.connect(audioContext.destination);
+    
+    console.log("Audio streaming setup complete");
   };
 
   const playAudio = async (audioData: string) => {
