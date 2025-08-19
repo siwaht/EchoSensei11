@@ -48,6 +48,14 @@ export default function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <div className={cn(
         "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out",
@@ -71,6 +79,7 @@ export default function AppShell({ children }: AppShellProps) {
                 <Link
                   key={item.name}
                   href={item.href}
+                  onClick={() => setSidebarOpen(false)}
                   className={cn(
                     "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                     isActive
@@ -91,6 +100,7 @@ export default function AppShell({ children }: AppShellProps) {
               {user?.isAdmin && (
                 <Link
                   href="/admin"
+                  onClick={() => setSidebarOpen(false)}
                   className={cn(
                     "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                     location === "/admin"
@@ -109,6 +119,7 @@ export default function AppShell({ children }: AppShellProps) {
                   <Link
                     key={item.name}
                     href={item.href}
+                    onClick={() => setSidebarOpen(false)}
                     className="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-card-foreground hover:bg-muted/50 transition-colors"
                     data-testid={`nav-${item.name.toLowerCase()}`}
                   >
