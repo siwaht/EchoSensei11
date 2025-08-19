@@ -657,6 +657,153 @@ export function registerRoutes(app: Express): Server {
       const { agentId } = req.params;
       const updates = req.body;
 
+      // First, get the agent to get the ElevenLabs agent ID
+      const agent = await storage.getAgent(user.organizationId, agentId);
+      if (!agent) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      // If we have any ElevenLabs-related updates, sync with ElevenLabs API
+      const needsElevenLabsUpdate = updates.firstMessage !== undefined || 
+                                     updates.systemPrompt !== undefined ||
+                                     updates.language !== undefined ||
+                                     updates.voiceId !== undefined || 
+                                     updates.voiceSettings !== undefined ||
+                                     updates.llmSettings !== undefined ||
+                                     updates.knowledgeBase !== undefined ||
+                                     updates.tools !== undefined ||
+                                     updates.dynamicVariables !== undefined ||
+                                     updates.evaluationCriteria !== undefined ||
+                                     updates.dataCollection !== undefined;
+
+      if (needsElevenLabsUpdate && agent.elevenLabsAgentId) {
+        const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+        if (integration && integration.apiKey) {
+          const decryptedKey = decryptApiKey(integration.apiKey);
+          
+          try {
+            // Build comprehensive ElevenLabs payload
+            const elevenLabsPayload: any = {
+              name: agent.name,
+              conversation_config: {
+                agent: {
+                  prompt: {
+                    prompt: updates.systemPrompt || agent.systemPrompt || "",
+                    first_message: updates.firstMessage || agent.firstMessage || "",
+                    language: updates.language || agent.language || "en",
+                  }
+                }
+              }
+            };
+
+            // Add LLM settings if provided
+            if (updates.llmSettings || agent.llmSettings) {
+              const llmSettings = updates.llmSettings || agent.llmSettings;
+              elevenLabsPayload.conversation_config.agent.llm = {
+                model: llmSettings.model || "gpt-4",
+                temperature: llmSettings.temperature || 0.7,
+                max_tokens: llmSettings.maxTokens || 150,
+              };
+            }
+
+            // Add voice/TTS settings if provided
+            if (updates.voiceId || updates.voiceSettings || agent.voiceId || agent.voiceSettings) {
+              const voiceSettings = updates.voiceSettings || agent.voiceSettings || {};
+              elevenLabsPayload.conversation_config.tts = {
+                voice_id: updates.voiceId || agent.voiceId,
+                agent_output_audio_format: "pcm_16000",
+                optimize_streaming_latency: 3,
+                stability: voiceSettings.stability || 0.5,
+                similarity_boost: voiceSettings.similarityBoost || 0.75,
+                style: voiceSettings.style || 0,
+                use_speaker_boost: voiceSettings.useSpeakerBoost ?? true
+              };
+            }
+
+            // Add knowledge base/RAG settings if provided
+            if (updates.knowledgeBase || agent.knowledgeBase) {
+              const kb = updates.knowledgeBase || agent.knowledgeBase;
+              if (kb.useRag) {
+                elevenLabsPayload.conversation_config.knowledge_base = {
+                  use_rag: kb.useRag,
+                  max_chunks: kb.maxChunks || 5,
+                  vector_distance: kb.vectorDistance || 0.8,
+                  embedding_model: kb.embeddingModel || "e5_mistral_7b_instruct",
+                };
+              }
+            }
+
+            // Add tools configuration if provided
+            if (updates.tools || agent.tools) {
+              const tools = updates.tools || agent.tools;
+              if (tools.toolIds && tools.toolIds.length > 0) {
+                elevenLabsPayload.conversation_config.agent.prompt.tool_ids = tools.toolIds;
+              }
+              // Note: webhook tools need to be created separately via ElevenLabs tools API
+            }
+
+            // Add dynamic variables if provided
+            if (updates.dynamicVariables || agent.dynamicVariables) {
+              elevenLabsPayload.conversation_config.agent.dynamic_variables = 
+                updates.dynamicVariables || agent.dynamicVariables;
+            }
+
+            // Add evaluation criteria if provided
+            if (updates.evaluationCriteria || agent.evaluationCriteria) {
+              const evaluation = updates.evaluationCriteria || agent.evaluationCriteria;
+              if (evaluation.enabled && evaluation.criteria) {
+                elevenLabsPayload.platform_settings = {
+                  ...elevenLabsPayload.platform_settings,
+                  evaluation: {
+                    criteria: evaluation.criteria.map((c: string) => ({
+                      name: c,
+                      description: `Evaluate if ${c}`,
+                      type: "boolean"
+                    }))
+                  }
+                };
+              }
+            }
+
+            // Add data collection settings if provided
+            if (updates.dataCollection || agent.dataCollection) {
+              const collection = updates.dataCollection || agent.dataCollection;
+              if (collection.enabled && collection.fields) {
+                elevenLabsPayload.platform_settings = {
+                  ...elevenLabsPayload.platform_settings,
+                  data_collection: {
+                    fields: collection.fields
+                  }
+                };
+              }
+            }
+
+            console.log("Updating ElevenLabs agent with payload:", JSON.stringify(elevenLabsPayload, null, 2));
+
+            const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
+              method: "PATCH",
+              headers: {
+                "xi-api-key": decryptedKey,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(elevenLabsPayload),
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error("Failed to update agent in ElevenLabs:", errorText);
+              // Continue anyway - we'll still update locally
+            } else {
+              console.log("Successfully updated agent in ElevenLabs");
+            }
+          } catch (elevenLabsError) {
+            console.error("Error updating ElevenLabs agent:", elevenLabsError);
+            // Continue with local update even if ElevenLabs update fails
+          }
+        }
+      }
+
+      // Update the agent in our database
       const updatedAgent = await storage.updateAgent(user.organizationId, agentId, updates);
       res.json(updatedAgent);
     } catch (error) {

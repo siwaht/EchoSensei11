@@ -92,12 +92,54 @@ export const agents = pgTable("agents", {
   name: varchar("name").notNull(),
   description: text("description"),
   firstMessage: text("first_message"),
+  systemPrompt: text("system_prompt"),
+  language: varchar("language").default("en"),
   voiceId: varchar("voice_id"),
   voiceSettings: json("voice_settings").$type<{
     stability?: number;
     similarityBoost?: number;
     style?: number;
     useSpeakerBoost?: boolean;
+  }>(),
+  llmSettings: json("llm_settings").$type<{
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+  }>(),
+  knowledgeBase: json("knowledge_base").$type<{
+    useRag?: boolean;
+    maxChunks?: number;
+    vectorDistance?: number;
+    embeddingModel?: string;
+    documents?: Array<{
+      id: string;
+      name: string;
+      type: string;
+      url?: string;
+    }>;
+  }>(),
+  tools: json("tools").$type<{
+    toolIds?: string[];
+    webhooks?: Array<{
+      id: string;
+      name: string;
+      url: string;
+      method: string;
+      description?: string;
+    }>;
+  }>(),
+  dynamicVariables: json("dynamic_variables").$type<Record<string, string>>(),
+  evaluationCriteria: json("evaluation_criteria").$type<{
+    enabled?: boolean;
+    criteria?: string[];
+  }>(),
+  dataCollection: json("data_collection").$type<{
+    enabled?: boolean;
+    fields?: Array<{
+      name: string;
+      type: string;
+      description?: string;
+    }>;
   }>(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
