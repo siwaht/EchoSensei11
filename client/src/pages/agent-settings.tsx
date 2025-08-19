@@ -45,6 +45,7 @@ export default function AgentSettings() {
   const [voiceSearch, setVoiceSearch] = useState("");
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Fetch agent data
   const { data: agents = [], isLoading: agentsLoading } = useQuery<Agent[]>({
@@ -81,6 +82,7 @@ export default function AgentSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
       toast({ title: "Agent settings updated successfully" });
+      setHasUnsavedChanges(false);
       setLocation("/dashboard");
     },
     onError: (error: any) => {
@@ -231,19 +233,49 @@ export default function AgentSettings() {
             <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Conversation Settings</h3>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="first-message" className="text-sm sm:text-base">First Message</Label>
+                <div className="flex items-center justify-between mb-1">
+                  <Label htmlFor="first-message" className="text-sm sm:text-base">First Message</Label>
+                  <div className="flex items-center gap-2">
+                    {hasUnsavedChanges && (
+                      <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                        <div className="w-2 h-2 bg-amber-600 dark:bg-amber-400 rounded-full animate-pulse" />
+                        Unsaved changes
+                      </span>
+                    )}
+                    {!hasUnsavedChanges && settings.firstMessage && (
+                      <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                        <Check className="w-3 h-3" />
+                        Saved
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-2">
                   The initial greeting your agent will say when starting a conversation
                 </p>
-                <Textarea
-                  id="first-message"
-                  value={settings.firstMessage}
-                  onChange={(e) => setSettings({ ...settings, firstMessage: e.target.value })}
-                  placeholder="Hello! How can I help you today?"
-                  rows={4}
-                  className="resize-none text-sm sm:text-base"
-                  data-testid="textarea-first-message"
-                />
+                <div className="relative">
+                  <Textarea
+                    id="first-message"
+                    value={settings.firstMessage}
+                    onChange={(e) => {
+                      setSettings({ ...settings, firstMessage: e.target.value });
+                      setHasUnsavedChanges(true);
+                    }}
+                    placeholder="Hello! How can I help you today?"
+                    rows={4}
+                    className="resize-none text-sm sm:text-base pr-16"
+                    data-testid="textarea-first-message"
+                  />
+                  <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                    {settings.firstMessage.length}/500
+                  </div>
+                </div>
+                {settings.firstMessage && (
+                  <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Preview:</p>
+                    <p className="text-sm italic">"{settings.firstMessage}"</p>
+                  </div>
+                )}
               </div>
             </div>
           </Card>
@@ -286,7 +318,10 @@ export default function AgentSettings() {
                               ? 'border-primary bg-primary/5' 
                               : 'hover:border-gray-300'
                           }`}
-                          onClick={() => setSettings({ ...settings, voiceId: voice.voice_id })}
+                          onClick={() => {
+                            setSettings({ ...settings, voiceId: voice.voice_id });
+                            setHasUnsavedChanges(true);
+                          }}
                           data-testid={`voice-card-${voice.voice_id}`}
                         >
                           <div className="flex items-center justify-between">
@@ -407,7 +442,10 @@ export default function AgentSettings() {
                       </div>
                       <Slider
                         value={[settings.stability]}
-                        onValueChange={([value]) => setSettings({ ...settings, stability: value })}
+                        onValueChange={([value]) => {
+                          setSettings({ ...settings, stability: value });
+                          setHasUnsavedChanges(true);
+                        }}
                         max={1}
                         step={0.01}
                         className="w-full"
@@ -427,7 +465,10 @@ export default function AgentSettings() {
                       </div>
                       <Slider
                         value={[settings.similarityBoost]}
-                        onValueChange={([value]) => setSettings({ ...settings, similarityBoost: value })}
+                        onValueChange={([value]) => {
+                          setSettings({ ...settings, similarityBoost: value });
+                          setHasUnsavedChanges(true);
+                        }}
                         max={1}
                         step={0.01}
                         className="w-full"
@@ -447,7 +488,10 @@ export default function AgentSettings() {
                       </div>
                       <Slider
                         value={[settings.style]}
-                        onValueChange={([value]) => setSettings({ ...settings, style: value })}
+                        onValueChange={([value]) => {
+                          setSettings({ ...settings, style: value });
+                          setHasUnsavedChanges(true);
+                        }}
                         max={1}
                         step={0.01}
                         className="w-full"
@@ -468,7 +512,10 @@ export default function AgentSettings() {
                       <Switch
                         id="speaker-boost"
                         checked={settings.useSpeakerBoost}
-                        onCheckedChange={(checked) => setSettings({ ...settings, useSpeakerBoost: checked })}
+                        onCheckedChange={(checked) => {
+                          setSettings({ ...settings, useSpeakerBoost: checked });
+                          setHasUnsavedChanges(true);
+                        }}
                         data-testid="switch-speaker-boost"
                       />
                     </div>
