@@ -344,7 +344,13 @@ export function registerRoutes(app: Express): Server {
   // Get integration by provider
   app.get("/api/integrations/:provider", isAuthenticated, async (req: any, res) => {
     try {
-      const { provider } = req.params;
+      let { provider } = req.params;
+      
+      // Map voiceai to elevenlabs internally
+      if (provider === "voiceai") {
+        provider = "elevenlabs";
+      }
+      
       const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
@@ -567,7 +573,43 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get available ElevenLabs voices
+  // Get available VoiceAI voices (new endpoint)
+  app.get("/api/voiceai/voices", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "VoiceAI API key not configured" });
+      }
+
+      const decryptedKey = decryptApiKey(integration.apiKey);
+      
+      // Fetch voices from API
+      const response = await fetch("https://api.elevenlabs.io/v1/voices", {
+        headers: {
+          "xi-api-key": decryptedKey,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      res.json(data.voices || []);
+    } catch (error) {
+      console.error("Error fetching voices:", error);
+      res.status(500).json({ message: "Failed to fetch voices" });
+    }
+  });
+  
+  // Legacy endpoint for backwards compatibility
   app.get("/api/elevenlabs/voices", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -578,7 +620,7 @@ export function registerRoutes(app: Express): Server {
 
       const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
       if (!integration || !integration.apiKey) {
-        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+        return res.status(400).json({ message: "API key not configured" });
       }
 
       const decryptedKey = decryptApiKey(integration.apiKey);
@@ -592,7 +634,7 @@ export function registerRoutes(app: Express): Server {
       });
 
       if (!response.ok) {
-        throw new Error(`ElevenLabs API error: ${response.statusText}`);
+        throw new Error(`API error: ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -667,10 +709,68 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Webhook endpoint for ElevenLabs callbacks
+  // Webhook endpoint for VoiceAI callbacks (new endpoint)
+  app.post("/api/webhooks/voiceai", async (req, res) => {
+    try {
+      console.log("VoiceAI webhook received:", JSON.stringify(req.body, null, 2));
+      
+      const { type, data } = req.body;
+      
+      if (type === "post_call_transcription") {
+        // Extract call data from webhook
+        const {
+          conversation_id,
+          agent_id,
+          transcript,
+          duration_seconds,
+          conversation_metadata,
+          analysis
+        } = data;
+
+        // Find the agent in our system
+        const agent = await storage.getAgentByElevenLabsId(agent_id, "");
+        if (agent) {
+          // Extract cost data if available from webhook
+          const costData = {
+            llm_cost: data.llm_cost,
+            cost: data.cost,
+            credits_used: data.credits_used,
+          };
+          
+          // Store call log
+          await storage.createCallLog({
+            organizationId: agent.organizationId,
+            agentId: agent.id,
+            elevenLabsCallId: conversation_id,
+            duration: duration_seconds || 0,
+            transcript: transcript,
+            audioUrl: "", // Will be populated from audio webhook if available
+            cost: calculateCallCost(duration_seconds || 0, costData).toString(),
+            status: "completed",
+          });
+          
+          console.log("Call log saved for conversation:", conversation_id);
+        }
+      } else if (type === "post_call_audio") {
+        // Update call log with audio URL
+        const { conversation_id, full_audio } = data;
+        
+        // In production, you'd save the audio to cloud storage
+        // For now, we'll just log that we received it
+        console.log("Audio received for conversation:", conversation_id, "Size:", full_audio?.length || 0);
+      }
+      
+      res.status(200).json({ message: "Webhook processed successfully" });
+    } catch (error) {
+      console.error("Error processing webhook:", error);
+      res.status(500).json({ message: "Failed to process webhook" });
+    }
+  });
+  
+  // Legacy webhook endpoint for backwards compatibility
   app.post("/api/webhooks/elevenlabs", async (req, res) => {
     try {
-      console.log("ElevenLabs webhook received:", JSON.stringify(req.body, null, 2));
+      console.log("Webhook received (legacy):", JSON.stringify(req.body, null, 2));
       
       const { type, data } = req.body;
       
@@ -1069,7 +1169,7 @@ export function registerRoutes(app: Express): Server {
       // Get ElevenLabs API key
       const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
       if (!integration || integration.status !== "ACTIVE") {
-        return res.status(400).json({ message: "ElevenLabs integration not configured or inactive. Please configure your API key in the Integrations tab." });
+        return res.status(400).json({ message: "VoiceAI integration not configured or inactive. Please configure your API key in the Integrations tab." });
       }
 
       const apiKey = decryptApiKey(integration.apiKey);
@@ -1077,7 +1177,7 @@ export function registerRoutes(app: Express): Server {
       // Get signed URL from ElevenLabs for WebSocket connection
       // According to ElevenLabs docs, we need to use the conversation endpoint
       const url = `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${agentId}`;
-      console.log("Calling ElevenLabs API:", url);
+      console.log("Calling VoiceAI API:", url);
       
       const response = await fetch(url, {
         method: "GET",

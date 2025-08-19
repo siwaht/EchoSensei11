@@ -82,7 +82,7 @@ export default function Integrations() {
   };
 
   const copyWebhookUrl = () => {
-    const webhookUrl = `${window.location.origin}/api/webhooks/elevenlabs`;
+    const webhookUrl = `${window.location.origin}/api/webhooks/voiceai`;
     navigator.clipboard.writeText(webhookUrl);
     toast({
       title: "Copied",
@@ -131,10 +131,10 @@ export default function Integrations() {
     <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8 px-4 sm:px-0">
       <div className="text-center">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2" data-testid="text-page-title">
-          ElevenLabs Integration
+          API Configuration
         </h2>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400" data-testid="text-page-description">
-          Connect your ElevenLabs account to start monitoring your voice agents
+          Configure your API credentials to enable voice agent monitoring and management
         </p>
       </div>
 
@@ -188,13 +188,13 @@ export default function Integrations() {
               name="apiKey"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>ElevenLabs API Key</FormLabel>
+                  <FormLabel>VoiceAI API Key</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input
                         {...field}
                         type={showApiKey ? "text" : "password"}
-                        placeholder="Enter your ElevenLabs API key"
+                        placeholder="Enter your VoiceAI API key"
                         data-testid="input-api-key"
                       />
                       <Button
@@ -251,7 +251,7 @@ export default function Integrations() {
             </Label>
             <div className="flex">
               <Input
-                value={`${window.location.origin}/api/webhooks/elevenlabs`}
+                value={`${window.location.origin}/api/webhooks/voiceai`}
                 readOnly
                 className="flex-1 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
                 data-testid="input-webhook-url"
@@ -266,7 +266,7 @@ export default function Integrations() {
               </Button>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              Add this webhook URL to your ElevenLabs account to receive real-time call data.
+              Add this webhook URL to your voice agent configuration to receive real-time call data.
             </p>
           </div>
         </div>

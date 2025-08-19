@@ -2,7 +2,7 @@
 
 ## Overview
 
-VoiceAI Dashboard is a multi-tenant SaaS application that allows organizations to monitor their ElevenLabs voice AI agents. The platform follows a "Bring Your Own Key" (BYOK) model where clients securely connect their own ElevenLabs API credentials to monitor call logs, agent performance, and usage analytics. The application provides comprehensive dashboards for tracking voice agent interactions, billing information, and system integrations.
+VoiceAI Dashboard is a white-label, multi-tenant SaaS platform for managing and monitoring voice AI agents. The platform follows a "Bring Your Own Key" (BYOK) model where clients securely connect their VoiceAI API credentials to monitor call logs, agent performance, and usage analytics. The application provides comprehensive dashboards for tracking voice agent interactions, billing information, and system integrations. While the platform is powered by advanced voice AI technology, it operates as a fully branded solution where customers interact with the VoiceAI brand without awareness of the underlying infrastructure.
 
 ### Recent Updates (August 19, 2025)
 - **Complete Mobile Responsiveness**: Implemented full mobile responsiveness across all application pages
@@ -60,17 +60,17 @@ Secure authentication system with multi-tenant support:
 - **Admin System**: Role-based access control with dedicated admin dashboard
 - **Admin User**: cc@siwaht.com has full administrative privileges
 
-### ElevenLabs Integration
-BYOK integration pattern for secure third-party service access:
+### VoiceAI Integration
+BYOK integration pattern for secure API access:
 
 - **API Key Management**: Client-provided API keys encrypted and stored securely using AES-256-CBC
-- **Agent Validation**: Real-time validation of ElevenLabs conversational AI agent IDs via `/v1/convai/agents/` API
-- **Call Data Collection**: Webhook endpoint `/api/webhooks/elevenlabs` for real-time call transcripts and audio
-- **Manual Sync**: User-triggered sync button to fetch historical call logs from ElevenLabs API
-- **Audio Recordings**: Authenticated proxy endpoint `/api/audio/:conversationId` streams actual ElevenLabs call recordings
+- **Agent Validation**: Real-time validation of conversational AI agent IDs via secure API endpoints
+- **Call Data Collection**: Webhook endpoint `/api/webhooks/voiceai` for real-time call transcripts and audio
+- **Manual Sync**: User-triggered sync button to fetch historical call logs from VoiceAI API
+- **Audio Recordings**: Authenticated proxy endpoint `/api/audio/:conversationId` streams actual call recordings
 - **Data Storage**: Complete call logs with transcripts, duration, costs, and audio URLs stored in PostgreSQL
 - **Analytics**: Real-time dashboard showing total calls, minutes, estimated costs, and active agents
-- **Recordings Tab**: Dedicated interface for browsing, playing, and downloading actual voice call recordings from ElevenLabs
+- **Recordings Tab**: Dedicated interface for browsing, playing, and downloading actual voice call recordings
 
 ## External Dependencies
 
@@ -80,7 +80,7 @@ BYOK integration pattern for secure third-party service access:
 - **Build System**: Vite for fast development and optimized production builds
 
 ### Third-party Services
-- **ElevenLabs API**: Voice AI service integration with BYOK model
+- **VoiceAI API**: Voice AI service integration with BYOK model (white-labeled platform)
 - **Stripe**: Payment processing for credit card and digital wallet payments (configuration pending)
 - **PayPal**: Alternative payment gateway for PayPal and Venmo payments (configuration pending)
 - **Font Services**: Google Fonts for typography (Architects Daughter, DM Sans, Fira Code, Geist Mono)

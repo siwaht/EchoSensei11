@@ -45,7 +45,7 @@ export default function Playground() {
 
   // Fetch integration to get API key status
   const { data: integration, isLoading: integrationLoading } = useQuery<any>({
-    queryKey: ["/api/integrations/elevenlabs"],
+    queryKey: ["/api/integrations/voiceai"],
     retry: 1,
   });
 
@@ -110,8 +110,8 @@ export default function Playground() {
     // Check if integration exists and is active
     if (!integration) {
       toast({
-        title: "ElevenLabs not configured", 
-        description: "Please add your ElevenLabs API key in the Integrations tab",
+        title: "API not configured", 
+        description: "Please add your VoiceAI API key in the Integrations tab",
         variant: "destructive",
       });
       return;
@@ -119,7 +119,7 @@ export default function Playground() {
     
     if (integration.status !== "ACTIVE") {
       toast({
-        title: "ElevenLabs integration inactive", 
+        title: "API integration inactive", 
         description: "Please test your API key in the Integrations tab to activate it",
         variant: "destructive",
       });
@@ -159,7 +159,7 @@ export default function Playground() {
 
       const { signedUrl } = data;
 
-      // Connect to ElevenLabs WebSocket
+      // Connect to VoiceAI WebSocket
       const ws = new WebSocket(signedUrl);
       wsRef.current = ws;
 
@@ -185,7 +185,7 @@ export default function Playground() {
           const data = JSON.parse(event.data);
           console.log("WebSocket message:", data);
           
-          // Handle different message formats from ElevenLabs
+          // Handle different message formats from VoiceAI
           if (data.type === "conversation_initiation_metadata") {
             console.log("Conversation metadata received:", data.conversation_initiation_metadata_event);
             
@@ -472,7 +472,7 @@ export default function Playground() {
     if (!isSpeakerOn) return;
     
     try {
-      // ElevenLabs sends PCM 16-bit audio at 16kHz encoded in base64
+      // VoiceAI sends PCM 16-bit audio at 16kHz encoded in base64
       // We need to convert it to a playable format
       
       // Decode base64 to binary
@@ -649,7 +649,7 @@ export default function Playground() {
               <div className="space-y-1">
                 <p className="text-sm font-medium">Test Environment</p>
                 <p className="text-xs text-muted-foreground">
-                  This playground uses your ElevenLabs API key. Voice calls will consume your ElevenLabs credits.
+                  This playground uses your VoiceAI API key. Voice calls will consume your API credits.
                 </p>
               </div>
             </div>

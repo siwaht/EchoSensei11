@@ -56,7 +56,7 @@ export default function AgentSettings() {
 
   // Fetch available voices
   const { data: voices = [], isLoading: voicesLoading } = useQuery<Voice[]>({
-    queryKey: ["/api/elevenlabs/voices"],
+    queryKey: ["/api/voiceai/voices"],
     enabled: !!agent,
   });
 
