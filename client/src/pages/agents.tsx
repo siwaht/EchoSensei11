@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Plus, MoreHorizontal, Search, ExternalLink, TestTube } from "lucide-react";
+import { Bot, Plus, MoreHorizontal, Search, ExternalLink } from "lucide-react";
 import { AddAgentModal } from "@/components/modals/add-agent-modal";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
@@ -104,11 +104,6 @@ export default function Agents() {
           <p className="text-sm text-muted-foreground mt-1">Create and manage your AI agents</p>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/playground">
-            <Button variant="ghost" className="text-sm" data-testid="button-playground">
-              Playground
-            </Button>
-          </Link>
           <Button 
             onClick={() => setShowAddModal(true)} 
             className="bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-200 dark:text-black text-white" 
@@ -180,10 +175,8 @@ export default function Agents() {
                 {filteredAgents.map((agent) => (
                   <tr key={agent.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
                     <td className="p-4">
-                      <Link href={`/agents/${agent.id}/settings`}>
-                        <a className="font-medium hover:underline cursor-pointer" data-testid={`link-agent-${agent.id}`}>
-                          {agent.name}
-                        </a>
+                      <Link href={`/agents/${agent.id}/settings`} className="font-medium hover:underline cursor-pointer" data-testid={`link-agent-${agent.id}`}>
+                        {agent.name}
                       </Link>
                     </td>
                     <td className="p-4 text-sm text-muted-foreground">
@@ -200,13 +193,6 @@ export default function Agents() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem 
-                            onClick={() => window.open(`/playground?agentId=${agent.id}`, '_blank')}
-                            data-testid={`menu-test-${agent.id}`}
-                          >
-                            <TestTube className="h-4 w-4 mr-2" />
-                            Test AI agent
-                          </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => {
                               const url = `/api/agents/${agent.id}/link?returnUrl=${encodeURIComponent(window.location.href)}`;

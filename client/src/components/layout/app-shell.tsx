@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import { useAuth } from "@/hooks/useAuth";
 import { 
-  Mic, 
   Home, 
   Bot, 
   BookOpen,
@@ -21,23 +20,16 @@ import {
   LogOut,
   Shield,
   ChevronDown,
-  ChevronRight,
   Bell,
   CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+// Removed Collapsible imports - no longer needed
 
 interface NavItem {
   name: string;
-  href?: string;
+  href: string;
   icon: any;
-  children?: { name: string; href: string }[];
-  badge?: string;
 }
 
 interface AppShellProps {
@@ -49,58 +41,26 @@ export default function AppShell({ children }: AppShellProps) {
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
   const { user } = useAuth();
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    Build: true,
-    Evaluate: false,
-    Telephony: false,
-  });
+  // Removed expandedSections since we no longer have collapsible sections
 
   const navigation: NavItem[] = [
     { name: "Home", href: "/", icon: Home },
-    { 
-      name: "Build", 
-      icon: Bot,
-      children: [
-        { name: "Agents", href: "/agents" },
-        { name: "Knowledge Base", href: "/knowledge-base" },
-        { name: "Tools", href: "/tools" },
-        { name: "Voices", href: "/voices" },
-      ]
-    },
-    { 
-      name: "Evaluate",
-      icon: MessageSquare,
-      children: [
-        { name: "Conversations", href: "/conversations" },
-      ]
-    },
+    { name: "Agents", href: "/agents", icon: Bot },
+    { name: "Knowledge Base", href: "/knowledge-base", icon: BookOpen },
+    { name: "Tools", href: "/tools", icon: Wrench },
+    { name: "Voices", href: "/voices", icon: AudioWaveform },
+    { name: "Conversations", href: "/conversations", icon: MessageSquare },
+    { name: "Phone Numbers", href: "/phone-numbers", icon: Phone },
+    { name: "Outbound", href: "/outbound", icon: PhoneOutgoing },
     { name: "Integrations", href: "/integrations", icon: Plug },
-    { 
-      name: "Telephony",
-      icon: Phone,
-      children: [
-        { name: "Phone Numbers", href: "/phone-numbers" },
-        { name: "Outbound", href: "/outbound" },
-      ]
-    },
   ];
 
-  const toggleSection = (name: string) => {
-    setExpandedSections(prev => ({ ...prev, [name]: !prev[name] }));
-  };
+  // Removed toggleSection function
 
   const getPageTitle = () => {
     // Check direct matches
     const directMatch = navigation.find(item => item.href === location);
     if (directMatch) return directMatch.name;
-    
-    // Check children
-    for (const item of navigation) {
-      if (item.children) {
-        const childMatch = item.children.find(child => child.href === location);
-        if (childMatch) return childMatch.name;
-      }
-    }
     
     // Special cases
     if (location.startsWith('/agents/')) return 'Agent Settings';
@@ -109,6 +69,7 @@ export default function AppShell({ children }: AppShellProps) {
     if (location === '/admin') return 'Admin';
     if (location === '/billing') return 'Billing';
     if (location === '/checkout') return 'Checkout';
+    if (location === '/history') return 'Conversations'; // Redirect old history to conversations
     
     return 'Home';
   };
@@ -152,81 +113,24 @@ export default function AppShell({ children }: AppShellProps) {
           <div className="space-y-0.5">
             {navigation.map((item) => {
               const Icon = item.icon;
-              const isActive = item.href ? location === item.href : false;
-              const hasActiveChild = item.children?.some(child => location === child.href) || false;
-              const isExpanded = expandedSections[item.name];
+              const isActive = location === item.href;
               
-              if (item.href) {
-                // Simple link
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                      isActive
-                        ? "bg-gray-100 dark:bg-gray-900 text-black dark:text-white"
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50"
-                    )}
-                    data-testid={`nav-${item.name.toLowerCase()}`}
-                  >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span>{item.name}</span>
-                  </Link>
-                );
-              }
-              
-              // Collapsible section
               return (
-                <Collapsible key={item.name} open={isExpanded}>
-                  <CollapsibleTrigger
-                    onClick={() => toggleSection(item.name)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer",
-                      hasActiveChild
-                        ? "text-black dark:text-white"
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50"
-                    )}
-                    data-testid={`nav-${item.name.toLowerCase()}`}
-                  >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span className="flex-1 text-left">{item.name}</span>
-                    {item.badge && (
-                      <span className="text-xs bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded">
-                        {item.badge}
-                      </span>
-                    )}
-                    {isExpanded ? (
-                      <ChevronDown className="w-4 h-4 flex-shrink-0" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 flex-shrink-0" />
-                    )}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="ml-7 mt-1 space-y-0.5">
-                      {item.children?.map((child) => {
-                        const childActive = location === child.href;
-                        return (
-                          <Link
-                            key={child.name}
-                            href={child.href}
-                            onClick={() => setSidebarOpen(false)}
-                            className={cn(
-                              "block px-3 py-1.5 rounded-lg text-sm transition-all",
-                              childActive
-                                ? "bg-gray-100 dark:bg-gray-900 text-black dark:text-white font-medium"
-                                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                            )}
-                            data-testid={`nav-${child.name.toLowerCase().replace(' ', '-')}`}
-                          >
-                            {child.name}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                    isActive
+                      ? "bg-gray-100 dark:bg-gray-900 text-black dark:text-white"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50"
+                  )}
+                  data-testid={`nav-${item.name.toLowerCase().replace(' ', '-')}`}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span>{item.name}</span>
+                </Link>
               );
             })}
           </div>

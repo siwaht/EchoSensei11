@@ -10,13 +10,13 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Agents from "@/pages/agents";
 import AgentSettings from "@/pages/agent-settings-new";
-import History from "@/pages/history";
+// Removed History import - using Conversations instead
 import Integrations from "@/pages/integrations";
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
 import Admin from "@/pages/admin-new";
 import Checkout from "@/pages/checkout";
-import Playground from "@/pages/playground";
+// Removed Playground import - redundant with agent testing features
 import KnowledgeBase from "@/pages/knowledge-base";
 import Tools from "@/pages/tools";
 import Voices from "@/pages/voices";
@@ -43,8 +43,8 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/agents" component={Agents} />
         <Route path="/agents/:agentId/settings" component={AgentSettings} />
-        <Route path="/playground" component={Playground} />
-        <Route path="/history" component={History} />
+        {/* Playground removed - use agent testing in Conversations */}
+        <Route path="/history" component={Conversations} /> {/* Redirect old history to conversations */}
         <Route path="/knowledge-base" component={KnowledgeBase} />
         <Route path="/tools" component={Tools} />
         <Route path="/voices" component={Voices} />
