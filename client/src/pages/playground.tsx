@@ -169,72 +169,13 @@ export default function Playground() {
       ws.onopen = () => {
         console.log("WebSocket connected, sending initialization message");
         
-        // Get the agent's custom settings from our database
-        const agentSettings = agents.find(a => a.id === selectedAgent);
-        
-        // Try to send conversation overrides with the agent's custom settings
-        // Note: These overrides only work if enabled in the agent's Security settings in ElevenLabs
-        const initMessage: any = {
+        // Send minimal initialization message
+        // The agent configuration (including knowledge base) is already set on ElevenLabs side
+        const initMessage = {
           type: "conversation_initiation_client_data"
         };
         
-        // Add conversation config override if we have any custom settings
-        const hasCustomSettings = agentSettings?.firstMessage || 
-                                 agentSettings?.systemPrompt || 
-                                 agentSettings?.voiceId ||
-                                 agentSettings?.voiceSettings ||
-                                 (agentSettings?.knowledgeBase?.documents && agentSettings.knowledgeBase.documents.length > 0);
-        
-        if (hasCustomSettings && agentSettings) {
-          // Build the prompt with knowledge base content if available
-          let finalPrompt = agentSettings.systemPrompt || "";
-          
-          if (agentSettings.knowledgeBase?.documents && agentSettings.knowledgeBase.documents.length > 0) {
-            let knowledgeBaseContext = "\n\n### KNOWLEDGE BASE ###\n";
-            knowledgeBaseContext += "You have access to the following information. Use this knowledge to answer questions accurately:\n\n";
-            
-            for (const doc of agentSettings.knowledgeBase.documents) {
-              if (doc.type === 'text' && doc.content) {
-                knowledgeBaseContext += `**${doc.name}:**\n${doc.content}\n\n`;
-              } else if (doc.type === 'url' && doc.url) {
-                knowledgeBaseContext += `**${doc.name}:** Reference URL: ${doc.url}\n\n`;
-              }
-            }
-            
-            knowledgeBaseContext += "Always refer to this knowledge base when answering questions about the information contained within.\n";
-            knowledgeBaseContext += "### END KNOWLEDGE BASE ###\n";
-            
-            finalPrompt = finalPrompt + knowledgeBaseContext;
-            console.log("Knowledge base content added to prompt");
-          }
-          
-          initMessage.conversation_config_override = {
-            agent: {
-              prompt: finalPrompt,  // Fixed: removed nested prompt object
-              first_message: agentSettings.firstMessage || "",
-              language: agentSettings.language || "en"
-            }
-          };
-          
-          // Add voice/TTS settings if available
-          if (agentSettings.voiceId || agentSettings.voiceSettings) {
-            const voiceSettings = agentSettings.voiceSettings || {};
-            initMessage.conversation_config_override.tts = {
-              voice_id: agentSettings.voiceId,
-              agent_output_audio_format: "pcm_16000",
-              optimize_streaming_latency: 3,
-              stability: voiceSettings.stability ?? 0.5,
-              similarity_boost: voiceSettings.similarityBoost ?? 0.75,
-              style: voiceSettings.style ?? 0,
-              use_speaker_boost: voiceSettings.useSpeakerBoost ?? true
-            };
-          }
-          
-          console.log("Sending init message with overrides:", initMessage);
-        } else {
-          console.log("Sending init message without overrides:", initMessage);
-        }
-        
+        console.log("Sending init message:", initMessage);
         ws.send(JSON.stringify(initMessage));
       };
 
@@ -316,9 +257,16 @@ export default function Playground() {
               }]);
             }
           } else if (data.agent_response_event) {
-            // Handle agent response text
-            if (data.agent_response_event.text) {
-              console.log("Agent response:", data.agent_response_event.text);
+            // Handle agent response - both text and audio
+            if (data.agent_response_event.agent_response) {
+              console.log("Agent response:", data.agent_response_event.agent_response);
+              setTranscript(prev => [...prev, {
+                role: "assistant",
+                message: data.agent_response_event.agent_response,
+                timestamp: new Date()
+              }]);
+            } else if (data.agent_response_event.text) {
+              console.log("Agent response text:", data.agent_response_event.text);
               setTranscript(prev => [...prev, {
                 role: "assistant",
                 message: data.agent_response_event.text,
