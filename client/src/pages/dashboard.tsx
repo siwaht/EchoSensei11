@@ -679,6 +679,10 @@ export default function Dashboard() {
   const { data: callLogs, refetch: refetchCallLogs } = useQuery({
     queryKey: ["/api/call-logs"],
   });
+  
+  const { data: agents } = useQuery({
+    queryKey: ["/api/agents"],
+  });
 
   // Sync mutation
   const syncMutation = useMutation({
@@ -967,7 +971,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-card-foreground">Most called agents</h3>
                 <button className="text-sm text-purple-400 hover:text-purple-300 transition-colors">
-                  See all 4 agents
+                  See all {Array.isArray(agents) ? agents.length : 0} agents
                 </button>
               </div>
               <AgentPerformanceTable />
