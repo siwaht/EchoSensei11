@@ -523,6 +523,80 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ message: "Agent already registered" });
       }
 
+      // Get integration to sync with ElevenLabs
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (integration && integration.apiKey && agentData.elevenLabsAgentId) {
+        const decryptedKey = decryptApiKey(integration.apiKey);
+        
+        try {
+          // Fetch agent details from ElevenLabs to sync initial settings
+          const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentData.elevenLabsAgentId}`, {
+            headers: {
+              "xi-api-key": decryptedKey,
+              "Content-Type": "application/json",
+            },
+          });
+          
+          if (response.ok) {
+            const elevenLabsAgent = await response.json();
+            
+            // Extract settings from ElevenLabs agent
+            const conversationConfig = elevenLabsAgent.conversation_config || {};
+            const agentConfig = conversationConfig.agent || {};
+            const ttsConfig = conversationConfig.tts || {};
+            const llmConfig = conversationConfig.llm || {};
+            const kbConfig = conversationConfig.knowledge_base || {};
+            
+            // Update agent data with ElevenLabs settings
+            agentData.firstMessage = agentConfig.first_message || agentData.firstMessage;
+            agentData.systemPrompt = agentConfig.prompt || agentData.systemPrompt;
+            agentData.language = agentConfig.language || agentData.language || 'en';
+            agentData.voiceId = ttsConfig.voice_id || agentData.voiceId;
+            
+            if (ttsConfig.stability !== undefined || ttsConfig.similarity_boost !== undefined) {
+              agentData.voiceSettings = {
+                stability: ttsConfig.stability || 0.5,
+                similarityBoost: ttsConfig.similarity_boost || 0.75,
+                style: ttsConfig.style || 0,
+                useSpeakerBoost: ttsConfig.use_speaker_boost ?? true,
+              };
+            }
+            
+            if (llmConfig.model || llmConfig.temperature !== undefined || llmConfig.max_tokens !== undefined) {
+              agentData.llmSettings = {
+                model: llmConfig.model || 'gpt-4',
+                temperature: llmConfig.temperature || 0.7,
+                maxTokens: llmConfig.max_tokens || 150,
+              };
+            }
+            
+            if (kbConfig.use_rag !== undefined) {
+              agentData.knowledgeBase = {
+                useRag: kbConfig.use_rag || false,
+                maxChunks: kbConfig.max_chunks || 5,
+                vectorDistance: kbConfig.vector_distance || 0.8,
+                embeddingModel: kbConfig.embedding_model || 'e5_mistral_7b_instruct',
+                documents: [],
+              };
+            }
+            
+            if (agentConfig.tool_ids) {
+              agentData.tools = {
+                toolIds: agentConfig.tool_ids,
+                webhooks: [],
+              };
+            }
+            
+            if (agentConfig.dynamic_variables) {
+              agentData.dynamicVariables = agentConfig.dynamic_variables;
+            }
+          }
+        } catch (elevenLabsError) {
+          console.error("Error fetching agent from ElevenLabs:", elevenLabsError);
+          // Continue with agent creation even if sync fails
+        }
+      }
+
       const agent = await storage.createAgent(agentData);
       res.json(agent);
     } catch (error) {
@@ -721,23 +795,182 @@ export function registerRoutes(app: Express): Server {
             // Add knowledge base/RAG settings if provided
             if (updates.knowledgeBase || agent.knowledgeBase) {
               const kb = updates.knowledgeBase || agent.knowledgeBase;
-              if (kb.useRag) {
-                elevenLabsPayload.conversation_config.knowledge_base = {
-                  use_rag: kb.useRag,
-                  max_chunks: kb.maxChunks || 5,
-                  vector_distance: kb.vectorDistance || 0.8,
-                  embedding_model: kb.embeddingModel || "e5_mistral_7b_instruct",
-                };
+              elevenLabsPayload.conversation_config.knowledge_base = {
+                use_rag: kb.useRag || false,
+                max_chunks: kb.maxChunks || 5,
+                vector_distance: kb.vectorDistance || 0.8,
+                embedding_model: kb.embeddingModel || "e5_mistral_7b_instruct",
+              };
+              
+              // Handle knowledge base documents
+              if (kb.documents && kb.documents.length > 0) {
+                // First, get the agent's knowledge base ID from ElevenLabs
+                const agentResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
+                  headers: {
+                    "xi-api-key": decryptedKey,
+                    "Content-Type": "application/json",
+                  },
+                });
+                
+                if (agentResponse.ok) {
+                  const agentData = await agentResponse.json();
+                  const knowledgeBaseId = agentData.knowledge_base_id || agentData.conversation_config?.knowledge_base?.knowledge_base_id;
+                  
+                  if (knowledgeBaseId) {
+                    // Upload each document to the knowledge base
+                    for (const doc of kb.documents) {
+                      try {
+                        if (doc.type === 'text') {
+                          // Upload text content
+                          const uploadResponse = await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base/${knowledgeBaseId}/add-from-text`, {
+                            method: "POST",
+                            headers: {
+                              "xi-api-key": decryptedKey,
+                              "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                              name: doc.name,
+                              text: doc.content || '',
+                            }),
+                          });
+                          
+                          if (!uploadResponse.ok) {
+                            console.error(`Failed to upload text document ${doc.name}:`, await uploadResponse.text());
+                          }
+                        } else if (doc.type === 'url') {
+                          // Upload URL
+                          const uploadResponse = await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base/${knowledgeBaseId}/add-from-url`, {
+                            method: "POST",
+                            headers: {
+                              "xi-api-key": decryptedKey,
+                              "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                              url: doc.url,
+                              name: doc.name,
+                            }),
+                          });
+                          
+                          if (!uploadResponse.ok) {
+                            console.error(`Failed to upload URL document ${doc.name}:`, await uploadResponse.text());
+                          }
+                        } else if (doc.type === 'file') {
+                          // For file uploads, we'd need to handle the actual file content
+                          // This would require storing the file content or URL somewhere
+                          console.log(`File upload for ${doc.name} requires file content handling`);
+                        }
+                      } catch (docError) {
+                        console.error(`Error uploading document ${doc.name}:`, docError);
+                      }
+                    }
+                  } else {
+                    // Create a new knowledge base if none exists
+                    const createKbResponse = await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base`, {
+                      method: "POST",
+                      headers: {
+                        "xi-api-key": decryptedKey,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        name: `${agent.name} Knowledge Base`,
+                        description: `Knowledge base for ${agent.name}`,
+                      }),
+                    });
+                    
+                    if (createKbResponse.ok) {
+                      const kbData = await createKbResponse.json();
+                      const newKnowledgeBaseId = kbData.knowledge_base_id;
+                      
+                      // Associate the knowledge base with the agent
+                      elevenLabsPayload.conversation_config.knowledge_base.knowledge_base_id = newKnowledgeBaseId;
+                      
+                      // Now upload documents to the new knowledge base
+                      for (const doc of kb.documents) {
+                        try {
+                          if (doc.type === 'text') {
+                            await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base/${newKnowledgeBaseId}/add-from-text`, {
+                              method: "POST",
+                              headers: {
+                                "xi-api-key": decryptedKey,
+                                "Content-Type": "application/json",
+                              },
+                              body: JSON.stringify({
+                                name: doc.name,
+                                text: doc.content || '',
+                              }),
+                            });
+                          } else if (doc.type === 'url') {
+                            await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base/${newKnowledgeBaseId}/add-from-url`, {
+                              method: "POST",
+                              headers: {
+                                "xi-api-key": decryptedKey,
+                                "Content-Type": "application/json",
+                              },
+                              body: JSON.stringify({
+                                url: doc.url,
+                                name: doc.name,
+                              }),
+                            });
+                          }
+                        } catch (docError) {
+                          console.error(`Error uploading document ${doc.name}:`, docError);
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }
 
             // Add tools configuration if provided
             if (updates.tools || agent.tools) {
               const tools = updates.tools || agent.tools;
-              if (tools.toolIds && tools.toolIds.length > 0) {
+              
+              // Handle webhook tools
+              if (tools.webhooks && tools.webhooks.length > 0) {
+                const webhookToolIds = [];
+                
+                for (const webhook of tools.webhooks) {
+                  if (webhook.name && webhook.url) {
+                    try {
+                      // Create webhook tool in ElevenLabs
+                      const toolResponse = await fetch('https://api.elevenlabs.io/v1/convai/tools', {
+                        method: 'POST',
+                        headers: {
+                          'xi-api-key': decryptedKey,
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          type: 'webhook',
+                          name: webhook.name,
+                          description: webhook.description || '',
+                          webhook: {
+                            url: webhook.url,
+                            method: webhook.method || 'POST',
+                          },
+                        }),
+                      });
+                      
+                      if (toolResponse.ok) {
+                        const toolData = await toolResponse.json();
+                        webhookToolIds.push(toolData.tool_id);
+                      } else {
+                        console.error(`Failed to create webhook tool ${webhook.name}:`, await toolResponse.text());
+                      }
+                    } catch (toolError) {
+                      console.error(`Error creating webhook tool ${webhook.name}:`, toolError);
+                    }
+                  }
+                }
+                
+                // Combine webhook tool IDs with existing tool IDs
+                const allToolIds = [...(tools.toolIds || []), ...webhookToolIds];
+                if (allToolIds.length > 0) {
+                  elevenLabsPayload.conversation_config.agent.tool_ids = allToolIds;
+                }
+              } else if (tools.toolIds && tools.toolIds.length > 0) {
                 elevenLabsPayload.conversation_config.agent.tool_ids = tools.toolIds;
               }
-              // Note: webhook tools need to be created separately via ElevenLabs tools API
             }
 
             // Add dynamic variables if provided
