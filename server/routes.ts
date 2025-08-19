@@ -647,6 +647,39 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // List ElevenLabs knowledge base documents
+  app.get("/api/voiceai/knowledge-base", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || integration.status !== "ACTIVE") {
+        return res.status(400).json({ message: "VoiceAI integration not configured or inactive" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const response = await fetch("https://api.elevenlabs.io/v1/knowledge-base", {
+        headers: {
+          "xi-api-key": apiKey
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch knowledge base documents");
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching knowledge base:", error);
+      res.status(500).json({ message: "Failed to fetch knowledge base documents" });
+    }
+  });
+
   // Get available VoiceAI voices (new endpoint)
   app.get("/api/voiceai/voices", isAuthenticated, async (req: any, res) => {
     try {
@@ -826,123 +859,46 @@ export function registerRoutes(app: Express): Server {
                 embedding_model: kb.embeddingModel || "e5_mistral_7b_instruct",
               };
               
-              // Handle knowledge base documents
+              // Handle knowledge base documents - upload to global ElevenLabs knowledge base
               if (kb.documents && kb.documents.length > 0) {
-                // First, get the agent's knowledge base ID from ElevenLabs
-                const agentResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
-                  headers: {
-                    "xi-api-key": decryptedKey,
-                    "Content-Type": "application/json",
-                  },
-                });
+                console.log("\n=== UPLOADING KNOWLEDGE BASE DOCUMENTS ===");
                 
-                if (agentResponse.ok) {
-                  const agentData = await agentResponse.json();
-                  const knowledgeBaseId = agentData.knowledge_base_id || agentData.conversation_config?.knowledge_base?.knowledge_base_id;
-                  
-                  if (knowledgeBaseId) {
-                    // Upload each document to the knowledge base
-                    for (const doc of kb.documents) {
-                      try {
-                        if (doc.type === 'text') {
-                          // Upload text content
-                          const uploadResponse = await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base/${knowledgeBaseId}/add-from-text`, {
-                            method: "POST",
-                            headers: {
-                              "xi-api-key": decryptedKey,
-                              "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({
-                              name: doc.name,
-                              text: doc.content || '',
-                            }),
-                          });
-                          
-                          if (!uploadResponse.ok) {
-                            console.error(`Failed to upload text document ${doc.name}:`, await uploadResponse.text());
-                          }
-                        } else if (doc.type === 'url') {
-                          // Upload URL
-                          const uploadResponse = await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base/${knowledgeBaseId}/add-from-url`, {
-                            method: "POST",
-                            headers: {
-                              "xi-api-key": decryptedKey,
-                              "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({
-                              url: doc.url,
-                              name: doc.name,
-                            }),
-                          });
-                          
-                          if (!uploadResponse.ok) {
-                            console.error(`Failed to upload URL document ${doc.name}:`, await uploadResponse.text());
-                          }
-                        } else if (doc.type === 'file') {
-                          // For file uploads, we'd need to handle the actual file content
-                          // This would require storing the file content or URL somewhere
-                          console.log(`File upload for ${doc.name} requires file content handling`);
-                        }
-                      } catch (docError) {
-                        console.error(`Error uploading document ${doc.name}:`, docError);
-                      }
-                    }
-                  } else {
-                    // Create a new knowledge base if none exists
-                    const createKbResponse = await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base`, {
-                      method: "POST",
-                      headers: {
-                        "xi-api-key": decryptedKey,
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({
-                        name: `${agent.name} Knowledge Base`,
-                        description: `Knowledge base for ${agent.name}`,
-                      }),
-                    });
-                    
-                    if (createKbResponse.ok) {
-                      const kbData = await createKbResponse.json();
-                      const newKnowledgeBaseId = kbData.knowledge_base_id;
+                for (const doc of kb.documents) {
+                  try {
+                    if (doc.type === 'text' && doc.content) {
+                      // Upload text content as a file to ElevenLabs knowledge base
+                      const formData = new FormData();
+                      formData.append("name", doc.name);
                       
-                      // Associate the knowledge base with the agent
-                      elevenLabsPayload.conversation_config.knowledge_base.knowledge_base_id = newKnowledgeBaseId;
+                      // Create a blob from text content
+                      const blob = new Blob([doc.content], { type: "text/plain" });
+                      formData.append("file", blob, `${doc.name}.txt`);
                       
-                      // Now upload documents to the new knowledge base
-                      for (const doc of kb.documents) {
-                        try {
-                          if (doc.type === 'text') {
-                            await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base/${newKnowledgeBaseId}/add-from-text`, {
-                              method: "POST",
-                              headers: {
-                                "xi-api-key": decryptedKey,
-                                "Content-Type": "application/json",
-                              },
-                              body: JSON.stringify({
-                                name: doc.name,
-                                text: doc.content || '',
-                              }),
-                            });
-                          } else if (doc.type === 'url') {
-                            await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base/${newKnowledgeBaseId}/add-from-url`, {
-                              method: "POST",
-                              headers: {
-                                "xi-api-key": decryptedKey,
-                                "Content-Type": "application/json",
-                              },
-                              body: JSON.stringify({
-                                url: doc.url,
-                                name: doc.name,
-                              }),
-                            });
-                          }
-                        } catch (docError) {
-                          console.error(`Error uploading document ${doc.name}:`, docError);
-                        }
+                      const uploadResponse = await fetch("https://api.elevenlabs.io/v1/knowledge-base", {
+                        method: "POST",
+                        headers: {
+                          "xi-api-key": decryptedKey
+                        },
+                        body: formData
+                      });
+                      
+                      if (uploadResponse.ok) {
+                        const kbData = await uploadResponse.json();
+                        console.log(`Knowledge base document uploaded: ${doc.name}, ID: ${kbData.knowledge_base_item_id || kbData.id}`);
+                      } else {
+                        console.error(`Failed to upload text document ${doc.name}:`, await uploadResponse.text());
                       }
+                    } else if (doc.type === 'url' && doc.url) {
+                      // Note: URL upload not directly supported via API
+                      console.log(`URL upload for ${doc.name} would need to be fetched and uploaded as text`);
+                    } else if (doc.type === 'file') {
+                      console.log(`File upload for ${doc.name} requires file content handling`);
                     }
+                  } catch (docError) {
+                    console.error(`Error uploading document ${doc.name}:`, docError);
                   }
                 }
+                console.log("=== KNOWLEDGE BASE UPLOAD COMPLETE ===");
               }
             }
 
