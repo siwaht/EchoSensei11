@@ -217,19 +217,19 @@ export default function Voices() {
                       <div className="flex flex-wrap gap-1 mt-2">
                         {voice.labels.accent && (
                           <Badge variant="outline" className="text-xs">
-                            <Globe className="h-3 w-3 mr-1" />
+                            <Globe className="h-3 w-3 mr-1 flex-shrink-0" />
                             {voice.labels.accent}
                           </Badge>
                         )}
                         {voice.labels.gender && (
                           <Badge variant="outline" className="text-xs">
-                            <User className="h-3 w-3 mr-1" />
+                            <User className="h-3 w-3 mr-1 flex-shrink-0" />
                             {voice.labels.gender}
                           </Badge>
                         )}
                         {voice.labels.age && (
                           <Badge variant="outline" className="text-xs">
-                            <Calendar className="h-3 w-3 mr-1" />
+                            <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
                             {voice.labels.age}
                           </Badge>
                         )}

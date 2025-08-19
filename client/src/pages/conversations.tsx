@@ -52,31 +52,44 @@ export default function Conversations() {
   });
 
   // Transform call logs to conversations format
-  const conversations: Conversation[] = callLogs.map((log: any) => ({
-    id: log.id,
-    agentName: log.agentName || "Unknown Agent",
-    agentId: log.agentId,
-    customerName: log.phoneNumber || "Anonymous",
-    customerPhone: log.phoneNumber,
-    startTime: new Date(log.startTime),
-    duration: log.duration,
-    status: log.status || 'completed',
-    rating: Math.floor(Math.random() * 5) + 1,
-    sentiment: ['positive', 'neutral', 'negative'][Math.floor(Math.random() * 3)] as any,
-    summary: log.transcript?.substring(0, 100) + "...",
-    transcriptUrl: log.transcriptUrl,
-    recordingUrl: log.recordingUrl,
-    metadata: {
-      language: 'English',
-      location: 'United States',
-      device: 'Phone'
-    },
-    evaluation: {
-      resolved: Math.random() > 0.3,
-      customerSatisfied: Math.random() > 0.2,
-      agentPerformance: Math.floor(Math.random() * 100)
+  const conversations: Conversation[] = callLogs.map((log: any) => {
+    // Safely parse the date
+    let startTime: Date;
+    try {
+      startTime = log.startTime ? new Date(log.startTime) : new Date();
+      if (isNaN(startTime.getTime())) {
+        startTime = new Date();
+      }
+    } catch {
+      startTime = new Date();
     }
-  }));
+
+    return {
+      id: log.id,
+      agentName: log.agentName || "Unknown Agent",
+      agentId: log.agentId,
+      customerName: log.phoneNumber || "Anonymous",
+      customerPhone: log.phoneNumber,
+      startTime,
+      duration: log.duration || 0,
+      status: log.status || 'completed',
+      rating: Math.floor(Math.random() * 5) + 1,
+      sentiment: ['positive', 'neutral', 'negative'][Math.floor(Math.random() * 3)] as any,
+      summary: log.transcript ? log.transcript.substring(0, 100) + "..." : "No transcript available",
+      transcriptUrl: log.transcriptUrl,
+      recordingUrl: log.recordingUrl,
+      metadata: {
+        language: 'English',
+        location: 'United States',
+        device: 'Phone'
+      },
+      evaluation: {
+        resolved: Math.random() > 0.3,
+        customerSatisfied: Math.random() > 0.2,
+        agentPerformance: Math.floor(Math.random() * 100)
+      }
+    };
+  });
 
   const filteredConversations = conversations.filter(conv => {
     const matchesSearch = conv.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||

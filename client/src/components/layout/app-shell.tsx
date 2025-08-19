@@ -135,10 +135,10 @@ export default function AppShell({ children }: AppShellProps) {
         </div>
         
         <div className="px-3 py-2">
-          <div className="bg-gray-100 dark:bg-gray-900 rounded-lg p-2 flex items-center gap-2">
+          <div className="bg-gray-100 dark:bg-gray-900 rounded-lg p-2.5 flex items-center gap-2">
             <div className="flex -space-x-1">
-              <div className="w-5 h-5 rounded-full bg-blue-500" />
-              <div className="w-5 h-5 rounded-full bg-green-500" />
+              <div className="w-5 h-5 rounded-full bg-blue-500 border-2 border-white dark:border-gray-950" />
+              <div className="w-5 h-5 rounded-full bg-green-500 border-2 border-white dark:border-gray-950" />
             </div>
             <span className="text-sm font-medium flex-1">Conversational AI</span>
             <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -168,7 +168,7 @@ export default function AppShell({ children }: AppShellProps) {
                     )}
                     data-testid={`nav-${item.name.toLowerCase()}`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4 flex-shrink-0" />
                     <span>{item.name}</span>
                   </Link>
                 );
@@ -180,14 +180,14 @@ export default function AppShell({ children }: AppShellProps) {
                   <CollapsibleTrigger
                     onClick={() => toggleSection(item.name)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer",
                       hasActiveChild
                         ? "text-black dark:text-white"
                         : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50"
                     )}
                     data-testid={`nav-${item.name.toLowerCase()}`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4 flex-shrink-0" />
                     <span className="flex-1 text-left">{item.name}</span>
                     {item.badge && (
                       <span className="text-xs bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded">
@@ -195,9 +195,9 @@ export default function AppShell({ children }: AppShellProps) {
                       </span>
                     )}
                     {isExpanded ? (
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className="w-4 h-4 flex-shrink-0" />
                     ) : (
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-4 h-4 flex-shrink-0" />
                     )}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
@@ -244,7 +244,7 @@ export default function AppShell({ children }: AppShellProps) {
               )}
               data-testid="nav-notifications"
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="w-4 h-4 flex-shrink-0" />
               <span>Notifications</span>
             </Link>
             <Link
@@ -258,7 +258,7 @@ export default function AppShell({ children }: AppShellProps) {
               )}
               data-testid="nav-billing"
             >
-              <CreditCard className="w-4 h-4" />
+              <CreditCard className="w-4 h-4 flex-shrink-0" />
               <span>Billing</span>
             </Link>
             {user?.isAdmin && (
@@ -273,7 +273,7 @@ export default function AppShell({ children }: AppShellProps) {
                 )}
                 data-testid="nav-admin"
               >
-                <Shield className="w-4 h-4" />
+                <Shield className="w-4 h-4 flex-shrink-0" />
                 <span>Admin</span>
               </Link>
             )}
@@ -288,7 +288,7 @@ export default function AppShell({ children }: AppShellProps) {
               )}
               data-testid="nav-settings"
             >
-              <Settings className="w-4 h-4" />
+              <Settings className="w-4 h-4 flex-shrink-0" />
               <span>Settings</span>
             </Link>
           </div>

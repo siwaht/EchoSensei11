@@ -244,7 +244,7 @@ export default function PhoneNumbers() {
                       <span className="font-mono font-medium">{number.number}</span>
                       <button
                         onClick={() => copyNumber(number.number)}
-                        className="text-muted-foreground hover:text-foreground"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
                       >
                         <Copy className="h-3 w-3" />
                       </button>
@@ -252,11 +252,7 @@ export default function PhoneNumbers() {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
-                      <img
-                        src={`https://flagcdn.com/w20/${number.countryCode.toLowerCase()}.png`}
-                        alt={number.country}
-                        className="w-5 h-3"
-                      />
+                      <span className="w-5 h-3 inline-block bg-gray-200 dark:bg-gray-800 rounded" />
                       <span className="text-sm">{number.country}</span>
                     </div>
                   </td>
