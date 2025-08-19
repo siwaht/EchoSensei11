@@ -730,6 +730,11 @@ export function registerRoutes(app: Express): Server {
 
       const { agentId } = req.params;
       const updates = req.body;
+      
+      console.log("\n=== AGENT UPDATE REQUEST ===");
+      console.log("Agent ID:", agentId);
+      console.log("Updates received:", JSON.stringify(updates, null, 2));
+      console.log("================================\n");
 
       // First, get the agent to get the ElevenLabs agent ID
       const agent = await storage.getAgent(user.organizationId, agentId);
@@ -761,9 +766,9 @@ export function registerRoutes(app: Express): Server {
               name: agent.name,
               conversation_config: {
                 agent: {
-                  prompt: updates.systemPrompt || agent.systemPrompt || "",
-                  first_message: updates.firstMessage || agent.firstMessage || "",
-                  language: updates.language || agent.language || "en",
+                  prompt: updates.systemPrompt !== undefined ? updates.systemPrompt : (agent.systemPrompt || ""),
+                  first_message: updates.firstMessage !== undefined ? updates.firstMessage : (agent.firstMessage || ""),
+                  language: updates.language !== undefined ? updates.language : (agent.language || "en"),
                 }
               }
             };
@@ -1011,7 +1016,9 @@ export function registerRoutes(app: Express): Server {
               }
             }
 
-            console.log("Updating ElevenLabs agent with payload:", JSON.stringify(elevenLabsPayload, null, 2));
+            console.log("\n=== UPDATING ELEVENLABS AGENT ===");
+            console.log("Agent ID:", agent.elevenLabsAgentId);
+            console.log("Payload:", JSON.stringify(elevenLabsPayload, null, 2));
 
             const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
               method: "PATCH",
@@ -1024,13 +1031,21 @@ export function registerRoutes(app: Express): Server {
 
             if (!response.ok) {
               const errorText = await response.text();
-              console.error("Failed to update agent in ElevenLabs:", errorText);
+              console.error("\n=== ELEVENLABS UPDATE FAILED ===");
+              console.error("Status:", response.status);
+              console.error("Error:", errorText);
+              console.error("================================\n");
               // Continue anyway - we'll still update locally
             } else {
-              console.log("Successfully updated agent in ElevenLabs");
+              const responseData = await response.json();
+              console.log("\n=== ELEVENLABS UPDATE SUCCESS ===");
+              console.log("Response:", JSON.stringify(responseData, null, 2));
+              console.log("================================\n");
             }
           } catch (elevenLabsError) {
-            console.error("Error updating ElevenLabs agent:", elevenLabsError);
+            console.error("\n=== ELEVENLABS SYNC ERROR ===");
+            console.error("Error:", elevenLabsError);
+            console.error("================================\n");
             // Continue with local update even if ElevenLabs update fails
           }
         }
