@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Save, ArrowLeft, Mic, Settings2, MessageSquare, Zap, Search, Play, Volume2, Check } from "lucide-react";
+import { Save, ArrowLeft, Mic, Settings2, MessageSquare, Zap, Search, Play, Volume2, Check, X, RotateCcw } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
 interface Voice {
@@ -189,12 +189,13 @@ export default function AgentSettings() {
         </div>
         <Button
           onClick={handleSave}
-          disabled={updateAgentMutation.isPending}
-          className="gap-2 w-full sm:w-auto"
+          disabled={updateAgentMutation.isPending || !hasUnsavedChanges}
+          className={`gap-2 w-full sm:w-auto ${hasUnsavedChanges ? 'animate-pulse' : ''}`}
+          variant={hasUnsavedChanges ? "default" : "outline"}
           data-testid="button-save-agent-settings"
         >
           <Save className="w-4 h-4" />
-          Save Settings
+          {updateAgentMutation.isPending ? "Saving..." : hasUnsavedChanges ? "Save Settings" : "No Changes"}
         </Button>
       </div>
 
@@ -276,6 +277,63 @@ export default function AgentSettings() {
                     <p className="text-sm italic">"{settings.firstMessage}"</p>
                   </div>
                 )}
+                
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setSettings({ ...settings, firstMessage: "" });
+                      setHasUnsavedChanges(true);
+                    }}
+                    className="gap-1 w-full sm:w-auto"
+                    data-testid="button-clear-message"
+                  >
+                    <X className="w-3 h-3" />
+                    Clear Message
+                  </Button>
+                  
+                  {hasUnsavedChanges && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        // Reset to original values
+                        if (agent) {
+                          setSettings({
+                            firstMessage: agent.firstMessage || "",
+                            voiceId: agent.voiceId || "",
+                            stability: agent.voiceSettings?.stability || 0.5,
+                            similarityBoost: agent.voiceSettings?.similarityBoost || 0.75,
+                            style: agent.voiceSettings?.style || 0,
+                            useSpeakerBoost: agent.voiceSettings?.useSpeakerBoost ?? true,
+                          });
+                          setHasUnsavedChanges(false);
+                        }
+                      }}
+                      className="gap-1 w-full sm:w-auto"
+                      data-testid="button-discard-changes"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      Discard All Changes
+                    </Button>
+                  )}
+                  
+                  <Button
+                    onClick={handleSave}
+                    disabled={updateAgentMutation.isPending || !hasUnsavedChanges}
+                    size="sm"
+                    className="gap-1 w-full sm:w-auto"
+                    variant={hasUnsavedChanges ? "default" : "outline"}
+                    data-testid="button-save-inline"
+                  >
+                    <Save className="w-3 h-3" />
+                    {updateAgentMutation.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>
