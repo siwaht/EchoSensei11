@@ -1515,9 +1515,9 @@ export default function AdminDashboard() {
                     id: editingPackage.id,
                     updates: {
                       ...editingPackage,
-                      perCallRate: typeof editingPackage.perCallRate === 'string' ? parseFloat(editingPackage.perCallRate) || 0 : editingPackage.perCallRate,
-                      perMinuteRate: typeof editingPackage.perMinuteRate === 'string' ? parseFloat(editingPackage.perMinuteRate) || 0 : editingPackage.perMinuteRate,
-                      monthlyPrice: typeof editingPackage.monthlyPrice === 'string' ? parseFloat(editingPackage.monthlyPrice) || 0 : editingPackage.monthlyPrice,
+                      perCallRate: String(typeof editingPackage.perCallRate === 'string' ? parseFloat(editingPackage.perCallRate) || 0 : editingPackage.perCallRate),
+                      perMinuteRate: String(typeof editingPackage.perMinuteRate === 'string' ? parseFloat(editingPackage.perMinuteRate) || 0 : editingPackage.perMinuteRate),
+                      monthlyPrice: String(typeof editingPackage.monthlyPrice === 'string' ? parseFloat(editingPackage.monthlyPrice) || 0 : editingPackage.monthlyPrice),
                       monthlyCredits: typeof editingPackage.monthlyCredits === 'string' ? parseInt(editingPackage.monthlyCredits) || 0 : editingPackage.monthlyCredits,
                       maxAgents: typeof editingPackage.maxAgents === 'string' ? parseInt(editingPackage.maxAgents) || 0 : editingPackage.maxAgents,
                       maxUsers: typeof editingPackage.maxUsers === 'string' ? parseInt(editingPackage.maxUsers) || 0 : editingPackage.maxUsers,
