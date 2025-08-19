@@ -545,7 +545,8 @@ export function registerRoutes(app: Express): Server {
             const agentConfig = conversationConfig.agent || {};
             const ttsConfig = conversationConfig.tts || {};
             const llmConfig = conversationConfig.llm || {};
-            const kbConfig = conversationConfig.knowledge_base || {};
+            // RAG config is under agent.prompt.rag according to ElevenLabs docs
+            const ragConfig = agentConfig.prompt?.rag || {};
             
             // Update agent data with ElevenLabs settings
             agentData.firstMessage = agentConfig.first_message || agentData.firstMessage;
@@ -570,12 +571,13 @@ export function registerRoutes(app: Express): Server {
               };
             }
             
-            if (kbConfig.use_rag !== undefined) {
+            // Check for RAG configuration from the agent's prompt settings
+            if (ragConfig.enabled !== undefined || agentConfig.prompt?.rag !== undefined) {
               agentData.knowledgeBase = {
-                useRag: kbConfig.use_rag || false,
-                maxChunks: kbConfig.max_chunks || 5,
-                vectorDistance: kbConfig.vector_distance || 0.8,
-                embeddingModel: kbConfig.embedding_model || 'e5_mistral_7b_instruct',
+                useRag: ragConfig.enabled !== false, // Default to true if RAG config exists
+                maxChunks: ragConfig.max_documents_length ? Math.floor(ragConfig.max_documents_length / 2000) : 5,
+                vectorDistance: 0.8, // Default vector distance
+                embeddingModel: ragConfig.embedding_model || 'e5_mistral_7b_instruct',
                 documents: [],
               };
             }
@@ -852,11 +854,14 @@ export function registerRoutes(app: Express): Server {
             // Add knowledge base/RAG settings if provided
             if (updates.knowledgeBase || agent.knowledgeBase) {
               const kb = updates.knowledgeBase || agent.knowledgeBase;
-              elevenLabsPayload.conversation_config.knowledge_base = {
-                use_rag: kb.useRag || false,
-                max_chunks: kb.maxChunks || 5,
-                vector_distance: kb.vectorDistance || 0.8,
-                embedding_model: kb.embeddingModel || "e5_mistral_7b_instruct",
+              // RAG settings must be under conversation_config.agent.prompt.rag according to ElevenLabs docs
+              elevenLabsPayload.conversation_config.agent.prompt = {
+                ...elevenLabsPayload.conversation_config.agent.prompt,
+                rag: {
+                  enabled: kb.useRag !== false, // Enable RAG by default
+                  embedding_model: kb.embeddingModel || "e5_mistral_7b_instruct",
+                  max_documents_length: kb.maxChunks ? kb.maxChunks * 2000 : 10000, // Approximate chars per chunk
+                }
               };
               
               // Handle knowledge base documents - upload to agent-specific ElevenLabs knowledge base
@@ -916,7 +921,32 @@ export function registerRoutes(app: Express): Server {
                       
                       if (uploadResponse.ok) {
                         const kbData = await uploadResponse.json();
-                        console.log(`Knowledge base document uploaded: ${doc.name}, ID: ${kbData.knowledge_base_item_id || kbData.id}`);
+                        const documentId = kbData.knowledge_base_item_id || kbData.id;
+                        console.log(`Knowledge base document uploaded: ${doc.name}, ID: ${documentId}`);
+                        
+                        // Trigger RAG indexing for the document if RAG is enabled
+                        if (kb.useRag !== false) {
+                          try {
+                            const indexResponse = await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base/documents/${documentId}/compute-rag-index`, {
+                              method: "POST",
+                              headers: {
+                                "xi-api-key": decryptedKey,
+                                "Content-Type": "application/json"
+                              },
+                              body: JSON.stringify({
+                                model: kb.embeddingModel || "e5_mistral_7b_instruct"
+                              })
+                            });
+                            
+                            if (indexResponse.ok) {
+                              console.log(`RAG indexing triggered for document: ${doc.name}`);
+                            } else {
+                              console.error(`Failed to trigger RAG indexing for ${doc.name}:`, await indexResponse.text());
+                            }
+                          } catch (indexError) {
+                            console.error(`Error triggering RAG indexing for ${doc.name}:`, indexError);
+                          }
+                        }
                       } else {
                         const errorText = await uploadResponse.text();
                         console.error(`Failed to upload text document ${doc.name}:`, errorText);
@@ -937,7 +967,32 @@ export function registerRoutes(app: Express): Server {
                       
                       if (uploadResponse.ok) {
                         const kbData = await uploadResponse.json();
-                        console.log(`URL document uploaded: ${doc.name}, ID: ${kbData.knowledge_base_item_id || kbData.id}`);
+                        const documentId = kbData.knowledge_base_item_id || kbData.id;
+                        console.log(`URL document uploaded: ${doc.name}, ID: ${documentId}`);
+                        
+                        // Trigger RAG indexing for the document if RAG is enabled
+                        if (kb.useRag !== false) {
+                          try {
+                            const indexResponse = await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base/documents/${documentId}/compute-rag-index`, {
+                              method: "POST",
+                              headers: {
+                                "xi-api-key": decryptedKey,
+                                "Content-Type": "application/json"
+                              },
+                              body: JSON.stringify({
+                                model: kb.embeddingModel || "e5_mistral_7b_instruct"
+                              })
+                            });
+                            
+                            if (indexResponse.ok) {
+                              console.log(`RAG indexing triggered for URL document: ${doc.name}`);
+                            } else {
+                              console.error(`Failed to trigger RAG indexing for ${doc.name}:`, await indexResponse.text());
+                            }
+                          } catch (indexError) {
+                            console.error(`Error triggering RAG indexing for ${doc.name}:`, indexError);
+                          }
+                        }
                       } else {
                         console.error(`Failed to upload URL document ${doc.name}:`, await uploadResponse.text());
                       }

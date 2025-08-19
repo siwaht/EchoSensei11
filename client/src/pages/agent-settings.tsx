@@ -64,7 +64,7 @@ export default function AgentSettings() {
     maxTokens: 150,
     
     // Knowledge base settings
-    useRag: false,
+    useRag: true, // Enable RAG by default for proper knowledge base functionality
     maxChunks: 5,
     vectorDistance: 0.8,
     embeddingModel: "e5_mistral_7b_instruct",
@@ -140,7 +140,7 @@ export default function AgentSettings() {
         model: agent.llmSettings?.model || "gpt-4",
         temperature: agent.llmSettings?.temperature || 0.7,
         maxTokens: agent.llmSettings?.maxTokens || 150,
-        useRag: agent.knowledgeBase?.useRag || false,
+        useRag: agent.knowledgeBase?.useRag !== false, // Default to true if not explicitly disabled
         maxChunks: agent.knowledgeBase?.maxChunks || 5,
         vectorDistance: agent.knowledgeBase?.vectorDistance || 0.8,
         embeddingModel: agent.knowledgeBase?.embeddingModel || "e5_mistral_7b_instruct",
