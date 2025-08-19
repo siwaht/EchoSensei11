@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Save, ArrowLeft, Mic, Settings2, MessageSquare, Zap } from "lucide-react";
+import { Save, ArrowLeft, Mic, Settings2, MessageSquare, Zap, Search, Play, Volume2, Check } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
 interface Voice {
@@ -41,6 +41,10 @@ export default function AgentSettings() {
     style: 0,
     useSpeakerBoost: true,
   });
+
+  const [voiceSearch, setVoiceSearch] = useState("");
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
 
   // Fetch agent data
   const { data: agents = [], isLoading: agentsLoading } = useQuery<Agent[]>({
@@ -101,9 +105,30 @@ export default function AgentSettings() {
     });
   };
 
-  const playVoicePreview = (previewUrl: string) => {
+  const playVoicePreview = (voiceId: string, previewUrl: string) => {
+    // Stop currently playing audio if any
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+
+    if (playingVoiceId === voiceId) {
+      // Stop playing if clicking the same voice
+      setPlayingVoiceId(null);
+      setCurrentAudio(null);
+      return;
+    }
+
     const audio = new Audio(previewUrl);
-    audio.play().catch(err => {
+    audio.addEventListener('ended', () => {
+      setPlayingVoiceId(null);
+      setCurrentAudio(null);
+    });
+    
+    audio.play().then(() => {
+      setPlayingVoiceId(voiceId);
+      setCurrentAudio(audio);
+    }).catch(err => {
       toast({ 
         title: "Failed to play preview", 
         description: "Could not play voice preview",
@@ -111,6 +136,16 @@ export default function AgentSettings() {
       });
     });
   };
+
+  // Filter voices based on search
+  const filteredVoices = voices.filter(voice => {
+    const searchTerm = voiceSearch.toLowerCase();
+    return voice.name.toLowerCase().includes(searchTerm) ||
+           voice.category?.toLowerCase().includes(searchTerm) ||
+           voice.labels?.accent?.toLowerCase().includes(searchTerm) ||
+           voice.labels?.gender?.toLowerCase().includes(searchTerm) ||
+           voice.labels?.age?.toLowerCase().includes(searchTerm);
+  });
 
   if (agentsLoading) {
     return (
@@ -221,49 +256,143 @@ export default function AgentSettings() {
               <p className="text-muted-foreground">Loading available voices...</p>
             ) : (
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="voice-select" className="text-sm sm:text-base">Choose Voice</Label>
-                  <Select
-                    value={settings.voiceId}
-                    onValueChange={(value) => setSettings({ ...settings, voiceId: value })}
-                  >
-                    <SelectTrigger id="voice-select" className="w-full" data-testid="select-voice">
-                      <SelectValue placeholder="Select a voice" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[250px] sm:max-h-[300px]">
-                      {voices.map((voice) => (
-                        <SelectItem key={voice.voice_id} value={voice.voice_id}>
-                          <div className="flex items-center justify-between w-full">
-                            <div className="flex-1 min-w-0">
-                              <span className="font-medium text-sm">{voice.name}</span>
+                {/* Search Box */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    type="text"
+                    placeholder="Search voices by name, accent, gender, or age..."
+                    value={voiceSearch}
+                    onChange={(e) => setVoiceSearch(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-voice-search"
+                  />
+                </div>
+
+                {/* Voice Grid */}
+                <div className="space-y-2">
+                  <Label className="text-sm sm:text-base">Select Voice ({filteredVoices.length} available)</Label>
+                  <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
+                    {filteredVoices.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No voices found matching "{voiceSearch}"
+                      </div>
+                    ) : (
+                      filteredVoices.map((voice) => (
+                        <Card
+                          key={voice.voice_id}
+                          className={`p-3 sm:p-4 cursor-pointer transition-all hover:shadow-md ${
+                            settings.voiceId === voice.voice_id 
+                              ? 'border-primary bg-primary/5' 
+                              : 'hover:border-gray-300'
+                          }`}
+                          onClick={() => setSettings({ ...settings, voiceId: voice.voice_id })}
+                          data-testid={`voice-card-${voice.voice_id}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                {settings.voiceId === voice.voice_id && (
+                                  <Check className="w-4 h-4 text-primary" />
+                                )}
+                                <h4 className="font-medium text-sm sm:text-base">{voice.name}</h4>
+                              </div>
                               {voice.labels && (
-                                <span className="block sm:inline text-xs text-muted-foreground mt-1 sm:mt-0 sm:ml-2">
-                                  {[voice.labels.gender, voice.labels.age, voice.labels.accent]
-                                    .filter(Boolean)
-                                    .join(" • ")}
-                                </span>
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {voice.labels.gender && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                      {voice.labels.gender}
+                                    </span>
+                                  )}
+                                  {voice.labels.age && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                      {voice.labels.age}
+                                    </span>
+                                  )}
+                                  {voice.labels.accent && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                      {voice.labels.accent}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {voice.category && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Category: {voice.category}
+                                </p>
                               )}
                             </div>
+                            
                             {voice.preview_url && (
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="ghost"
+                                variant={playingVoiceId === voice.voice_id ? "default" : "outline"}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  playVoicePreview(voice.preview_url!);
+                                  playVoicePreview(voice.voice_id, voice.preview_url!);
                                 }}
                                 className="ml-2"
+                                data-testid={`button-preview-${voice.voice_id}`}
                               >
-                                <Mic className="w-3 h-3" />
+                                {playingVoiceId === voice.voice_id ? (
+                                  <>
+                                    <Volume2 className="w-3 h-3 mr-1 animate-pulse" />
+                                    Playing
+                                  </>
+                                ) : (
+                                  <>
+                                    <Play className="w-3 h-3 mr-1" />
+                                    Preview
+                                  </>
+                                )}
                               </Button>
                             )}
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        </Card>
+                      ))
+                    )}
+                  </div>
                 </div>
+
+                {/* Voice Test Section */}
+                {settings.voiceId && (
+                  <Card className="p-4 bg-gray-50 dark:bg-gray-900">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium">Test Selected Voice</h4>
+                        <span className="text-xs text-muted-foreground">
+                          {voices.find(v => v.voice_id === settings.voiceId)?.name}
+                        </span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Input
+                          placeholder="Enter test text or use the default greeting..."
+                          className="flex-1 text-xs sm:text-sm"
+                          id="test-text"
+                          defaultValue={settings.firstMessage || "Hello! How can I help you today?"}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const testText = (document.getElementById('test-text') as HTMLInputElement)?.value || settings.firstMessage || "Hello! How can I help you today?";
+                            // In a real implementation, this would call the ElevenLabs TTS API
+                            toast({
+                              title: "Voice Test",
+                              description: "Voice testing feature will be available soon with the selected text: \"" + testText.substring(0, 50) + (testText.length > 50 ? "..." : "") + "\""
+                            });
+                          }}
+                          className="gap-1 w-full sm:w-auto"
+                        >
+                          <Volume2 className="w-3 h-3" />
+                          Test Voice
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                )}
 
                 {settings.voiceId && (
                   <div className="space-y-4 pt-4 border-t">
