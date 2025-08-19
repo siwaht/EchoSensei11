@@ -10,6 +10,7 @@ import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 // Success Rate Chart Component
 function SuccessRateChart() {
@@ -670,6 +671,7 @@ function CallVolumeChart() {
 
 export default function Dashboard() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   
   const { data: stats, isLoading, refetch: refetchStats } = useQuery({
@@ -970,7 +972,10 @@ export default function Dashboard() {
             <div className="lg:col-span-2">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-card-foreground">Most called agents</h3>
-                <button className="text-sm text-purple-400 hover:text-purple-300 transition-colors">
+                <button 
+                  onClick={() => setLocation('/agents')}
+                  className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                >
                   See all {Array.isArray(agents) ? agents.length : 0} agents
                 </button>
               </div>
