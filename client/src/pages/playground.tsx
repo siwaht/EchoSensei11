@@ -164,28 +164,24 @@ export default function Playground() {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        setIsConnecting(false);
-        setIsCallActive(true);
+        console.log("WebSocket connected, sending initialization message");
         
-        // Send conversation initiation with minimal config
+        // Send conversation initiation immediately
         const initMessage = {
           type: "conversation_initiation_client_data",
           conversation_config_override: {
             agent: {
               prompt: {
-                prompt: "You are a helpful assistant. Say hello and ask how you can help."
-              }
+                prompt: "You are a helpful assistant. Start by greeting the user and asking how you can help."
+              },
+              first_message: "Hello! How can I help you today?",
+              language: "en"
             }
           }
         };
         
         console.log("Sending init message:", initMessage);
         ws.send(JSON.stringify(initMessage));
-
-        toast({
-          title: "Call started",
-          description: `Connected to ${agent.name}`,
-        });
       };
 
       ws.onmessage = (event) => {
@@ -195,48 +191,24 @@ export default function Playground() {
           
           // Handle different message formats from ElevenLabs
           if (data.type === "conversation_initiation_metadata") {
-            console.log("Conversation initialized, starting audio stream");
-            // Start audio streaming after initialization
+            console.log("Conversation metadata received:", data.conversation_initiation_metadata_event);
+            
+            // Now we're ready to start the conversation
+            setIsConnecting(false);
+            setIsCallActive(true);
+            
+            // Start audio streaming after successful initialization
             if (mediaStreamRef.current) {
+              console.log("Starting audio stream to WebSocket");
               startAudioStreaming(mediaStreamRef.current, ws);
             }
             
-            // Wait a bit longer for the connection to stabilize
-            setTimeout(() => {
-              if (ws.readyState === WebSocket.OPEN) {
-                console.log("Sending initial greeting to trigger agent response");
-                
-                // Generate a small audio chunk to trigger the agent
-                // Create a brief silence as PCM 16-bit audio
-                const sampleRate = 16000;
-                const duration = 0.1; // 100ms of silence
-                const samples = Math.floor(sampleRate * duration);
-                const pcm16 = new Int16Array(samples);
-                
-                // Convert to base64
-                const uint8 = new Uint8Array(pcm16.buffer);
-                const binaryString = Array.from(uint8)
-                  .map(byte => String.fromCharCode(byte))
-                  .join('');
-                const base64Audio = btoa(binaryString);
-                
-                // Send the audio chunk to trigger the agent
-                const audioMessage = {
-                  user_audio_chunk: base64Audio
-                };
-                
-                ws.send(JSON.stringify(audioMessage));
-                
-                // Add a transcript entry to show interaction started
-                setTranscript(prev => [...prev, {
-                  role: "user",
-                  message: "[Call started]",
-                  timestamp: new Date()
-                }]);
-              } else {
-                console.log("WebSocket not ready for initial trigger");
-              }
-            }, 2000);
+            toast({
+              title: "Call started",
+              description: `Connected to ${agents.find(a => a.id === selectedAgent)?.name}`,
+            });
+            
+            // The agent should automatically send first_message, no need to trigger
           } else if (data.audio || data.audio_event) {
             // Agent audio response
             const audioData = data.audio || data.audio_event?.audio_base_64 || data.audio_event?.audio;
@@ -273,17 +245,28 @@ export default function Playground() {
               timestamp: new Date()
             }]);
           } else if (data.ping_event) {
-            // Keep alive
-            ws.send(JSON.stringify({ pong_event: { event_id: data.ping_event.event_id }}));
-          } else if (data.error) {
-            console.error('ElevenLabs error:', data.error);
+            // Keep alive - respond with pong
+            const pongMessage = {
+              type: "pong_event",
+              event_id: data.ping_event.event_id
+            };
+            ws.send(JSON.stringify(pongMessage));
+            console.log("Sent pong response");
+          } else if (data.error || data.error_event) {
+            const errorInfo = data.error || data.error_event;
+            console.error('ElevenLabs error:', errorInfo);
             toast({
               title: "Agent Error",
-              description: data.error.message || "Unknown error from agent",
+              description: errorInfo.message || errorInfo.error || "Connection error occurred",
               variant: "destructive",
             });
+            endCall();
+          } else if (data.interruption_event) {
+            console.log('User interrupted agent');
+          } else if (data.agent_response_correction_event) {
+            console.log('Agent response correction:', data.agent_response_correction_event);
           } else {
-            console.log('Unhandled message type:', data);
+            console.log('Unhandled message type:', data.type || 'unknown', data);
           }
         } catch (error) {
           console.error("Error handling WebSocket message:", error, "Raw data:", event.data);
@@ -394,23 +377,28 @@ export default function Playground() {
     // Create audio context at 16kHz as required by ElevenLabs
     const audioContext = new AudioContext({ sampleRate: 16000 });
     const source = audioContext.createMediaStreamSource(stream);
-    const processor = audioContext.createScriptProcessor(512, 1, 1);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1); // Larger buffer for better performance
     
     let chunkCount = 0;
+    let audioBuffer: number[] = [];
+    let lastSendTime = Date.now();
+    
     processor.onaudioprocess = (e) => {
       if (ws.readyState === WebSocket.OPEN && !isMuted) {
         const inputData = e.inputBuffer.getChannelData(0);
         
-        // Check if there's actual audio (not silence)
-        const hasAudio = inputData.some(sample => Math.abs(sample) > 0.001);
+        // Convert float32 to PCM 16-bit and add to buffer
+        for (let i = 0; i < inputData.length; i++) {
+          const s = Math.max(-1, Math.min(1, inputData[i]));
+          const sample = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          audioBuffer.push(sample);
+        }
         
-        if (hasAudio) {
-          // Convert float32 to PCM 16-bit
-          const pcm16 = new Int16Array(inputData.length);
-          for (let i = 0; i < inputData.length; i++) {
-            const s = Math.max(-1, Math.min(1, inputData[i]));
-            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-          }
+        // Send chunks every 250ms as recommended by ElevenLabs
+        const now = Date.now();
+        if (now - lastSendTime >= 250 && audioBuffer.length > 0) {
+          // Convert buffer to Int16Array
+          const pcm16 = new Int16Array(audioBuffer);
           
           // Convert to base64
           const uint8 = new Uint8Array(pcm16.buffer);
@@ -419,7 +407,7 @@ export default function Playground() {
             .join('');
           const base64Audio = btoa(binaryString);
           
-          // Send in the format ElevenLabs expects
+          // Send audio chunk
           const message = {
             user_audio_chunk: base64Audio
           };
@@ -427,9 +415,13 @@ export default function Playground() {
           ws.send(JSON.stringify(message));
           chunkCount++;
           
+          // Clear buffer and update time
+          audioBuffer = [];
+          lastSendTime = now;
+          
           // Log every 10th chunk to avoid spam
           if (chunkCount % 10 === 0) {
-            console.log(`Sent ${chunkCount} audio chunks`);
+            console.log(`Sent ${chunkCount} audio chunks (250ms intervals)`);
           }
         }
       }
@@ -442,7 +434,7 @@ export default function Playground() {
     (ws as any).audioProcessor = processor;
     (ws as any).audioContext = audioContext;
     
-    console.log("Audio streaming setup complete");
+    console.log("Audio streaming setup complete with 250ms chunking");
   };
 
   const playAudio = async (audioData: string) => {
