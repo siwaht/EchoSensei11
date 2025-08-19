@@ -761,11 +761,30 @@ export function registerRoutes(app: Express): Server {
           const decryptedKey = decryptApiKey(integration.apiKey);
           
           try {
-            // Build comprehensive ElevenLabs payload
+            // First, fetch the current agent configuration from ElevenLabs
+            console.log("\n=== FETCHING CURRENT AGENT CONFIG ===");
+            const currentAgentResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
+              headers: {
+                "xi-api-key": decryptedKey,
+                "Content-Type": "application/json",
+              },
+            });
+            
+            let currentAgentConfig: any = {};
+            if (currentAgentResponse.ok) {
+              currentAgentConfig = await currentAgentResponse.json();
+              console.log("Current agent config fetched successfully");
+            } else {
+              console.error("Failed to fetch current agent config, using defaults");
+            }
+            
+            // Build the update payload, preserving existing structure
             const elevenLabsPayload: any = {
               name: agent.name,
               conversation_config: {
+                ...currentAgentConfig.conversation_config,
                 agent: {
+                  ...currentAgentConfig.conversation_config?.agent,
                   prompt: updates.systemPrompt !== undefined ? updates.systemPrompt : (agent.systemPrompt || ""),
                   first_message: updates.firstMessage !== undefined ? updates.firstMessage : (agent.firstMessage || ""),
                   language: updates.language !== undefined ? updates.language : (agent.language || "en"),
@@ -1020,7 +1039,8 @@ export function registerRoutes(app: Express): Server {
             console.log("Agent ID:", agent.elevenLabsAgentId);
             console.log("Payload:", JSON.stringify(elevenLabsPayload, null, 2));
 
-            const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
+            // Try updating with PUT instead of PATCH if PATCH fails
+            let response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
               method: "PATCH",
               headers: {
                 "xi-api-key": decryptedKey,
@@ -1028,6 +1048,28 @@ export function registerRoutes(app: Express): Server {
               },
               body: JSON.stringify(elevenLabsPayload),
             });
+            
+            // If PATCH fails with 500, try a simpler update with just the conversation config
+            if (response.status === 500) {
+              console.log("\n=== PATCH failed, trying simpler update ===");
+              const simplePayload = {
+                conversation_config: {
+                  agent: {
+                    prompt: updates.systemPrompt !== undefined ? updates.systemPrompt : agent.systemPrompt,
+                    first_message: updates.firstMessage !== undefined ? updates.firstMessage : agent.firstMessage,
+                  }
+                }
+              };
+              
+              response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
+                method: "PATCH",
+                headers: {
+                  "xi-api-key": decryptedKey,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(simplePayload),
+              });
+            }
 
             if (!response.ok) {
               const errorText = await response.text();
