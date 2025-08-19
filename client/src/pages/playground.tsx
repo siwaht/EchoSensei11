@@ -177,8 +177,13 @@ export default function Playground() {
           type: "conversation_initiation_client_data"
         };
         
-        // Add conversation config override if we have custom settings
-        if (agentSettings?.firstMessage || agentSettings?.systemPrompt) {
+        // Add conversation config override if we have any custom settings
+        const hasCustomSettings = agentSettings?.firstMessage || 
+                                 agentSettings?.systemPrompt || 
+                                 agentSettings?.voiceId ||
+                                 agentSettings?.voiceSettings;
+        
+        if (hasCustomSettings) {
           initMessage.conversation_config_override = {
             agent: {
               prompt: {
@@ -189,10 +194,17 @@ export default function Playground() {
             }
           };
           
-          // Add voice settings if available
-          if (agentSettings.voiceId) {
+          // Add voice/TTS settings if available
+          if (agentSettings.voiceId || agentSettings.voiceSettings) {
+            const voiceSettings = agentSettings.voiceSettings || {};
             initMessage.conversation_config_override.tts = {
-              voice_id: agentSettings.voiceId
+              voice_id: agentSettings.voiceId,
+              agent_output_audio_format: "pcm_16000",
+              optimize_streaming_latency: 3,
+              stability: voiceSettings.stability ?? 0.5,
+              similarity_boost: voiceSettings.similarityBoost ?? 0.75,
+              style: voiceSettings.style ?? 0,
+              use_speaker_boost: voiceSettings.useSpeakerBoost ?? true
             };
           }
           
