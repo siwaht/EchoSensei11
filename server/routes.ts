@@ -818,7 +818,30 @@ export function registerRoutes(app: Express): Server {
                 ...currentAgentConfig.conversation_config,
                 agent: {
                   ...currentAgentConfig.conversation_config?.agent,
-                  prompt: updates.systemPrompt !== undefined ? updates.systemPrompt : (agent.systemPrompt || ""),
+                  prompt: (() => {
+                    let basePrompt = updates.systemPrompt !== undefined ? updates.systemPrompt : (agent.systemPrompt || "");
+                    
+                    // Append knowledge base documents to prompt if available
+                    const kb = updates.knowledgeBase || agent.knowledgeBase;
+                    if (kb?.documents?.length > 0) {
+                      let knowledgeBaseContext = "\n\n### KNOWLEDGE BASE ###\n";
+                      knowledgeBaseContext += "You have access to the following information. Use this knowledge to answer questions accurately:\n\n";
+                      
+                      for (const doc of kb.documents) {
+                        if (doc.type === 'text' && doc.content) {
+                          knowledgeBaseContext += `**${doc.name}:**\n${doc.content}\n\n`;
+                        } else if (doc.type === 'url' && doc.url) {
+                          knowledgeBaseContext += `**${doc.name}:** Reference URL: ${doc.url}\n\n`;
+                        }
+                      }
+                      
+                      knowledgeBaseContext += "Always refer to this knowledge base when answering questions about the information contained within.\n";
+                      knowledgeBaseContext += "### END KNOWLEDGE BASE ###\n";
+                      
+                      return basePrompt + knowledgeBaseContext;
+                    }
+                    return basePrompt;
+                  })(),
                   first_message: updates.firstMessage !== undefined ? updates.firstMessage : (agent.firstMessage || ""),
                   language: updates.language !== undefined ? updates.language : (agent.language || "en"),
                 }
@@ -859,96 +882,14 @@ export function registerRoutes(app: Express): Server {
                 embedding_model: kb.embeddingModel || "e5_mistral_7b_instruct",
               };
               
-              // Handle knowledge base documents - upload to agent-specific ElevenLabs knowledge base
+              // Knowledge base documents are now embedded in the prompt
+              // ElevenLabs doesn't have a separate knowledge base API endpoint for agents
               if (kb.documents && kb.documents.length > 0) {
-                console.log("\n=== UPLOADING KNOWLEDGE BASE DOCUMENTS ===");
-                
-                // Get agent's knowledge base items
-                const kbListResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}/knowledge-base`, {
-                  headers: {
-                    "xi-api-key": decryptedKey
-                  }
-                });
-                
-                let existingItems: any[] = [];
-                if (kbListResponse.ok) {
-                  const kbListData = await kbListResponse.json();
-                  existingItems = kbListData.knowledge_base || [];
-                  console.log(`Found ${existingItems.length} existing knowledge base items`);
-                }
-                
-                // Remove existing items if any
-                for (const item of existingItems) {
-                  try {
-                    const deleteResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}/knowledge-base/${item.knowledge_base_item_id}`, {
-                      method: "DELETE",
-                      headers: {
-                        "xi-api-key": decryptedKey
-                      }
-                    });
-                    if (deleteResponse.ok) {
-                      console.log(`Removed existing knowledge base item: ${item.name}`);
-                    }
-                  } catch (e) {
-                    console.error(`Error deleting knowledge base item:`, e);
-                  }
-                }
-                
-                // Upload new documents
+                console.log("\n=== KNOWLEDGE BASE DOCUMENTS EMBEDDED IN PROMPT ===");
+                console.log(`${kb.documents.length} documents included in agent's system prompt`);
                 for (const doc of kb.documents) {
-                  try {
-                    if (doc.type === 'text' && doc.content) {
-                      // Upload text content as a file to agent's knowledge base
-                      const formData = new FormData();
-                      formData.append("name", doc.name);
-                      
-                      // Create a blob from text content
-                      const blob = new Blob([doc.content], { type: "text/plain" });
-                      formData.append("file", blob, `${doc.name}.txt`);
-                      
-                      const uploadResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}/knowledge-base`, {
-                        method: "POST",
-                        headers: {
-                          "xi-api-key": decryptedKey
-                        },
-                        body: formData
-                      });
-                      
-                      if (uploadResponse.ok) {
-                        const kbData = await uploadResponse.json();
-                        console.log(`Knowledge base document uploaded: ${doc.name}, ID: ${kbData.knowledge_base_item_id || kbData.id}`);
-                      } else {
-                        const errorText = await uploadResponse.text();
-                        console.error(`Failed to upload text document ${doc.name}:`, errorText);
-                      }
-                    } else if (doc.type === 'url' && doc.url) {
-                      // URL documents can be uploaded directly
-                      const formData = new FormData();
-                      formData.append("name", doc.name);
-                      formData.append("url", doc.url);
-                      
-                      const uploadResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}/knowledge-base`, {
-                        method: "POST",
-                        headers: {
-                          "xi-api-key": decryptedKey
-                        },
-                        body: formData
-                      });
-                      
-                      if (uploadResponse.ok) {
-                        const kbData = await uploadResponse.json();
-                        console.log(`URL document uploaded: ${doc.name}, ID: ${kbData.knowledge_base_item_id || kbData.id}`);
-                      } else {
-                        console.error(`Failed to upload URL document ${doc.name}:`, await uploadResponse.text());
-                      }
-                    } else if (doc.type === 'file') {
-                      console.log(`File upload for ${doc.name} requires file content handling`);
-                    }
-                  } catch (docError) {
-                    console.error(`Error uploading document ${doc.name}:`, docError);
-                  }
+                  console.log(`- ${doc.name} (${doc.type})`);
                 }
-                console.log("=== KNOWLEDGE BASE UPLOAD COMPLETE ===");
               }
             }
 
@@ -1061,7 +1002,30 @@ export function registerRoutes(app: Express): Server {
               const simplePayload = {
                 conversation_config: {
                   agent: {
-                    prompt: updates.systemPrompt !== undefined ? updates.systemPrompt : agent.systemPrompt,
+                    prompt: (() => {
+                      let basePrompt = updates.systemPrompt !== undefined ? updates.systemPrompt : agent.systemPrompt;
+                      
+                      // Append knowledge base documents to prompt if available
+                      const kb = updates.knowledgeBase || agent.knowledgeBase;
+                      if (kb?.documents?.length > 0) {
+                        let knowledgeBaseContext = "\n\n### KNOWLEDGE BASE ###\n";
+                        knowledgeBaseContext += "You have access to the following information. Use this knowledge to answer questions accurately:\n\n";
+                        
+                        for (const doc of kb.documents) {
+                          if (doc.type === 'text' && doc.content) {
+                            knowledgeBaseContext += `**${doc.name}:**\n${doc.content}\n\n`;
+                          } else if (doc.type === 'url' && doc.url) {
+                            knowledgeBaseContext += `**${doc.name}:** Reference URL: ${doc.url}\n\n`;
+                          }
+                        }
+                        
+                        knowledgeBaseContext += "Always refer to this knowledge base when answering questions about the information contained within.\n";
+                        knowledgeBaseContext += "### END KNOWLEDGE BASE ###\n";
+                        
+                        return basePrompt + knowledgeBaseContext;
+                      }
+                      return basePrompt;
+                    })(),
                     first_message: updates.firstMessage !== undefined ? updates.firstMessage : agent.firstMessage,
                   }
                 }
