@@ -100,8 +100,10 @@ export default function AgentSettings() {
     collection: false,
   });
   const [documentUploadOpen, setDocumentUploadOpen] = useState(false);
-  const [documentType, setDocumentType] = useState<'file' | 'url'>('file');
+  const [documentType, setDocumentType] = useState<'file' | 'url' | 'text'>('file');
   const [documentUrl, setDocumentUrl] = useState('');
+  const [documentText, setDocumentText] = useState('');
+  const [documentTitle, setDocumentTitle] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch agent data
@@ -307,6 +309,47 @@ export default function AgentSettings() {
     toast({
       title: "URL Added",
       description: "The URL has been added to the knowledge base",
+    });
+  };
+
+  const handleTextAdd = () => {
+    if (!documentText.trim()) {
+      toast({
+        title: "Invalid Text",
+        description: "Please enter some text content",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!documentTitle.trim()) {
+      toast({
+        title: "Invalid Title",
+        description: "Please enter a title for the text document",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const newDocument = {
+      id: Date.now().toString(),
+      name: documentTitle,
+      type: 'text',
+      url: '',
+      size: new Blob([documentText]).size,
+      content: documentText,
+    };
+    setSettings({
+      ...settings,
+      documents: [...settings.documents, newDocument],
+    });
+    setHasUnsavedChanges(true);
+    setDocumentUploadOpen(false);
+    setDocumentText('');
+    setDocumentTitle('');
+    toast({
+      title: "Text Added",
+      description: `${documentTitle} has been added to the knowledge base`,
     });
   };
 
@@ -827,15 +870,19 @@ export default function AgentSettings() {
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4">
-                            <Tabs value={documentType} onValueChange={(v) => setDocumentType(v as 'file' | 'url')}>
-                              <TabsList className="grid w-full grid-cols-2">
+                            <Tabs value={documentType} onValueChange={(v) => setDocumentType(v as 'file' | 'url' | 'text')}>
+                              <TabsList className="grid w-full grid-cols-3">
                                 <TabsTrigger value="file">
                                   <Upload className="w-4 h-4 mr-2" />
-                                  Upload File
+                                  File
                                 </TabsTrigger>
                                 <TabsTrigger value="url">
                                   <Link className="w-4 h-4 mr-2" />
-                                  Add URL
+                                  URL
+                                </TabsTrigger>
+                                <TabsTrigger value="text">
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  Text
                                 </TabsTrigger>
                               </TabsList>
                               <TabsContent value="file" className="space-y-4">
@@ -886,6 +933,38 @@ export default function AgentSettings() {
                                   Add URL
                                 </Button>
                               </TabsContent>
+                              <TabsContent value="text" className="space-y-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="document-title">Document Title</Label>
+                                  <Input
+                                    id="document-title"
+                                    placeholder="Enter a title for this document"
+                                    value={documentTitle}
+                                    onChange={(e) => setDocumentTitle(e.target.value)}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="document-text">Document Content</Label>
+                                  <Textarea
+                                    id="document-text"
+                                    placeholder="Paste or type your text content here..."
+                                    value={documentText}
+                                    onChange={(e) => setDocumentText(e.target.value)}
+                                    className="min-h-[200px]"
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    Add any text content you want your agent to reference
+                                  </p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  className="w-full"
+                                  onClick={handleTextAdd}
+                                  disabled={!documentText.trim() || !documentTitle.trim()}
+                                >
+                                  Add Text
+                                </Button>
+                              </TabsContent>
                             </Tabs>
                           </div>
                         </DialogContent>
@@ -906,7 +985,13 @@ export default function AgentSettings() {
                         {settings.documents.map((doc) => (
                           <Card key={doc.id} className="p-3 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <FileText className="w-4 h-4 text-muted-foreground" />
+                              {doc.type === 'url' ? (
+                                <Link className="w-4 h-4 text-muted-foreground" />
+                              ) : doc.type === 'text' ? (
+                                <FileText className="w-4 h-4 text-muted-foreground" />
+                              ) : (
+                                <Upload className="w-4 h-4 text-muted-foreground" />
+                              )}
                               <span className="text-sm">{doc.name}</span>
                               <span className="text-xs text-muted-foreground">({doc.type})</span>
                             </div>
