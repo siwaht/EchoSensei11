@@ -9,6 +9,9 @@ VoiceAI Dashboard is a multi-tenant SaaS application that allows organizations t
 - **Mobile-First Call History**: Converted call history table to responsive card layout on mobile devices
 - **Responsive Navigation**: Updated AppShell with mobile-friendly collapsible navigation
 - **Adaptive UI Components**: All buttons, forms, and grids now stack appropriately on smaller screens
+- **Enhanced Audio Player**: Fixed play/pause functionality with proper state management and controls
+- **Call Timestamp Syncing**: Integrated actual call timestamps from ElevenLabs API using start_time_unix_secs field
+- **Redesigned Organizations Tab**: Created comprehensive organization management interface with detailed metrics and insights
 
 ## User Preferences
 

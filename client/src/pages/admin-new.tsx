@@ -15,7 +15,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Users, Building2, DollarSign, Phone, Edit, Trash2, Plus, Shield, 
   Activity, TrendingUp, Package, CreditCard, UserPlus, Settings,
-  Save, X
+  Save, X, Eye
 } from "lucide-react";
 import type { User, Organization, BillingPackage } from "@shared/schema";
 
@@ -28,6 +28,7 @@ interface BillingData {
     id: string;
     name: string;
     userCount: number;
+    agentCount: number;
     totalCalls: number;
     totalMinutes: number;
     estimatedCost: number;
@@ -523,16 +524,7 @@ export default function AdminDashboard() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setEditingPackage({
-                          ...pkg,
-                          features: pkg.features || [],
-                          monthlyCredits: pkg.monthlyCredits || 0,
-                          maxAgents: pkg.maxAgents || 0,
-                          maxUsers: pkg.maxUsers || 0,
-                          perCallRate: pkg.perCallRate || 0,
-                          perMinuteRate: pkg.perMinuteRate || 0,
-                          monthlyPrice: pkg.monthlyPrice || 0,
-                        })}
+                        onClick={() => setEditingPackage(pkg)}
                         className="h-8 w-8 p-0"
                       >
                         <Edit className="w-4 h-4" />
@@ -568,57 +560,215 @@ export default function AdminDashboard() {
 
         {/* Organizations Tab */}
         <TabsContent value="organizations" className="space-y-4">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Organizations</p>
+                  <p className="text-2xl font-bold">{organizations.length}</p>
+                </div>
+                <Building2 className="w-8 h-8 text-primary/20" />
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Users</p>
+                  <p className="text-2xl font-bold">{billingData?.totalUsers || 0}</p>
+                </div>
+                <Users className="w-8 h-8 text-blue-500/20" />
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Calls</p>
+                  <p className="text-2xl font-bold">{billingData?.totalCalls || 0}</p>
+                </div>
+                <Phone className="w-8 h-8 text-green-500/20" />
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Platform Revenue</p>
+                  <p className="text-2xl font-bold text-green-600">${billingData?.totalRevenue?.toFixed(2) || "0.00"}</p>
+                </div>
+                <DollarSign className="w-8 h-8 text-green-500/20" />
+              </div>
+            </Card>
+          </div>
+
+          {/* Organizations List */}
           <Card className="p-3 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3 sm:mb-4">
-              <h2 className="text-lg sm:text-xl font-semibold">Organization Overview</h2>
-              <Badge variant="secondary">{organizations.length} organizations</Badge>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+              <div>
+                <h2 className="text-lg sm:text-xl font-semibold">All Organizations</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Manage and monitor all organizations on the platform
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Create Organization</span>
+                <span className="sm:hidden">Create</span>
+              </Button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium flex items-center gap-2">
-                  <Activity className="w-5 h-5" />
-                  Platform Statistics
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between p-2 rounded hover:bg-muted/50">
-                    <span className="text-muted-foreground">Active Users</span>
-                    <span className="font-medium">{billingData?.totalUsers || 0}</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded hover:bg-muted/50">
-                    <span className="text-muted-foreground">Active Organizations</span>
-                    <span className="font-medium">{billingData?.totalOrganizations || 0}</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded hover:bg-muted/50">
-                    <span className="text-muted-foreground">Total API Calls</span>
-                    <span className="font-medium">{billingData?.totalCalls || 0}</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded hover:bg-muted/50">
-                    <span className="text-muted-foreground">Platform Revenue</span>
-                    <span className="font-medium text-green-500">${billingData?.totalRevenue?.toFixed(2) || "0.00"}</span>
-                  </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[800px]">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-2 text-sm font-medium">Organization</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Users</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Agents</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Calls</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Package</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Revenue</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Status</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {organizations.map((org) => {
+                    const orgBilling = billingData?.organizationsData.find(o => o.id === org.id);
+                    const userCount = users.filter(u => u.organizationId === org.id).length;
+                    
+                    return (
+                      <tr key={org.id} className="border-b hover:bg-muted/50">
+                        <td className="py-3 px-2">
+                          <div>
+                            <p className="font-medium text-sm">{org.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Created: {org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'N/A'}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{userCount}</span>
+                            <span className="text-xs text-muted-foreground">/ {org.maxUsers}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{orgBilling?.agentCount || 0}</span>
+                            <span className="text-xs text-muted-foreground">/ {org.maxAgents}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          <span className="text-sm">{orgBilling?.totalCalls || 0}</span>
+                        </td>
+                        <td className="py-3 px-2">
+                          <Badge variant="outline" className="text-xs">
+                            {org.billingPackage || 'Starter'}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-2">
+                          <span className="text-sm font-medium text-green-600">
+                            ${orgBilling?.estimatedCost?.toFixed(2) || '0.00'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2">
+                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
+                            Active
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              title="View Details"
+                            >
+                              <Eye className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              title="Edit Organization"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              title="Settings"
+                            >
+                              <Settings className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              
+              {organizations.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No organizations found</p>
+                  <p className="text-sm mt-1">Organizations will appear here once created</p>
                 </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  Top Organizations by Revenue
-                </h3>
-                <div className="space-y-2">
-                  {billingData?.organizationsData
-                    .sort((a, b) => b.estimatedCost - a.estimatedCost)
-                    .slice(0, 5)
-                    .map((org) => (
-                      <div key={org.id} className="flex justify-between p-2 rounded hover:bg-muted/50">
-                        <span className="text-muted-foreground truncate max-w-[200px]">{org.name}</span>
-                        <span className="font-medium">${org.estimatedCost.toFixed(2)}</span>
-                      </div>
-                    ))}
-                </div>
-              </div>
+              )}
             </div>
           </Card>
+
+          {/* Quick Insights */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="p-4">
+              <h3 className="text-base font-medium mb-3 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Top Organizations by Revenue
+              </h3>
+              <div className="space-y-2">
+                {billingData?.organizationsData
+                  .sort((a, b) => b.estimatedCost - a.estimatedCost)
+                  .slice(0, 5)
+                  .map((org, index) => (
+                    <div key={org.id} className="flex items-center justify-between p-2 rounded hover:bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
+                        <span className="text-sm truncate max-w-[150px]">{org.name}</span>
+                      </div>
+                      <span className="text-sm font-medium text-green-600">${org.estimatedCost.toFixed(2)}</span>
+                    </div>
+                  ))}
+                {(!billingData?.organizationsData || billingData.organizationsData.length === 0) && (
+                  <p className="text-sm text-muted-foreground text-center py-4">No revenue data available</p>
+                )}
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <h3 className="text-base font-medium mb-3 flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                Most Active Organizations
+              </h3>
+              <div className="space-y-2">
+                {billingData?.organizationsData
+                  .sort((a, b) => b.totalCalls - a.totalCalls)
+                  .slice(0, 5)
+                  .map((org, index) => (
+                    <div key={org.id} className="flex items-center justify-between p-2 rounded hover:bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
+                        <span className="text-sm truncate max-w-[150px]">{org.name}</span>
+                      </div>
+                      <span className="text-sm font-medium">{org.totalCalls} calls</span>
+                    </div>
+                  ))}
+                {(!billingData?.organizationsData || billingData.organizationsData.length === 0) && (
+                  <p className="text-sm text-muted-foreground text-center py-4">No activity data available</p>
+                )}
+              </div>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
