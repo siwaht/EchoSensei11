@@ -45,7 +45,7 @@ export default function Playground() {
 
   // Fetch integration to get API key status
   const { data: integration, isLoading: integrationLoading } = useQuery<any>({
-    queryKey: ["/api/integrations/voiceai"],
+    queryKey: ["/api/integrations"],
     retry: 1,
   });
 
