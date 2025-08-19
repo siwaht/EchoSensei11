@@ -129,31 +129,30 @@ export default function Agents() {
           agents.map((agent) => (
             <Card 
               key={agent.id} 
-              className="group relative p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-primary-500 dark:hover:border-primary-400 transition-all cursor-pointer"
+              className="group relative flex flex-col h-full p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-primary-500 dark:hover:border-primary-400 transition-all cursor-pointer"
               onClick={() => setLocation(`/agents/${agent.id}/settings`)}
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-xl flex items-center justify-center">
-                    <Bot className="w-6 h-6 text-primary-600" />
-                  </div>
-                  <Badge className={getStatusColor(agent.isActive)} data-testid={`badge-status-${agent.id}`}>
-                    {getStatusText(agent.isActive)}
-                  </Badge>
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-6 h-6 text-primary-600" />
                 </div>
+                <Badge className={getStatusColor(agent.isActive)} data-testid={`badge-status-${agent.id}`}>
+                  {getStatusText(agent.isActive)}
+                </Badge>
               </div>
               
-              <h3 className="text-lg font-semibold mb-2" data-testid={`text-agent-name-${agent.id}`}>
-                {agent.name}
-              </h3>
-              
-              {agent.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2" data-testid={`text-agent-description-${agent.id}`}>
-                  {agent.description}
-                </p>
-              )}
-              
-              <div className="space-y-3 text-sm mb-4">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold mb-2" data-testid={`text-agent-name-${agent.id}`}>
+                  {agent.name}
+                </h3>
+                
+                {agent.description && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2" data-testid={`text-agent-description-${agent.id}`}>
+                    {agent.description}
+                  </p>
+                )}
+                
+                <div className="space-y-3 text-sm">
                 <div className="flex flex-col space-y-1">
                   <span className="text-gray-600 dark:text-gray-400">ElevenLabs ID:</span>
                   <span className="font-medium font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded break-all" data-testid={`text-agent-id-${agent.id}`}>
@@ -166,10 +165,11 @@ export default function Agents() {
                     {agent.createdAt ? new Date(agent.createdAt).toLocaleDateString() : "Unknown"}
                   </span>
                 </div>
+                </div>
               </div>
               
               {/* Action Buttons */}
-              <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex gap-2 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
                 <Button
                   variant="outline"
                   size="sm"
