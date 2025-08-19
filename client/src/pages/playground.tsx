@@ -201,23 +201,42 @@ export default function Playground() {
               startAudioStreaming(mediaStreamRef.current, ws);
             }
             
-            // Send an initial greeting to trigger the agent response
+            // Wait a bit longer for the connection to stabilize
             setTimeout(() => {
-              // Send a text message to trigger the agent
-              const triggerMessage = {
-                message: "Hello",
-                type: "conversation_initiation_trigger"
-              };
-              console.log("Sending initial greeting to trigger agent response");
-              ws.send(JSON.stringify(triggerMessage));
-              
-              // Also add a transcript entry to show the greeting
-              setTranscript(prev => [...prev, {
-                role: "user",
-                message: "Hello",
-                timestamp: new Date()
-              }]);
-            }, 1000);
+              if (ws.readyState === WebSocket.OPEN) {
+                console.log("Sending initial greeting to trigger agent response");
+                
+                // Generate a small audio chunk to trigger the agent
+                // Create a brief silence as PCM 16-bit audio
+                const sampleRate = 16000;
+                const duration = 0.1; // 100ms of silence
+                const samples = Math.floor(sampleRate * duration);
+                const pcm16 = new Int16Array(samples);
+                
+                // Convert to base64
+                const uint8 = new Uint8Array(pcm16.buffer);
+                const binaryString = Array.from(uint8)
+                  .map(byte => String.fromCharCode(byte))
+                  .join('');
+                const base64Audio = btoa(binaryString);
+                
+                // Send the audio chunk to trigger the agent
+                const audioMessage = {
+                  user_audio_chunk: base64Audio
+                };
+                
+                ws.send(JSON.stringify(audioMessage));
+                
+                // Add a transcript entry to show interaction started
+                setTranscript(prev => [...prev, {
+                  role: "user",
+                  message: "[Call started]",
+                  timestamp: new Date()
+                }]);
+              } else {
+                console.log("WebSocket not ready for initial trigger");
+              }
+            }, 2000);
           } else if (data.audio || data.audio_event) {
             // Agent audio response
             const audioData = data.audio || data.audio_event?.audio_base_64 || data.audio_event?.audio;
@@ -267,7 +286,7 @@ export default function Playground() {
             console.log('Unhandled message type:', data);
           }
         } catch (error) {
-          console.error("Error handling WebSocket message:", error);
+          console.error("Error handling WebSocket message:", error, "Raw data:", event.data);
         }
       };
 
@@ -281,9 +300,18 @@ export default function Playground() {
         endCall();
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
+        console.log('WebSocket closed:', { code: event.code, reason: event.reason, wasClean: event.wasClean });
         setIsCallActive(false);
         setIsConnecting(false);
+        
+        if (!event.wasClean) {
+          toast({
+            title: "Connection lost",
+            description: `Connection closed unexpectedly (Code: ${event.code})`,
+            variant: "destructive",
+          });
+        }
       };
 
       // Audio streaming will start after conversation initialization
