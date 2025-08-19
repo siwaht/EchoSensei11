@@ -737,7 +737,7 @@ export function registerRoutes(app: Express): Server {
                 credits_used: details.credits_used || conversation.credits_used,
               };
               
-              // Create call log with proper field mapping
+              // Create call log with proper field mapping including timestamp
               const callData = {
                 organizationId: user.organizationId,
                 agentId: agent.id,
@@ -750,6 +750,10 @@ export function registerRoutes(app: Express): Server {
                   costData
                 ).toString(),
                 status: "completed",
+                // Use the actual call start time from ElevenLabs
+                createdAt: conversation.start_time_unix_secs 
+                  ? new Date(conversation.start_time_unix_secs * 1000)
+                  : new Date(),
               };
               
               console.log("  Creating call log with data:", callData);

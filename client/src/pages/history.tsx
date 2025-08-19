@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Bot, Calendar, RefreshCw } from "lucide-react";
+import { Bot, Calendar, RefreshCw, Play, Pause, Download } from "lucide-react";
 import { CallDetailModal } from "@/components/modals/call-detail-modal";
 import type { CallLog, Agent } from "@shared/schema";
 
@@ -15,6 +15,8 @@ export default function History() {
   const [selectedAgent, setSelectedAgent] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedCallLog, setSelectedCallLog] = useState<CallLog | null>(null);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -68,6 +70,40 @@ export default function History() {
   const getAgentName = (agentId: string) => {
     const agent = agents?.find(a => a.id === agentId);
     return agent?.name || "Unknown Agent";
+  };
+
+  const handleAudioPlayPause = (audioUrl: string, callId: string) => {
+    // If this audio is already playing, pause it
+    if (playingAudioId === callId && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setPlayingAudioId(null);
+      return;
+    }
+
+    // Stop any currently playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    // Create and play new audio
+    const audio = new Audio(audioUrl);
+    audio.addEventListener('ended', () => {
+      setPlayingAudioId(null);
+      audioRef.current = null;
+    });
+    
+    audio.play().then(() => {
+      audioRef.current = audio;
+      setPlayingAudioId(callId);
+    }).catch(err => {
+      toast({
+        title: "Playback Error",
+        description: "Could not play audio recording",
+        variant: "destructive"
+      });
+    });
   };
 
   // Filter call logs based on selected agent and date
@@ -202,16 +238,20 @@ export default function History() {
                           variant="outline"
                           size="sm"
                           className="flex-1"
-                          onClick={() => {
-                            const audio = new Audio(callLog.audioUrl!);
-                            audio.play();
-                          }}
+                          onClick={() => handleAudioPlayPause(callLog.audioUrl!, callLog.id)}
                           data-testid={`button-play-audio-${callLog.id}`}
                         >
-                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                          </svg>
-                          Play
+                          {playingAudioId === callLog.id ? (
+                            <>
+                              <Pause className="w-4 h-4 mr-1" />
+                              Pause
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-4 h-4 mr-1" />
+                              Play
+                            </>
+                          )}
                         </Button>
                         <a
                           href={callLog.audioUrl}
@@ -219,9 +259,7 @@ export default function History() {
                           className="flex items-center justify-center px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
                           data-testid={`link-download-audio-${callLog.id}`}
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
+                          <Download className="w-4 h-4" />
                         </a>
                       </>
                     )}
@@ -297,16 +335,20 @@ export default function History() {
                               variant="outline"
                               size="sm"
                               className="group hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-                              onClick={() => {
-                                const audio = new Audio(callLog.audioUrl!);
-                                audio.play();
-                              }}
+                              onClick={() => handleAudioPlayPause(callLog.audioUrl!, callLog.id)}
                               data-testid={`button-play-audio-${callLog.id}`}
                             >
-                              <svg className="w-4 h-4 mr-1 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                              </svg>
-                              Play
+                              {playingAudioId === callLog.id ? (
+                                <>
+                                  <Pause className="w-4 h-4 mr-1 text-purple-600 dark:text-purple-400" />
+                                  Pause
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="w-4 h-4 mr-1 text-purple-600 dark:text-purple-400" />
+                                  Play
+                                </>
+                              )}
                             </Button>
                             <a
                               href={callLog.audioUrl}
@@ -315,9 +357,7 @@ export default function History() {
                               title="Download recording"
                               data-testid={`link-download-audio-${callLog.id}`}
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                              </svg>
+                              <Download className="w-4 h-4" />
                             </a>
                           </div>
                         ) : (

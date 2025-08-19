@@ -48,7 +48,7 @@ export interface IStorage {
   getCallLogs(organizationId: string, limit?: number, offset?: number, agentId?: string): Promise<CallLog[]>;
   getCallLog(id: string, organizationId: string): Promise<CallLog | undefined>;
   getCallLogByElevenLabsId(elevenLabsCallId: string, organizationId: string): Promise<CallLog | undefined>;
-  createCallLog(callLog: InsertCallLog): Promise<CallLog>;
+  createCallLog(callLog: InsertCallLog & { createdAt?: Date }): Promise<CallLog>;
 
   // Analytics operations
   getOrganizationStats(organizationId: string): Promise<{
@@ -274,7 +274,7 @@ export class DatabaseStorage implements IStorage {
     return callLog;
   }
 
-  async createCallLog(callLogData: InsertCallLog): Promise<CallLog> {
+  async createCallLog(callLogData: InsertCallLog & { createdAt?: Date }): Promise<CallLog> {
     const [callLog] = await db.insert(callLogs).values(callLogData).returning();
     return callLog;
   }
