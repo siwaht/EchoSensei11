@@ -793,36 +793,23 @@ export default function AdminDashboard() {
                       <p className="text-sm text-muted-foreground">Accept credit cards and digital wallets</p>
                     </div>
                   </div>
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    <CheckCircle className="w-3 h-3 mr-1" />
-                    Connected
+                  <Badge variant="outline" className="text-muted-foreground">
+                    Not Connected
                   </Badge>
                 </div>
                 
                 <div className="space-y-3 pt-2">
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">Public Key</p>
-                    <p className="font-mono text-xs bg-muted p-2 rounded mt-1">pk_live_51H...***...9Ks</p>
-                  </div>
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">Webhook Status</p>
-                    <p className="text-green-600 font-medium">Active - Last received 2 hours ago</p>
-                  </div>
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">Total Processed</p>
-                    <p className="text-lg font-bold">$0.00</p>
+                  <div className="p-4 bg-muted/50 rounded-lg text-center">
+                    <AlertCircle className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Stripe is not configured</p>
+                    <p className="text-xs mt-1">Connect your Stripe account to start accepting payments</p>
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Settings className="w-3 h-3 mr-1" />
-                    Configure
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1 text-red-600 hover:text-red-700">
-                    Disconnect
-                  </Button>
-                </div>
+                <Button className="w-full" size="sm">
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Connect Stripe Account
+                </Button>
               </div>
             </Card>
 
@@ -868,11 +855,12 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Default Payment Gateway</Label>
-                  <Select defaultValue="stripe">
+                  <Select defaultValue="none">
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">Not Configured</SelectItem>
                       <SelectItem value="stripe">Stripe</SelectItem>
                       <SelectItem value="paypal">PayPal</SelectItem>
                       <SelectItem value="both">Let customer choose</SelectItem>
@@ -882,7 +870,7 @@ export default function AdminDashboard() {
                 
                 <div>
                   <Label>Payment Mode</Label>
-                  <Select defaultValue="live">
+                  <Select defaultValue="test">
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
