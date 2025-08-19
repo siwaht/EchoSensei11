@@ -20,23 +20,53 @@ const isAuthenticated: RequestHandler = (req, res, next) => {
 async function callElevenLabsAPI(apiKey: string, endpoint: string, method = "GET", body?: any) {
   const headers: any = {
     "xi-api-key": apiKey,
+    "Content-Type": "application/json",
   };
-  
-  if (method !== "GET" && body) {
-    headers["Content-Type"] = "application/json";
-  }
 
-  const response = await fetch(`https://api.elevenlabs.io${endpoint}`, {
+  const url = `https://api.elevenlabs.io${endpoint}`;
+  console.log(`Calling ElevenLabs API: ${method} ${url}`);
+
+  const response = await fetch(url, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
   });
 
+  const responseText = await response.text();
+  
   if (!response.ok) {
-    throw new Error(`ElevenLabs API error: ${response.status} ${response.statusText}`);
+    console.error(`ElevenLabs API error: ${response.status} ${response.statusText}`);
+    console.error(`Response body: ${responseText}`);
+    
+    // Try to parse error message from response
+    let errorMessage = `ElevenLabs API error: ${response.status}`;
+    try {
+      const errorData = JSON.parse(responseText);
+      if (errorData.detail?.message) {
+        errorMessage = errorData.detail.message;
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      } else if (errorData.error) {
+        errorMessage = errorData.error;
+      }
+    } catch (e) {
+      // If response is not JSON, use the status text
+      errorMessage = responseText || response.statusText;
+    }
+    
+    throw new Error(errorMessage);
   }
 
-  return response.json();
+  // Return parsed JSON if response has content
+  if (responseText) {
+    try {
+      return JSON.parse(responseText);
+    } catch (e) {
+      console.error("Failed to parse response as JSON:", responseText);
+      return {};
+    }
+  }
+  return {};
 }
 
 // Encryption helpers
@@ -357,16 +387,43 @@ export function registerRoutes(app: Express): Server {
       const apiKey = decryptApiKey(integration.apiKey);
       
       try {
-        await callElevenLabsAPI(apiKey, "/v1/user");
+        console.log("Testing ElevenLabs API connection...");
+        // Use the /v1/user endpoint to validate the API key
+        const userData = await callElevenLabsAPI(apiKey, "/v1/user");
+        console.log("ElevenLabs user data retrieved:", userData);
+        
         await storage.updateIntegrationStatus(integration.id, "ACTIVE", new Date());
-        res.json({ message: "Connection successful", status: "ACTIVE" });
-      } catch (error) {
+        res.json({ 
+          message: "Connection successful", 
+          status: "ACTIVE",
+          subscription: userData.subscription || null
+        });
+      } catch (error: any) {
+        console.error("ElevenLabs API test failed:", error.message);
         await storage.updateIntegrationStatus(integration.id, "ERROR", new Date());
-        res.status(400).json({ message: "Connection failed", status: "ERROR" });
+        
+        // Return more specific error message
+        let errorMessage = "Connection failed";
+        if (error.message.includes("401") || error.message.includes("Unauthorized")) {
+          errorMessage = "Invalid API key. Please check your ElevenLabs API key.";
+        } else if (error.message.includes("403") || error.message.includes("Forbidden")) {
+          errorMessage = "Access forbidden. Your API key may not have the required permissions.";
+        } else if (error.message.includes("404")) {
+          errorMessage = "ElevenLabs API endpoint not found. Please try again later.";
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        res.status(400).json({ 
+          message: errorMessage, 
+          status: "ERROR" 
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error testing integration:", error);
-      res.status(500).json({ message: "Failed to test integration" });
+      res.status(500).json({ 
+        message: error.message || "Failed to test integration" 
+      });
     }
   });
 
@@ -995,55 +1052,102 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/playground/start-session", isAuthenticated, async (req: any, res) => {
     try {
       const { agentId } = req.body;
-      const organizationId = req.user.organizationId;
-
+      const userId = req.user.id;
+      
       console.log("Starting playground session with agent:", agentId);
 
       if (!agentId) {
         return res.status(400).json({ message: "Agent ID is required" });
       }
 
+      // Get user and organization
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       // Get ElevenLabs API key
-      const integration = await storage.getIntegration(organizationId, "elevenlabs");
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
       if (!integration || integration.status !== "ACTIVE") {
-        return res.status(400).json({ message: "ElevenLabs integration not configured" });
+        return res.status(400).json({ message: "ElevenLabs integration not configured or inactive. Please configure your API key in the Integrations tab." });
       }
 
       const apiKey = decryptApiKey(integration.apiKey);
 
       // Get signed URL from ElevenLabs for WebSocket connection
+      // According to ElevenLabs docs, we need to use the conversation endpoint
       const url = `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${agentId}`;
       console.log("Calling ElevenLabs API:", url);
       
       const response = await fetch(url, {
         method: "GET",
         headers: {
-          "xi-api-key": apiKey
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json"
         }
       });
 
+      const responseText = await response.text();
+      
       if (!response.ok) {
-        const error = await response.text();
-        console.error("ElevenLabs API error:", error);
+        console.error("ElevenLabs API error:", responseText);
         console.error("Status:", response.status);
+        
+        // Parse error message
+        let errorMessage = "Failed to start conversation session";
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.detail?.message) {
+            errorMessage = errorData.detail.message;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (e) {
+          errorMessage = responseText || `ElevenLabs API returned ${response.status}`;
+        }
+        
+        // Provide specific error messages
+        if (response.status === 401) {
+          errorMessage = "Invalid API key. Please check your ElevenLabs API key in the Integrations tab.";
+        } else if (response.status === 404) {
+          errorMessage = "Agent not found. Please verify the agent ID is correct.";
+        } else if (response.status === 403) {
+          errorMessage = "Access denied. Your API key may not have permission to access this agent.";
+        }
+        
         return res.status(response.status).json({ 
-          message: "Failed to start conversation session",
-          error,
-          details: `ElevenLabs API returned ${response.status}`
+          message: errorMessage
         });
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error("Failed to parse ElevenLabs response:", responseText);
+        return res.status(500).json({ message: "Invalid response from ElevenLabs API" });
+      }
+      
       console.log("ElevenLabs response:", data);
+      
+      // Validate the response has the required fields
+      if (!data.signed_url) {
+        console.error("No signed_url in response:", data);
+        return res.status(500).json({ message: "Invalid response from ElevenLabs API: missing signed_url" });
+      }
       
       // Return the signed URL for WebSocket connection
       res.json({ 
         signedUrl: data.signed_url,
-        sessionId: data.conversation_id 
+        sessionId: data.conversation_id || null
       });
     } catch (error: any) {
       console.error("Error starting playground session:", error);
-      res.status(500).json({ message: "Failed to start session", error: error.message });
+      res.status(500).json({ 
+        message: error.message || "Failed to start session"
+      });
     }
   });
 
