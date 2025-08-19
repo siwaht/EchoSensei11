@@ -167,17 +167,20 @@ export default function Playground() {
         setIsConnecting(false);
         setIsCallActive(true);
         
-        // Send conversation initiation
-        ws.send(JSON.stringify({
+        // Send conversation initiation with minimal config
+        const initMessage = {
           type: "conversation_initiation_client_data",
           conversation_config_override: {
             agent: {
               prompt: {
-                prompt: agent.firstMessage || `Hello! I'm ${agent.name}. How can I help you today?`
+                prompt: "You are a helpful assistant. Say hello and ask how you can help."
               }
             }
           }
-        }));
+        };
+        
+        console.log("Sending init message:", initMessage);
+        ws.send(JSON.stringify(initMessage));
 
         toast({
           title: "Call started",
@@ -186,62 +189,56 @@ export default function Playground() {
       };
 
       ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log("WebSocket message received:", data.type, data);
-        
-        switch (data.type) {
-          case "conversation_initiation_metadata":
-            // Connection established
-            console.log("Conversation initialized:", data);
+        try {
+          const data = JSON.parse(event.data);
+          console.log("WebSocket message:", data);
+          
+          // Handle different message formats from ElevenLabs
+          if (data.type === "conversation_initiation_metadata") {
+            console.log("Conversation initialized, starting audio stream");
             // Start audio streaming after initialization
             if (mediaStreamRef.current) {
               startAudioStreaming(mediaStreamRef.current, ws);
             }
-            break;
-            
-          case "audio":
-          case "agent_response_audio_chunk":
-            // Play audio if speaker is on
-            const audioChunk = data.audio_chunk || data.audio;
-            if (isSpeakerOn && audioChunk) {
-              console.log("Playing audio chunk");
-              playAudio(audioChunk);
+          } else if (data.audio || data.audio_event) {
+            // Agent audio response
+            const audioData = data.audio || data.audio_event?.audio_base_64;
+            if (audioData && isSpeakerOn) {
+              console.log("Playing agent audio");
+              playAudio(audioData);
             }
-            break;
-            
-          case "user_transcript":
-            // User speech transcript
-            if (data.transcript) {
-              console.log("User transcript:", data.transcript);
+          } else if (data.transcript_event) {
+            // Transcript event
+            const transcript = data.transcript_event;
+            if (transcript.role === "user" && transcript.text) {
+              console.log("User said:", transcript.text);
               setTranscript(prev => [...prev, {
                 role: "user",
-                message: data.transcript,
+                message: transcript.text,
                 timestamp: new Date()
               }]);
-            }
-            break;
-            
-          case "agent_response":
-          case "agent_transcript":
-            // Agent text response
-            const text = data.text || data.transcript;
-            if (text) {
-              console.log("Agent response:", text);
+            } else if (transcript.role === "assistant" && transcript.text) {
+              console.log("Agent said:", transcript.text);
               setTranscript(prev => [...prev, {
                 role: "assistant",
-                message: text,
+                message: transcript.text,
                 timestamp: new Date()
               }]);
             }
-            break;
-            
-          case "ping":
-            // Keep connection alive
-            ws.send(JSON.stringify({ type: "pong", event_id: data.event_id }));
-            break;
-            
-          default:
-            console.log("Unknown message type:", data.type);
+          } else if (data.message) {
+            // Simple text message from agent
+            console.log("Agent message:", data.message);
+            setTranscript(prev => [...prev, {
+              role: "assistant",
+              message: data.message,
+              timestamp: new Date()
+            }]);
+          } else if (data.ping_event) {
+            // Keep alive
+            ws.send(JSON.stringify({ pong_event: { event_id: data.ping_event.event_id }}));
+          }
+        } catch (error) {
+          console.error("Error handling WebSocket message:", error);
         }
       };
 
@@ -337,55 +334,56 @@ export default function Playground() {
   const startAudioStreaming = (stream: MediaStream, ws: WebSocket) => {
     console.log("Starting audio streaming to WebSocket");
     
-    // Create audio context with 16kHz sample rate as required by ElevenLabs
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+    // Create audio context at 16kHz as required by ElevenLabs
+    const audioContext = new AudioContext({ sampleRate: 16000 });
     const source = audioContext.createMediaStreamSource(stream);
+    const processor = audioContext.createScriptProcessor(512, 1, 1);
     
-    // Use ScriptProcessor for now (will be replaced with AudioWorklet in production)
-    const bufferSize = 2048; // Smaller buffer for lower latency
-    const processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
-    
-    let isProcessing = false;
-    
+    let chunkCount = 0;
     processor.onaudioprocess = (e) => {
-      if (ws.readyState === WebSocket.OPEN && !isMuted && !isProcessing) {
-        isProcessing = true;
+      if (ws.readyState === WebSocket.OPEN && !isMuted) {
+        const inputData = e.inputBuffer.getChannelData(0);
         
-        try {
-          const inputData = e.inputBuffer.getChannelData(0);
-          
-          // Convert float32 to int16
-          const int16Array = new Int16Array(inputData.length);
+        // Check if there's actual audio (not silence)
+        const hasAudio = inputData.some(sample => Math.abs(sample) > 0.001);
+        
+        if (hasAudio) {
+          // Convert float32 to PCM 16-bit
+          const pcm16 = new Int16Array(inputData.length);
           for (let i = 0; i < inputData.length; i++) {
             const s = Math.max(-1, Math.min(1, inputData[i]));
-            int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
           }
           
           // Convert to base64
-          const uint8Array = new Uint8Array(int16Array.buffer);
-          let binaryString = '';
-          for (let i = 0; i < uint8Array.length; i++) {
-            binaryString += String.fromCharCode(uint8Array[i]);
-          }
-          const base64 = btoa(binaryString);
+          const uint8 = new Uint8Array(pcm16.buffer);
+          const binaryString = Array.from(uint8)
+            .map(byte => String.fromCharCode(byte))
+            .join('');
+          const base64Audio = btoa(binaryString);
           
-          // Send audio chunk to WebSocket
+          // Send in the format ElevenLabs expects
           const message = {
-            type: "user_audio_chunk",
-            audio_chunk: base64
+            user_audio_chunk: base64Audio
           };
           
           ws.send(JSON.stringify(message));
-        } catch (error) {
-          console.error("Error processing audio:", error);
+          chunkCount++;
+          
+          // Log every 10th chunk to avoid spam
+          if (chunkCount % 10 === 0) {
+            console.log(`Sent ${chunkCount} audio chunks`);
+          }
         }
-        
-        isProcessing = false;
       }
     };
     
     source.connect(processor);
     processor.connect(audioContext.destination);
+    
+    // Store for cleanup
+    (ws as any).audioProcessor = processor;
+    (ws as any).audioContext = audioContext;
     
     console.log("Audio streaming setup complete");
   };
