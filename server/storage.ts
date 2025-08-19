@@ -238,7 +238,6 @@ export class DatabaseStorage implements IStorage {
       ...agentData,
       voiceSettings: agentData.voiceSettings || null,
       llmSettings: agentData.llmSettings || null,
-      knowledgeBase: agentData.knowledgeBase || null,
       tools: agentData.tools || null,
       dynamicVariables: agentData.dynamicVariables || null,
       evaluationCriteria: agentData.evaluationCriteria || null,

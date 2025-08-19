@@ -106,20 +106,6 @@ export const agents = pgTable("agents", {
     temperature?: number;
     maxTokens?: number;
   }>(),
-  knowledgeBase: json("knowledge_base").$type<{
-    useRag?: boolean;
-    maxChunks?: number;
-    vectorDistance?: number;
-    embeddingModel?: string;
-    documents?: Array<{
-      id: string;
-      name: string;
-      type: string;
-      url?: string;
-      content?: string;
-      size?: number;
-    }>;
-  }>(),
   tools: json("tools").$type<{
     toolIds?: string[];
     webhooks?: Array<{

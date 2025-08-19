@@ -545,8 +545,6 @@ export function registerRoutes(app: Express): Server {
             const agentConfig = conversationConfig.agent || {};
             const ttsConfig = conversationConfig.tts || {};
             const llmConfig = conversationConfig.llm || {};
-            // RAG config is under agent.prompt.rag according to ElevenLabs docs
-            const ragConfig = agentConfig.prompt?.rag || {};
             
             // Update agent data with ElevenLabs settings
             agentData.firstMessage = agentConfig.first_message || agentData.firstMessage;
@@ -571,16 +569,6 @@ export function registerRoutes(app: Express): Server {
               };
             }
             
-            // Check for RAG configuration from the agent's prompt settings
-            if (ragConfig.enabled !== undefined || agentConfig.prompt?.rag !== undefined) {
-              agentData.knowledgeBase = {
-                useRag: ragConfig.enabled !== false, // Default to true if RAG config exists
-                maxChunks: ragConfig.max_documents_length ? Math.floor(ragConfig.max_documents_length / 2000) : 5,
-                vectorDistance: 0.8, // Default vector distance
-                embeddingModel: ragConfig.embedding_model || 'e5_mistral_7b_instruct',
-                documents: [],
-              };
-            }
             
             if (agentConfig.tool_ids) {
               agentData.tools = {
@@ -649,38 +637,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // List ElevenLabs knowledge base documents
-  app.get("/api/voiceai/knowledge-base", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
-      if (!integration || integration.status !== "ACTIVE") {
-        return res.status(400).json({ message: "VoiceAI integration not configured or inactive" });
-      }
-
-      const apiKey = decryptApiKey(integration.apiKey);
-      const response = await fetch("https://api.elevenlabs.io/v1/knowledge-base", {
-        headers: {
-          "xi-api-key": apiKey
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch knowledge base documents");
-      }
-
-      const data = await response.json();
-      res.json(data);
-    } catch (error) {
-      console.error("Error fetching knowledge base:", error);
-      res.status(500).json({ message: "Failed to fetch knowledge base documents" });
-    }
-  });
 
   // Get available VoiceAI voices (new endpoint)
   app.get("/api/voiceai/voices", isAuthenticated, async (req: any, res) => {
@@ -784,7 +740,6 @@ export function registerRoutes(app: Express): Server {
                                      updates.voiceId !== undefined || 
                                      updates.voiceSettings !== undefined ||
                                      updates.llmSettings !== undefined ||
-                                     updates.knowledgeBase !== undefined ||
                                      updates.tools !== undefined ||
                                      updates.dynamicVariables !== undefined ||
                                      updates.evaluationCriteria !== undefined ||
@@ -851,161 +806,6 @@ export function registerRoutes(app: Express): Server {
               };
             }
 
-            // Add knowledge base/RAG settings if provided
-            if (updates.knowledgeBase || agent.knowledgeBase) {
-              const kb = updates.knowledgeBase || agent.knowledgeBase;
-              // RAG settings must be under conversation_config.agent.prompt.rag according to ElevenLabs docs
-              elevenLabsPayload.conversation_config.agent.prompt = {
-                ...elevenLabsPayload.conversation_config.agent.prompt,
-                rag: {
-                  enabled: kb.useRag !== false, // Enable RAG by default
-                  embedding_model: kb.embeddingModel || "e5_mistral_7b_instruct",
-                  max_documents_length: kb.maxChunks ? kb.maxChunks * 2000 : 10000, // Approximate chars per chunk
-                }
-              };
-              
-              // Handle knowledge base documents - upload to agent-specific ElevenLabs knowledge base
-              if (kb.documents && kb.documents.length > 0) {
-                console.log("\n=== UPLOADING KNOWLEDGE BASE DOCUMENTS ===");
-                
-                // Get agent's knowledge base items
-                const kbListResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}/knowledge-base`, {
-                  headers: {
-                    "xi-api-key": decryptedKey
-                  }
-                });
-                
-                let existingItems: any[] = [];
-                if (kbListResponse.ok) {
-                  const kbListData = await kbListResponse.json();
-                  existingItems = kbListData.knowledge_base || [];
-                  console.log(`Found ${existingItems.length} existing knowledge base items`);
-                }
-                
-                // Remove existing items if any
-                for (const item of existingItems) {
-                  try {
-                    const deleteResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}/knowledge-base/${item.knowledge_base_item_id}`, {
-                      method: "DELETE",
-                      headers: {
-                        "xi-api-key": decryptedKey
-                      }
-                    });
-                    if (deleteResponse.ok) {
-                      console.log(`Removed existing knowledge base item: ${item.name}`);
-                    }
-                  } catch (e) {
-                    console.error(`Error deleting knowledge base item:`, e);
-                  }
-                }
-                
-                // Upload new documents
-                for (const doc of kb.documents) {
-                  try {
-                    if (doc.type === 'text' && doc.content) {
-                      // Upload text content as a file to agent's knowledge base
-                      const formData = new FormData();
-                      formData.append("name", doc.name);
-                      
-                      // Create a blob from text content
-                      const blob = new Blob([doc.content], { type: "text/plain" });
-                      formData.append("file", blob, `${doc.name}.txt`);
-                      
-                      const uploadResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}/knowledge-base`, {
-                        method: "POST",
-                        headers: {
-                          "xi-api-key": decryptedKey
-                        },
-                        body: formData
-                      });
-                      
-                      if (uploadResponse.ok) {
-                        const kbData = await uploadResponse.json();
-                        const documentId = kbData.knowledge_base_item_id || kbData.id;
-                        console.log(`Knowledge base document uploaded: ${doc.name}, ID: ${documentId}`);
-                        
-                        // Trigger RAG indexing for the document if RAG is enabled
-                        if (kb.useRag !== false) {
-                          try {
-                            const indexResponse = await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base/documents/${documentId}/compute-rag-index`, {
-                              method: "POST",
-                              headers: {
-                                "xi-api-key": decryptedKey,
-                                "Content-Type": "application/json"
-                              },
-                              body: JSON.stringify({
-                                model: kb.embeddingModel || "e5_mistral_7b_instruct"
-                              })
-                            });
-                            
-                            if (indexResponse.ok) {
-                              console.log(`RAG indexing triggered for document: ${doc.name}`);
-                            } else {
-                              console.error(`Failed to trigger RAG indexing for ${doc.name}:`, await indexResponse.text());
-                            }
-                          } catch (indexError) {
-                            console.error(`Error triggering RAG indexing for ${doc.name}:`, indexError);
-                          }
-                        }
-                      } else {
-                        const errorText = await uploadResponse.text();
-                        console.error(`Failed to upload text document ${doc.name}:`, errorText);
-                      }
-                    } else if (doc.type === 'url' && doc.url) {
-                      // URL documents can be uploaded directly
-                      const formData = new FormData();
-                      formData.append("name", doc.name);
-                      formData.append("url", doc.url);
-                      
-                      const uploadResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}/knowledge-base`, {
-                        method: "POST",
-                        headers: {
-                          "xi-api-key": decryptedKey
-                        },
-                        body: formData
-                      });
-                      
-                      if (uploadResponse.ok) {
-                        const kbData = await uploadResponse.json();
-                        const documentId = kbData.knowledge_base_item_id || kbData.id;
-                        console.log(`URL document uploaded: ${doc.name}, ID: ${documentId}`);
-                        
-                        // Trigger RAG indexing for the document if RAG is enabled
-                        if (kb.useRag !== false) {
-                          try {
-                            const indexResponse = await fetch(`https://api.elevenlabs.io/v1/convai/knowledge-base/documents/${documentId}/compute-rag-index`, {
-                              method: "POST",
-                              headers: {
-                                "xi-api-key": decryptedKey,
-                                "Content-Type": "application/json"
-                              },
-                              body: JSON.stringify({
-                                model: kb.embeddingModel || "e5_mistral_7b_instruct"
-                              })
-                            });
-                            
-                            if (indexResponse.ok) {
-                              console.log(`RAG indexing triggered for URL document: ${doc.name}`);
-                            } else {
-                              console.error(`Failed to trigger RAG indexing for ${doc.name}:`, await indexResponse.text());
-                            }
-                          } catch (indexError) {
-                            console.error(`Error triggering RAG indexing for ${doc.name}:`, indexError);
-                          }
-                        }
-                      } else {
-                        console.error(`Failed to upload URL document ${doc.name}:`, await uploadResponse.text());
-                      }
-                    } else if (doc.type === 'file') {
-                      console.log(`File upload for ${doc.name} requires file content handling`);
-                    }
-                  } catch (docError) {
-                    console.error(`Error uploading document ${doc.name}:`, docError);
-                  }
-                }
-                console.log("=== KNOWLEDGE BASE UPLOAD COMPLETE ===");
-              }
-            }
 
             // Add tools configuration if provided
             if (updates.tools || agent.tools) {
