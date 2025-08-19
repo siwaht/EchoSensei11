@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,7 @@ import {
 import type { Agent } from "@shared/schema";
 
 export default function Agents() {
+  const [location, setLocation] = useLocation();
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
@@ -155,7 +157,7 @@ export default function Agents() {
                       View Details
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      onClick={() => window.location.href = `/agents/${agent.id}/settings`}
+                      onClick={() => setLocation(`/agents/${agent.id}/settings`)}
                       data-testid={`menu-settings-${agent.id}`}
                     >
                       <Settings className="h-4 w-4 mr-2" />
