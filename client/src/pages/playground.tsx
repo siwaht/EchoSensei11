@@ -43,10 +43,10 @@ export default function Playground() {
     queryKey: ["/api/agents"],
   });
 
-  // Fetch integration to get API key
-  const { data: integration } = useQuery<Integration>({
+  // Fetch integration to get API key status
+  const { data: integration, isLoading: integrationLoading } = useQuery<any>({
     queryKey: ["/api/integrations/elevenlabs"],
-    enabled: !!selectedAgent,
+    retry: 1,
   });
 
   // Auto-scroll transcript
@@ -107,10 +107,20 @@ export default function Playground() {
       return;
     }
 
-    if (!integration || integration.status !== "ACTIVE") {
+    // Check if integration exists and is active
+    if (!integration) {
       toast({
-        title: "ElevenLabs not configured",
-        description: "Please configure your ElevenLabs API key in Integrations",
+        title: "ElevenLabs not configured", 
+        description: "Please add your ElevenLabs API key in the Integrations tab",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (integration.status !== "ACTIVE") {
+      toast({
+        title: "ElevenLabs integration inactive", 
+        description: "Please test your API key in the Integrations tab to activate it",
         variant: "destructive",
       });
       return;

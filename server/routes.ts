@@ -324,7 +324,12 @@ export function registerRoutes(app: Express): Server {
       const integration = await storage.getIntegration(user.organizationId, provider);
       
       if (!integration) {
-        return res.status(404).json({ message: "Integration not found" });
+        // Return inactive status if no integration exists
+        return res.json({ 
+          status: "INACTIVE",
+          provider: provider,
+          message: "No integration configured"
+        });
       }
       
       // Don't send the encrypted API key to the client
@@ -1036,7 +1041,7 @@ export function registerRoutes(app: Express): Server {
         signedUrl: data.signed_url,
         sessionId: data.conversation_id 
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error starting playground session:", error);
       res.status(500).json({ message: "Failed to start session", error: error.message });
     }
