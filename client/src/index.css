@@ -113,6 +113,15 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* Animation delays */
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animation-delay-400 {
+  animation-delay: 400ms;
+}
+
 /* Gradient buttons */
 .gradient-purple {
   background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);

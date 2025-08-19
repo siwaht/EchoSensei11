@@ -157,14 +157,17 @@ export default function Playground() {
         setIsConnecting(false);
         setIsCallActive(true);
         
-        // Add initial message
-        if (agent.firstMessage) {
-          setTranscript([{
-            role: "assistant",
-            message: agent.firstMessage,
-            timestamp: new Date()
-          }]);
-        }
+        // Send conversation initiation
+        ws.send(JSON.stringify({
+          type: "conversation_initiation_client_data",
+          conversation_config_override: {
+            agent: {
+              prompt: {
+                prompt: agent.firstMessage || `Hello! I'm ${agent.name}. How can I help you today?`
+              }
+            }
+          }
+        }));
 
         toast({
           title: "Call started",
@@ -175,18 +178,45 @@ export default function Playground() {
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         
-        if (data.type === "audio") {
-          // Play audio if speaker is on
-          if (isSpeakerOn) {
-            playAudio(data.audio);
-          }
-        } else if (data.type === "transcript") {
-          // Update transcript
-          setTranscript(prev => [...prev, {
-            role: data.role,
-            message: data.message,
-            timestamp: new Date()
-          }]);
+        switch (data.type) {
+          case "conversation_initiation_metadata":
+            // Connection established
+            console.log("Conversation initialized:", data.conversation_id);
+            break;
+            
+          case "agent_response_audio_chunk":
+            // Play audio if speaker is on
+            if (isSpeakerOn && data.audio_chunk) {
+              playAudio(data.audio_chunk);
+            }
+            break;
+            
+          case "user_transcript":
+            // User speech transcript
+            if (data.transcript) {
+              setTranscript(prev => [...prev, {
+                role: "user",
+                message: data.transcript,
+                timestamp: new Date()
+              }]);
+            }
+            break;
+            
+          case "agent_response":
+            // Agent text response
+            if (data.text) {
+              setTranscript(prev => [...prev, {
+                role: "assistant",
+                message: data.text,
+                timestamp: new Date()
+              }]);
+            }
+            break;
+            
+          case "ping":
+            // Keep connection alive
+            ws.send(JSON.stringify({ type: "pong", event_id: data.event_id }));
+            break;
         }
       };
 
@@ -281,15 +311,67 @@ export default function Playground() {
   };
 
   const startAudioStreaming = (stream: MediaStream, ws: WebSocket) => {
-    // This would require implementing audio streaming to WebSocket
-    // For now, this is a placeholder
-    console.log("Audio streaming would start here");
+    const audioContext = new AudioContext({ sampleRate: 16000 });
+    const source = audioContext.createMediaStreamSource(stream);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    
+    processor.onaudioprocess = (e) => {
+      if (ws.readyState === WebSocket.OPEN && !isMuted) {
+        const inputData = e.inputBuffer.getChannelData(0);
+        
+        // Convert float32 to int16
+        const int16Array = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          const s = Math.max(-1, Math.min(1, inputData[i]));
+          int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        
+        // Convert to base64
+        const uint8Array = new Uint8Array(int16Array.buffer);
+        let binaryString = '';
+        for (let i = 0; i < uint8Array.length; i++) {
+          binaryString += String.fromCharCode(uint8Array[i]);
+        }
+        const base64 = btoa(binaryString);
+        
+        // Send audio chunk to WebSocket
+        ws.send(JSON.stringify({
+          type: "user_audio_chunk",
+          audio_chunk: base64
+        }));
+      }
+    };
+    
+    source.connect(processor);
+    processor.connect(audioContext.destination);
   };
 
-  const playAudio = (audioData: string) => {
-    // Decode and play audio from base64
-    const audio = new Audio(`data:audio/wav;base64,${audioData}`);
-    audio.play();
+  const playAudio = async (audioData: string) => {
+    if (!isSpeakerOn) return;
+    
+    try {
+      // Convert base64 to blob
+      const binaryString = atob(audioData);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      // Create blob and play as audio
+      const blob = new Blob([bytes.buffer], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
+      
+      // Play the audio
+      await audio.play();
+      
+      // Clean up after playback
+      audio.addEventListener('ended', () => {
+        URL.revokeObjectURL(audioUrl);
+      });
+    } catch (error) {
+      console.error('Error playing audio:', error);
+    }
   };
 
   return (
@@ -418,21 +500,28 @@ export default function Playground() {
             <div className="flex-1 flex items-center justify-center p-8">
               <div className="relative">
                 {/* Circular Visualization */}
-                <div className={`relative w-64 h-64 rounded-full flex items-center justify-center transition-all ${
-                  isCallActive ? "animate-pulse" : ""
-                }`}>
-                  {/* Background circles - subtle borders only */}
-                  <div className="absolute inset-0 rounded-full border border-gray-200 dark:border-gray-800" />
-                  <div className="absolute inset-4 rounded-full border border-gray-200 dark:border-gray-800" />
-                  <div className="absolute inset-8 rounded-full border border-gray-200 dark:border-gray-800" />
+                <div className="relative w-64 h-64 rounded-full flex items-center justify-center">
+                  {/* Animated rings when active */}
+                  {isCallActive && (
+                    <>
+                      <div className="absolute inset-0 rounded-full border-2 border-green-500 animate-ping opacity-20" />
+                      <div className="absolute inset-4 rounded-full border-2 border-green-500 animate-ping animation-delay-200 opacity-15" />
+                      <div className="absolute inset-8 rounded-full border-2 border-green-500 animate-ping animation-delay-400 opacity-10" />
+                    </>
+                  )}
+                  
+                  {/* Static rings */}
+                  <div className="absolute inset-0 rounded-full border border-gray-300 dark:border-gray-700" />
+                  <div className="absolute inset-4 rounded-full border border-gray-300 dark:border-gray-700" />
+                  <div className="absolute inset-8 rounded-full border border-gray-300 dark:border-gray-700" />
                   
                   {/* Center button */}
-                  <button
+                  <Button
+                    size="lg"
+                    variant={isCallActive ? "destructive" : "default"}
                     className={`relative z-10 rounded-full w-32 h-32 transition-all duration-200 ${
-                      isCallActive 
-                        ? "bg-red-500 hover:bg-red-600 text-white" 
-                        : "bg-primary hover:bg-primary/90 text-primary-foreground"
-                    } ${isConnecting || !selectedAgent ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                      isConnecting || !selectedAgent ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                     onClick={isCallActive ? endCall : startCall}
                     disabled={isConnecting || !selectedAgent}
                     data-testid="button-call"
@@ -447,7 +536,7 @@ export default function Playground() {
                         <span className="text-sm font-medium">Try a call</span>
                       </div>
                     )}
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Audio level indicator */}
