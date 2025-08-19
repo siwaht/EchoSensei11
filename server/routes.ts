@@ -311,6 +311,31 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get integration by provider
+  app.get("/api/integrations/:provider", isAuthenticated, async (req: any, res) => {
+    try {
+      const { provider } = req.params;
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const integration = await storage.getIntegration(user.organizationId, provider);
+      
+      if (!integration) {
+        return res.status(404).json({ message: "Integration not found" });
+      }
+      
+      // Don't send the encrypted API key to the client
+      const { apiKey, ...integrationWithoutKey } = integration;
+      res.json(integrationWithoutKey);
+    } catch (error) {
+      console.error("Error fetching integration:", error);
+      res.status(500).json({ message: "Failed to fetch integration" });
+    }
+  });
+
   app.post("/api/integrations/test", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -958,6 +983,58 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching payment history:", error);
       res.status(500).json({ error: "Failed to fetch payment history" });
+    }
+  });
+
+  // Playground - Start ElevenLabs session
+  app.post("/api/playground/start-session", isAuthenticated, async (req: any, res) => {
+    try {
+      const { agentId } = req.body;
+      const organizationId = req.user.organizationId;
+
+      if (!agentId) {
+        return res.status(400).json({ message: "Agent ID is required" });
+      }
+
+      // Get ElevenLabs API key
+      const integration = await storage.getIntegration(organizationId, "elevenlabs");
+      if (!integration || integration.status !== "ACTIVE") {
+        return res.status(400).json({ message: "ElevenLabs integration not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+
+      // Get signed URL from ElevenLabs for WebSocket connection
+      const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversation`, {
+        method: "POST",
+        headers: {
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          agent_id: agentId
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("ElevenLabs API error:", error);
+        return res.status(response.status).json({ 
+          message: "Failed to start conversation session",
+          error 
+        });
+      }
+
+      const data = await response.json();
+      
+      // Return the signed URL for WebSocket connection
+      res.json({ 
+        signedUrl: data.signed_url || data.url,
+        sessionId: data.conversation_id 
+      });
+    } catch (error) {
+      console.error("Error starting playground session:", error);
+      res.status(500).json({ message: "Failed to start session" });
     }
   });
 
