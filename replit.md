@@ -6,16 +6,16 @@ VoiceAI Dashboard is a white-label, multi-tenant SaaS platform for managing and 
 
 ### Recent Updates (August 19, 2025)
 - **Complete Mobile Responsiveness**: Implemented full mobile responsiveness across all application pages
-- **Streamlined Navigation**: Removed redundant features and collapsible sections for cleaner interface
-- **White-Label Platform**: Fully rebranded as VoiceAI with no visible ElevenLabs references
-- **Consolidated Features**: Merged Call History into Conversations, removed Playground (redundant with agent testing)
-- **Simplified Interface**: Direct navigation to all features without nested menus
+- **Mobile-First Call History**: Converted call history table to responsive card layout on mobile devices
+- **Responsive Navigation**: Updated AppShell with mobile-friendly collapsible navigation
+- **Adaptive UI Components**: All buttons, forms, and grids now stack appropriately on smaller screens
 - **Enhanced Audio Player**: Fixed play/pause functionality with proper state management and controls
-- **Call Timestamp Syncing**: Integrated actual call timestamps from Voice API using start_time_unix_secs field
+- **Call Timestamp Syncing**: Integrated actual call timestamps from ElevenLabs API using start_time_unix_secs field
 - **Redesigned Organizations Tab**: Created comprehensive organization management interface with detailed metrics and insights
 - **Payment Gateway Integration**: Added complete payment processing infrastructure with Stripe and PayPal support
 - **Checkout System**: Created checkout page for organizations to select and pay for billing packages
 - **Payment Tracking**: Implemented payment history tracking and transaction management in database
+- **Agent Playground**: Created interactive testing environment for voice AI agents with chat interface and call simulation
 
 ## User Preferences
 
@@ -66,11 +66,11 @@ BYOK integration pattern for secure API access:
 - **API Key Management**: Client-provided API keys encrypted and stored securely using AES-256-CBC
 - **Agent Validation**: Real-time validation of conversational AI agent IDs via secure API endpoints
 - **Call Data Collection**: Webhook endpoint `/api/webhooks/voiceai` for real-time call transcripts and audio
-- **Manual Sync**: User-triggered sync button to fetch historical call logs from Voice API
+- **Manual Sync**: User-triggered sync button to fetch historical call logs from VoiceAI API
 - **Audio Recordings**: Authenticated proxy endpoint `/api/audio/:conversationId` streams actual call recordings
 - **Data Storage**: Complete call logs with transcripts, duration, costs, and audio URLs stored in PostgreSQL
 - **Analytics**: Real-time dashboard showing total calls, minutes, estimated costs, and active agents
-- **Conversations Interface**: Unified interface for browsing, playing, and downloading actual voice call recordings
+- **Recordings Tab**: Dedicated interface for browsing, playing, and downloading actual voice call recordings
 
 ## External Dependencies
 

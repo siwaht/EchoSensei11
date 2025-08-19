@@ -9,20 +9,14 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Agents from "@/pages/agents";
-import AgentSettings from "@/pages/agent-settings-new";
-// Removed History import - using Conversations instead
+import AgentSettings from "@/pages/agent-settings";
+import History from "@/pages/history";
 import Integrations from "@/pages/integrations";
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
 import Admin from "@/pages/admin-new";
 import Checkout from "@/pages/checkout";
-// Removed Playground import - redundant with agent testing features
-import KnowledgeBase from "@/pages/knowledge-base";
-import Tools from "@/pages/tools";
-import Voices from "@/pages/voices";
-import Conversations from "@/pages/conversations";
-import PhoneNumbers from "@/pages/phone-numbers";
-import Outbound from "@/pages/outbound";
+import Playground from "@/pages/playground";
 import AppShell from "@/components/layout/app-shell";
 
 function Router() {
@@ -43,14 +37,8 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/agents" component={Agents} />
         <Route path="/agents/:agentId/settings" component={AgentSettings} />
-        {/* Playground removed - use agent testing in Conversations */}
-        <Route path="/history" component={Conversations} /> {/* Redirect old history to conversations */}
-        <Route path="/knowledge-base" component={KnowledgeBase} />
-        <Route path="/tools" component={Tools} />
-        <Route path="/voices" component={Voices} />
-        <Route path="/conversations" component={Conversations} />
-        <Route path="/phone-numbers" component={PhoneNumbers} />
-        <Route path="/outbound" component={Outbound} />
+        <Route path="/playground" component={Playground} />
+        <Route path="/history" component={History} />
         <Route path="/integrations" component={Integrations} />
         <Route path="/billing" component={Billing} />
         <Route path="/checkout" component={Checkout} />
