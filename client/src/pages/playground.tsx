@@ -200,12 +200,32 @@ export default function Playground() {
             if (mediaStreamRef.current) {
               startAudioStreaming(mediaStreamRef.current, ws);
             }
+            
+            // Send an initial greeting to trigger the agent response
+            setTimeout(() => {
+              // Send a text message to trigger the agent
+              const triggerMessage = {
+                message: "Hello",
+                type: "conversation_initiation_trigger"
+              };
+              console.log("Sending initial greeting to trigger agent response");
+              ws.send(JSON.stringify(triggerMessage));
+              
+              // Also add a transcript entry to show the greeting
+              setTranscript(prev => [...prev, {
+                role: "user",
+                message: "Hello",
+                timestamp: new Date()
+              }]);
+            }, 1000);
           } else if (data.audio || data.audio_event) {
             // Agent audio response
-            const audioData = data.audio || data.audio_event?.audio_base_64;
+            const audioData = data.audio || data.audio_event?.audio_base_64 || data.audio_event?.audio;
             if (audioData && isSpeakerOn) {
-              console.log("Playing agent audio");
+              console.log("Playing agent audio, length:", audioData.length);
               playAudio(audioData);
+            } else if (audioData) {
+              console.log("Received audio but speaker is off");
             }
           } else if (data.transcript_event) {
             // Transcript event
@@ -236,6 +256,15 @@ export default function Playground() {
           } else if (data.ping_event) {
             // Keep alive
             ws.send(JSON.stringify({ pong_event: { event_id: data.ping_event.event_id }}));
+          } else if (data.error) {
+            console.error('ElevenLabs error:', data.error);
+            toast({
+              title: "Agent Error",
+              description: data.error.message || "Unknown error from agent",
+              variant: "destructive",
+            });
+          } else {
+            console.log('Unhandled message type:', data);
           }
         } catch (error) {
           console.error("Error handling WebSocket message:", error);
@@ -399,18 +428,44 @@ export default function Playground() {
         bytes[i] = binaryString.charCodeAt(i);
       }
       
-      // Create blob and play as audio
-      const blob = new Blob([bytes.buffer], { type: 'audio/mpeg' });
-      const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
+      // Try multiple audio formats
+      const audioFormats = ['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/pcm'];
+      let audioPlayed = false;
       
-      // Play the audio
-      await audio.play();
+      for (const format of audioFormats) {
+        try {
+          const blob = new Blob([bytes.buffer], { type: format });
+          const audioUrl = URL.createObjectURL(blob);
+          const audio = new Audio(audioUrl);
+          
+          // Set up event handlers
+          audio.addEventListener('loadeddata', () => {
+            console.log(`Audio loaded successfully with format: ${format}`);
+          });
+          
+          audio.addEventListener('error', (e) => {
+            console.log(`Audio format ${format} failed:`, e);
+            URL.revokeObjectURL(audioUrl);
+          });
+          
+          audio.addEventListener('ended', () => {
+            URL.revokeObjectURL(audioUrl);
+          });
+          
+          // Play the audio
+          await audio.play();
+          audioPlayed = true;
+          console.log(`Successfully played audio with format: ${format}`);
+          break;
+        } catch (formatError) {
+          console.log(`Format ${format} not supported, trying next...`);
+          continue;
+        }
+      }
       
-      // Clean up after playback
-      audio.addEventListener('ended', () => {
-        URL.revokeObjectURL(audioUrl);
-      });
+      if (!audioPlayed) {
+        console.error('Failed to play audio with any supported format');
+      }
     } catch (error) {
       console.error('Error playing audio:', error);
     }
