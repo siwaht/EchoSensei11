@@ -164,7 +164,7 @@ export default function AgentSettings() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <p className="text-lg text-red-500">Agent not found</p>
-          <Button onClick={() => setLocation("/dashboard")} className="mt-4">
+          <Button onClick={() => setLocation("/")} className="mt-4">
             Back to Dashboard
           </Button>
         </div>
@@ -179,7 +179,7 @@ export default function AgentSettings() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setLocation("/dashboard")}
+            onClick={() => setLocation("/")}
             className="gap-1 sm:gap-2 px-2 sm:px-4"
           >
             <ArrowLeft className="w-4 h-4" />
