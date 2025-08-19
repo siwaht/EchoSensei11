@@ -15,6 +15,7 @@ VoiceAI Dashboard is a multi-tenant SaaS application that allows organizations t
 - **Payment Gateway Integration**: Added complete payment processing infrastructure with Stripe and PayPal support
 - **Checkout System**: Created checkout page for organizations to select and pay for billing packages
 - **Payment Tracking**: Implemented payment history tracking and transaction management in database
+- **Agent Playground**: Created interactive testing environment for voice AI agents with chat interface and call simulation
 
 ## User Preferences
 

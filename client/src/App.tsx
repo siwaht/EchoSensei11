@@ -16,6 +16,7 @@ import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
 import Admin from "@/pages/admin-new";
 import Checkout from "@/pages/checkout";
+import Playground from "@/pages/playground";
 import AppShell from "@/components/layout/app-shell";
 
 function Router() {
@@ -36,6 +37,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/agents" component={Agents} />
         <Route path="/agents/:agentId/settings" component={AgentSettings} />
+        <Route path="/playground" component={Playground} />
         <Route path="/history" component={History} />
         <Route path="/integrations" component={Integrations} />
         <Route path="/billing" component={Billing} />

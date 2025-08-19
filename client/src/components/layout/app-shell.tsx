@@ -15,13 +15,15 @@ import {
   Moon, 
   Sun,
   LogOut,
-  Shield
+  Shield,
+  FlaskConical
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Agents", href: "/agents", icon: Bot },
+  { name: "Playground", href: "/playground", icon: FlaskConical },
   { name: "Call History", href: "/history", icon: History },
   { name: "Integrations", href: "/integrations", icon: Plug },
   { name: "Billing", href: "/billing", icon: CreditCard },
