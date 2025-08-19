@@ -4,17 +4,11 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Plus, Trash2, MoreVertical, Settings } from "lucide-react";
+import { Bot, Plus, Trash2, Eye, Play } from "lucide-react";
 import { AddAgentModal } from "@/components/modals/add-agent-modal";
 import { AgentDetailModal } from "@/components/modals/agent-detail-modal";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -133,7 +127,11 @@ export default function Agents() {
           </div>
         ) : (
           agents.map((agent) => (
-            <Card key={agent.id} className="p-6 border border-gray-200 dark:border-gray-700">
+            <Card 
+              key={agent.id} 
+              className="group relative p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-primary-500 dark:hover:border-primary-400 transition-all cursor-pointer"
+              onClick={() => setLocation(`/agents/${agent.id}/settings`)}
+            >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-xl flex items-center justify-center">
@@ -143,36 +141,6 @@ export default function Agents() {
                     {getStatusText(agent.isActive)}
                   </Badge>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem 
-                      onClick={() => setSelectedAgent(agent)}
-                      data-testid={`menu-view-details-${agent.id}`}
-                    >
-                      View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => setLocation(`/agents/${agent.id}/settings`)}
-                      data-testid={`menu-settings-${agent.id}`}
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="text-red-600 dark:text-red-400"
-                      onClick={() => setAgentToDelete(agent)}
-                      data-testid={`menu-delete-${agent.id}`}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Remove Agent
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
               
               <h3 className="text-lg font-semibold mb-2" data-testid={`text-agent-name-${agent.id}`}>
@@ -180,12 +148,12 @@ export default function Agents() {
               </h3>
               
               {agent.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4" data-testid={`text-agent-description-${agent.id}`}>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2" data-testid={`text-agent-description-${agent.id}`}>
                   {agent.description}
                 </p>
               )}
               
-              <div className="space-y-3 text-sm">
+              <div className="space-y-3 text-sm mb-4">
                 <div className="flex flex-col space-y-1">
                   <span className="text-gray-600 dark:text-gray-400">ElevenLabs ID:</span>
                   <span className="font-medium font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded break-all" data-testid={`text-agent-id-${agent.id}`}>
@@ -200,6 +168,47 @@ export default function Agents() {
                 </div>
               </div>
               
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLocation(`/playground?agentId=${agent.id}`);
+                  }}
+                  data-testid={`button-test-${agent.id}`}
+                >
+                  <Play className="w-4 h-4 mr-1" />
+                  Test
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedAgent(agent);
+                  }}
+                  data-testid={`button-details-${agent.id}`}
+                >
+                  <Eye className="w-4 h-4 mr-1" />
+                  Details
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAgentToDelete(agent);
+                  }}
+                  data-testid={`button-delete-${agent.id}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
 
             </Card>
           ))
