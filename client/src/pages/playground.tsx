@@ -168,17 +168,39 @@ export default function Playground() {
       ws.onopen = () => {
         console.log("WebSocket connected, sending initialization message");
         
-        // Send minimal conversation initiation without overrides
-        // Most agents don't allow overrides by default for security
-        const initMessage = {
+        // Get the agent's custom settings from our database
+        const agentSettings = agents.find(a => a.id === selectedAgent);
+        
+        // Try to send conversation overrides with the agent's custom settings
+        // Note: These overrides only work if enabled in the agent's Security settings in ElevenLabs
+        const initMessage: any = {
           type: "conversation_initiation_client_data"
         };
         
-        // Only add overrides if you know the agent allows them
-        // You can check if overrides are enabled in your agent's Security settings
-        // For now, we'll send an empty override or minimal config
+        // Add conversation config override if we have custom settings
+        if (agentSettings?.firstMessage || agentSettings?.systemPrompt) {
+          initMessage.conversation_config_override = {
+            agent: {
+              prompt: {
+                prompt: agentSettings.systemPrompt || ""
+              },
+              first_message: agentSettings.firstMessage || "",
+              language: agentSettings.language || "en"
+            }
+          };
+          
+          // Add voice settings if available
+          if (agentSettings.voiceId) {
+            initMessage.conversation_config_override.tts = {
+              voice_id: agentSettings.voiceId
+            };
+          }
+          
+          console.log("Sending init message with overrides:", initMessage);
+        } else {
+          console.log("Sending init message without overrides:", initMessage);
+        }
         
-        console.log("Sending init message:", initMessage);
         ws.send(JSON.stringify(initMessage));
       };
 

@@ -23,7 +23,7 @@ import {
 import { 
   Save, ArrowLeft, Mic, Settings2, MessageSquare, Zap, Search, Play, 
   Volume2, Check, X, RotateCcw, Brain, Database, Wrench, Plus, Trash2,
-  Globe, ChevronDown, ChevronRight, FileText, Link, Code, Upload
+  Globe, ChevronDown, ChevronRight, FileText, Link, Code, Upload, AlertCircle
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -502,6 +502,30 @@ export default function AgentSettings() {
 
         {/* Conversation Tab */}
         <TabsContent value="conversation" className="space-y-4">
+          {/* ElevenLabs Security Notice */}
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
+            <div className="flex gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                  Important: ElevenLabs Security Settings Required
+                </p>
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  To update First Message and System Prompt, you must:
+                </p>
+                <ol className="list-decimal list-inside text-sm text-amber-800 dark:text-amber-200 space-y-1 ml-2">
+                  <li>Go to your ElevenLabs dashboard</li>
+                  <li>Navigate to your agent's Security tab</li>
+                  <li>Enable "First message" and "System prompt" overrides</li>
+                  <li>Save the changes in ElevenLabs</li>
+                </ol>
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  Without these settings enabled, your changes will only work in this app's playground through conversation overrides.
+                </p>
+              </div>
+            </div>
+          </div>
+          
           <Card className="p-4 sm:p-6">
             <div className="space-y-4">
               {/* First Message */}
