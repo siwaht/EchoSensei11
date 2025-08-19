@@ -116,6 +116,8 @@ export const agents = pgTable("agents", {
       name: string;
       type: string;
       url?: string;
+      content?: string;
+      size?: number;
     }>;
   }>(),
   tools: json("tools").$type<{

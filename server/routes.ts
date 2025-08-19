@@ -859,14 +859,46 @@ export function registerRoutes(app: Express): Server {
                 embedding_model: kb.embeddingModel || "e5_mistral_7b_instruct",
               };
               
-              // Handle knowledge base documents - upload to global ElevenLabs knowledge base
+              // Handle knowledge base documents - upload to agent-specific ElevenLabs knowledge base
               if (kb.documents && kb.documents.length > 0) {
                 console.log("\n=== UPLOADING KNOWLEDGE BASE DOCUMENTS ===");
                 
+                // Get agent's knowledge base items
+                const kbListResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}/knowledge-base`, {
+                  headers: {
+                    "xi-api-key": decryptedKey
+                  }
+                });
+                
+                let existingItems: any[] = [];
+                if (kbListResponse.ok) {
+                  const kbListData = await kbListResponse.json();
+                  existingItems = kbListData.knowledge_base || [];
+                  console.log(`Found ${existingItems.length} existing knowledge base items`);
+                }
+                
+                // Remove existing items if any
+                for (const item of existingItems) {
+                  try {
+                    const deleteResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}/knowledge-base/${item.knowledge_base_item_id}`, {
+                      method: "DELETE",
+                      headers: {
+                        "xi-api-key": decryptedKey
+                      }
+                    });
+                    if (deleteResponse.ok) {
+                      console.log(`Removed existing knowledge base item: ${item.name}`);
+                    }
+                  } catch (e) {
+                    console.error(`Error deleting knowledge base item:`, e);
+                  }
+                }
+                
+                // Upload new documents
                 for (const doc of kb.documents) {
                   try {
                     if (doc.type === 'text' && doc.content) {
-                      // Upload text content as a file to ElevenLabs knowledge base
+                      // Upload text content as a file to agent's knowledge base
                       const formData = new FormData();
                       formData.append("name", doc.name);
                       
@@ -874,7 +906,7 @@ export function registerRoutes(app: Express): Server {
                       const blob = new Blob([doc.content], { type: "text/plain" });
                       formData.append("file", blob, `${doc.name}.txt`);
                       
-                      const uploadResponse = await fetch("https://api.elevenlabs.io/v1/knowledge-base", {
+                      const uploadResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}/knowledge-base`, {
                         method: "POST",
                         headers: {
                           "xi-api-key": decryptedKey
@@ -886,11 +918,29 @@ export function registerRoutes(app: Express): Server {
                         const kbData = await uploadResponse.json();
                         console.log(`Knowledge base document uploaded: ${doc.name}, ID: ${kbData.knowledge_base_item_id || kbData.id}`);
                       } else {
-                        console.error(`Failed to upload text document ${doc.name}:`, await uploadResponse.text());
+                        const errorText = await uploadResponse.text();
+                        console.error(`Failed to upload text document ${doc.name}:`, errorText);
                       }
                     } else if (doc.type === 'url' && doc.url) {
-                      // Note: URL upload not directly supported via API
-                      console.log(`URL upload for ${doc.name} would need to be fetched and uploaded as text`);
+                      // URL documents can be uploaded directly
+                      const formData = new FormData();
+                      formData.append("name", doc.name);
+                      formData.append("url", doc.url);
+                      
+                      const uploadResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}/knowledge-base`, {
+                        method: "POST",
+                        headers: {
+                          "xi-api-key": decryptedKey
+                        },
+                        body: formData
+                      });
+                      
+                      if (uploadResponse.ok) {
+                        const kbData = await uploadResponse.json();
+                        console.log(`URL document uploaded: ${doc.name}, ID: ${kbData.knowledge_base_item_id || kbData.id}`);
+                      } else {
+                        console.error(`Failed to upload URL document ${doc.name}:`, await uploadResponse.text());
+                      }
                     } else if (doc.type === 'file') {
                       console.log(`File upload for ${doc.name} requires file content handling`);
                     }

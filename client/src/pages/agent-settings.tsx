@@ -23,7 +23,7 @@ import {
 import { 
   Save, ArrowLeft, Mic, Settings2, MessageSquare, Zap, Search, Play, 
   Volume2, Check, X, RotateCcw, Brain, Database, Wrench, Plus, Trash2,
-  Globe, ChevronDown, ChevronRight, FileText, Link, Code, Upload, AlertCircle
+  Globe, ChevronDown, ChevronRight, FileText, Link, Code, Upload, AlertCircle, Eye
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -104,6 +104,8 @@ export default function AgentSettings() {
   const [documentUrl, setDocumentUrl] = useState('');
   const [documentText, setDocumentText] = useState('');
   const [documentTitle, setDocumentTitle] = useState('');
+  const [viewDocumentOpen, setViewDocumentOpen] = useState(false);
+  const [viewingDocument, setViewingDocument] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch agent data
@@ -1007,6 +1009,25 @@ export default function AgentSettings() {
                           </div>
                         </DialogContent>
                       </Dialog>
+                      
+                      {/* View Document Dialog */}
+                      <Dialog open={viewDocumentOpen} onOpenChange={setViewDocumentOpen}>
+                        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                          <DialogHeader>
+                            <DialogTitle>View Document: {viewingDocument?.name}</DialogTitle>
+                            <DialogDescription>
+                              Knowledge base document content
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="overflow-y-auto flex-1 min-h-[200px] max-h-[500px]">
+                            <div className="bg-muted/50 rounded-lg p-4">
+                              <pre className="whitespace-pre-wrap text-sm break-words">
+                                {viewingDocument?.content || 'No content available'}
+                              </pre>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                     {settings.documents.length === 0 ? (
                       <div className="text-center py-8 border-2 border-dashed rounded-lg">
@@ -1022,31 +1043,57 @@ export default function AgentSettings() {
                       <div className="space-y-2">
                         {settings.documents.map((doc) => (
                           <Card key={doc.id} className="p-3 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-1">
                               {doc.type === 'url' ? (
-                                <Link className="w-4 h-4 text-muted-foreground" />
+                                <Link className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                               ) : doc.type === 'text' ? (
-                                <FileText className="w-4 h-4 text-muted-foreground" />
+                                <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                               ) : (
-                                <Upload className="w-4 h-4 text-muted-foreground" />
+                                <Upload className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                               )}
-                              <span className="text-sm">{doc.name}</span>
-                              <span className="text-xs text-muted-foreground">({doc.type})</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium">{doc.name}</span>
+                                  <span className="text-xs text-muted-foreground">({doc.type})</span>
+                                </div>
+                                {doc.type === 'text' && doc.content && (
+                                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                                    {doc.content.substring(0, 60)}...
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setSettings({
-                                  ...settings,
-                                  documents: settings.documents.filter(d => d.id !== doc.id),
-                                });
-                                setHasUnsavedChanges(true);
-                              }}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
+                            <div className="flex items-center gap-1 ml-2">
+                              {doc.type === 'text' && doc.content && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setViewingDocument(doc);
+                                    setViewDocumentOpen(true);
+                                  }}
+                                  title="View content"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setSettings({
+                                    ...settings,
+                                    documents: settings.documents.filter(d => d.id !== doc.id),
+                                  });
+                                  setHasUnsavedChanges(true);
+                                }}
+                                title="Remove document"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
                           </Card>
                         ))}
                       </div>
