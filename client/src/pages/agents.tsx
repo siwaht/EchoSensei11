@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Bot, Plus, Trash2, MoreVertical, Settings } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Bot, Plus, MoreHorizontal, Search, ExternalLink, TestTube } from "lucide-react";
 import { AddAgentModal } from "@/components/modals/add-agent-modal";
-import { AgentDetailModal } from "@/components/modals/agent-detail-modal";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import {
@@ -25,17 +23,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { format } from "date-fns";
 import type { Agent } from "@shared/schema";
 
 export default function Agents() {
   const [location, setLocation] = useLocation();
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
   const { data: agents, isLoading } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
+  });
+
+  const { data: user } = useQuery<{id: string, email?: string, name?: string}>({
+    queryKey: ["/api/auth/user"],
   });
 
   // Delete mutation
@@ -73,158 +76,177 @@ export default function Agents() {
     },
   });
 
-  const getStatusColor = (isActive: boolean) => {
-    return isActive ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200" : 
-                     "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200";
-  };
-
-  const getStatusText = (isActive: boolean) => {
-    return isActive ? "Active" : "Inactive";
-  };
+  const filteredAgents = agents?.filter(agent => 
+    agent.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
 
   if (isLoading) {
     return (
-      <div className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
-          <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-          <div className="h-10 w-full sm:w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-semibold">Agents</h2>
+            <p className="text-sm text-muted-foreground mt-1">Create and manage your AI agents</p>
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-          ))}
+        <div className="h-96 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
-            Voice Agents
-          </h2>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400" data-testid="text-page-description">
-            Manage your ElevenLabs voice agents
-          </p>
+          <h2 className="text-2xl font-semibold">Agents</h2>
+          <p className="text-sm text-muted-foreground mt-1">Create and manage your AI agents</p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto" data-testid="button-add-agent">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Agent
-        </Button>
-      </div>
-
-      {/* Agents Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {!agents || agents.length === 0 ? (
-          <div className="col-span-full text-center py-12">
-            <Bot className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2" data-testid="text-no-agents-title">
-              No agents configured
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4" data-testid="text-no-agents-description">
-              Add your first ElevenLabs agent to start monitoring voice interactions.
-            </p>
-            <Button onClick={() => setShowAddModal(true)} data-testid="button-add-first-agent">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Your First Agent
+        <div className="flex items-center gap-3">
+          <Link href="/playground">
+            <Button variant="ghost" className="text-sm" data-testid="button-playground">
+              Playground
             </Button>
-          </div>
-        ) : (
-          agents.map((agent) => (
-            <Card key={agent.id} className="p-6 border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-xl flex items-center justify-center">
-                    <Bot className="w-6 h-6 text-primary-600" />
-                  </div>
-                  <Badge className={getStatusColor(agent.isActive)} data-testid={`badge-status-${agent.id}`}>
-                    {getStatusText(agent.isActive)}
-                  </Badge>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem 
-                      onClick={() => setSelectedAgent(agent)}
-                      data-testid={`menu-view-details-${agent.id}`}
-                    >
-                      View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => setLocation(`/agents/${agent.id}/settings`)}
-                      data-testid={`menu-settings-${agent.id}`}
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="text-red-600 dark:text-red-400"
-                      onClick={() => setAgentToDelete(agent)}
-                      data-testid={`menu-delete-${agent.id}`}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Remove Agent
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              
-              <h3 className="text-lg font-semibold mb-2" data-testid={`text-agent-name-${agent.id}`}>
-                {agent.name}
-              </h3>
-              
-              {agent.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4" data-testid={`text-agent-description-${agent.id}`}>
-                  {agent.description}
-                </p>
-              )}
-              
-              <div className="space-y-3 text-sm">
-                <div className="flex flex-col space-y-1">
-                  <span className="text-gray-600 dark:text-gray-400">ElevenLabs ID:</span>
-                  <span className="font-medium font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded break-all" data-testid={`text-agent-id-${agent.id}`}>
-                    {agent.elevenLabsAgentId}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 dark:text-gray-400">Created:</span>
-                  <span className="font-medium" data-testid={`text-agent-created-${agent.id}`}>
-                    {agent.createdAt ? new Date(agent.createdAt).toLocaleDateString() : "Unknown"}
-                  </span>
-                </div>
-              </div>
-              
-
-            </Card>
-          ))
-        )}
+          </Link>
+          <Button 
+            onClick={() => setShowAddModal(true)} 
+            className="bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-200 dark:text-black text-white" 
+            data-testid="button-new-agent"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New agent
+          </Button>
+        </div>
       </div>
+
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search agents..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+          data-testid="input-search-agents"
+        />
+      </div>
+
+      {filteredAgents.length === 0 ? (
+        <div className="bg-white dark:bg-gray-950 rounded-lg border">
+          <div className="p-24 text-center">
+            {searchQuery ? (
+              <>
+                <h3 className="text-lg font-medium mb-2">No agents found</h3>
+                <p className="text-muted-foreground">
+                  No agents match your search "{searchQuery}"
+                </p>
+              </>
+            ) : agents && agents.length === 0 ? (
+              <>
+                <Bot className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium mb-2">No agents yet</h3>
+                <p className="text-muted-foreground mb-6">
+                  Create your first voice agent to get started
+                </p>
+                <Button 
+                  onClick={() => setShowAddModal(true)}
+                  className="bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-200 dark:text-black text-white"
+                  data-testid="button-create-first-agent"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Your First Agent
+                </Button>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-medium mb-2">Loading agents...</h3>
+              </>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-gray-950 rounded-lg border">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="border-b bg-gray-50 dark:bg-gray-900">
+                <tr>
+                  <th className="text-left p-4 font-medium text-sm text-muted-foreground">Name</th>
+                  <th className="text-left p-4 font-medium text-sm text-muted-foreground">Created by</th>
+                  <th className="text-left p-4 font-medium text-sm text-muted-foreground">Created at</th>
+                  <th className="w-12"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAgents.map((agent) => (
+                  <tr key={agent.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
+                    <td className="p-4">
+                      <Link href={`/agents/${agent.id}/settings`}>
+                        <a className="font-medium hover:underline cursor-pointer" data-testid={`link-agent-${agent.id}`}>
+                          {agent.name}
+                        </a>
+                      </Link>
+                    </td>
+                    <td className="p-4 text-sm text-muted-foreground">
+                      {user?.email || user?.name || 'Unknown'}
+                    </td>
+                    <td className="p-4 text-sm text-muted-foreground">
+                      {agent.createdAt ? format(new Date(agent.createdAt), 'MMM d, yyyy, h:mm a') : 'Unknown'}
+                    </td>
+                    <td className="p-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" data-testid={`button-menu-${agent.id}`}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={() => window.open(`/playground?agentId=${agent.id}`, '_blank')}
+                            data-testid={`menu-test-${agent.id}`}
+                          >
+                            <TestTube className="h-4 w-4 mr-2" />
+                            Test AI agent
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              const url = `/api/agents/${agent.id}/link?returnUrl=${encodeURIComponent(window.location.href)}`;
+                              window.open(url, '_blank');
+                            }}
+                            data-testid={`menu-copy-link-${agent.id}`}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Copy link
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-red-600 dark:text-red-400"
+                            onClick={() => setAgentToDelete(agent)}
+                            data-testid={`menu-delete-${agent.id}`}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <AddAgentModal 
         open={showAddModal} 
         onOpenChange={setShowAddModal}
       />
       
-      <AgentDetailModal
-        agent={selectedAgent}
-        open={!!selectedAgent}
-        onOpenChange={(open) => !open && setSelectedAgent(null)}
-      />
-      
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!agentToDelete} onOpenChange={(open) => !open && setAgentToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove Agent</AlertDialogTitle>
+            <AlertDialogTitle>Delete Agent</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove <strong>{agentToDelete?.name}</strong>? 
-              This action cannot be undone. Call logs associated with this agent will be preserved.
+              Are you sure you want to delete <strong>{agentToDelete?.name}</strong>? 
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -232,9 +254,9 @@ export default function Agents() {
             <AlertDialogAction
               onClick={() => agentToDelete && deleteMutation.mutate(agentToDelete.id)}
               disabled={deleteMutation.isPending}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? "Removing..." : "Remove Agent"}
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

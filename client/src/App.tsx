@@ -9,7 +9,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Agents from "@/pages/agents";
-import AgentSettings from "@/pages/agent-settings";
+import AgentSettings from "@/pages/agent-settings-new";
 import History from "@/pages/history";
 import Integrations from "@/pages/integrations";
 import Billing from "@/pages/billing";
