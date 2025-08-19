@@ -130,7 +130,10 @@ export default function AppShell({ children }: AppShellProps) {
       )}>
         <div className="h-14 px-4 border-b flex items-center">
           <div className="flex items-center gap-2">
-            <div className="text-xl font-bold">IIElevenLabs</div>
+            <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center">
+              <AudioWaveform className="w-5 h-5 text-white dark:text-black" />
+            </div>
+            <div className="text-xl font-bold">VoiceAI</div>
           </div>
         </div>
         

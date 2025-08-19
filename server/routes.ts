@@ -16,15 +16,15 @@ const isAuthenticated: RequestHandler = (req, res, next) => {
   next();
 };
 
-// ElevenLabs API helper
-async function callElevenLabsAPI(apiKey: string, endpoint: string, method = "GET", body?: any) {
+// Voice API helper
+async function callVoiceAPI(apiKey: string, endpoint: string, method = "GET", body?: any) {
   const headers: any = {
     "xi-api-key": apiKey,
     "Content-Type": "application/json",
   };
 
   const url = `https://api.elevenlabs.io${endpoint}`;
-  console.log(`Calling ElevenLabs API: ${method} ${url}`);
+  console.log(`Calling Voice API: ${method} ${endpoint}`);
 
   const response = await fetch(url, {
     method,
@@ -35,11 +35,11 @@ async function callElevenLabsAPI(apiKey: string, endpoint: string, method = "GET
   const responseText = await response.text();
   
   if (!response.ok) {
-    console.error(`ElevenLabs API error: ${response.status} ${response.statusText}`);
+    console.error(`Voice API error: ${response.status} ${response.statusText}`);
     console.error(`Response body: ${responseText}`);
     
     // Try to parse error message from response
-    let errorMessage = `ElevenLabs API error: ${response.status}`;
+    let errorMessage = `Voice API error: ${response.status}`;
     try {
       const errorData = JSON.parse(responseText);
       if (errorData.detail?.message) {
@@ -122,7 +122,7 @@ function calculateCallCost(durationSeconds: number, costData?: any): number {
   }
   
   // Otherwise, calculate estimated cost based on ElevenLabs pricing
-  // ElevenLabs charges approximately $0.30 per minute for conversational AI
+  // Voice service charges approximately $0.30 per minute for conversational AI
   const minutes = durationSeconds / 60;
   return Math.round(minutes * 0.30 * 100) / 100; // Round to 2 decimal places
 }
@@ -393,10 +393,10 @@ export function registerRoutes(app: Express): Server {
       const apiKey = decryptApiKey(integration.apiKey);
       
       try {
-        console.log("Testing ElevenLabs API connection...");
+        console.log("Testing Voice API connection...");
         // Use the /v1/user endpoint to validate the API key
-        const userData = await callElevenLabsAPI(apiKey, "/v1/user");
-        console.log("ElevenLabs user data retrieved:", userData);
+        const userData = await callVoiceAPI(apiKey, "/v1/user");
+        console.log("Voice service user data retrieved:", userData);
         
         await storage.updateIntegrationStatus(integration.id, "ACTIVE", new Date());
         res.json({ 
@@ -405,17 +405,17 @@ export function registerRoutes(app: Express): Server {
           subscription: userData.subscription || null
         });
       } catch (error: any) {
-        console.error("ElevenLabs API test failed:", error.message);
+        console.error("Voice API test failed:", error.message);
         await storage.updateIntegrationStatus(integration.id, "ERROR", new Date());
         
         // Return more specific error message
         let errorMessage = "Connection failed";
         if (error.message.includes("401") || error.message.includes("Unauthorized")) {
-          errorMessage = "Invalid API key. Please check your ElevenLabs API key.";
+          errorMessage = "Invalid API key. Please check your Voice API key.";
         } else if (error.message.includes("403") || error.message.includes("Forbidden")) {
           errorMessage = "Access forbidden. Your API key may not have the required permissions.";
         } else if (error.message.includes("404")) {
-          errorMessage = "ElevenLabs API endpoint not found. Please try again later.";
+          errorMessage = "Voice API endpoint not found. Please try again later.";
         } else if (error.message) {
           errorMessage = error.message;
         }
@@ -469,19 +469,19 @@ export function registerRoutes(app: Express): Server {
 
       const { elevenLabsAgentId } = req.body;
       if (!elevenLabsAgentId) {
-        return res.status(400).json({ message: "ElevenLabs Agent ID is required" });
+        return res.status(400).json({ message: "Agent ID is required" });
       }
 
       const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
       if (!integration || integration.status !== "ACTIVE") {
-        return res.status(400).json({ message: "Active ElevenLabs integration required" });
+        return res.status(400).json({ message: "Active voice service integration required" });
       }
 
       const apiKey = decryptApiKey(integration.apiKey);
       
       try {
         console.log("Validating agent with ID:", elevenLabsAgentId);
-        const agentData = await callElevenLabsAPI(apiKey, `/v1/convai/agents/${elevenLabsAgentId}`);
+        const agentData = await callVoiceAPI(apiKey, `/v1/convai/agents/${elevenLabsAgentId}`);
         console.log("Agent validation successful:", agentData);
         res.json({ 
           message: "Agent validated successfully", 
@@ -625,7 +625,7 @@ export function registerRoutes(app: Express): Server {
 
       const decryptedKey = decryptApiKey(integration.apiKey);
       
-      // Fetch voices from ElevenLabs API
+      // Fetch voices from Voice API
       const response = await fetch("https://api.elevenlabs.io/v1/voices", {
         headers: {
           "xi-api-key": decryptedKey,
@@ -663,8 +663,8 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "Agent not found" });
       }
 
-      // If we have any ElevenLabs-related updates, sync with ElevenLabs API
-      const needsElevenLabsUpdate = updates.firstMessage !== undefined || 
+      // If we have any Voice-related updates, sync with Voice API
+      const needsVoiceAPIUpdate = updates.firstMessage !== undefined || 
                                      updates.systemPrompt !== undefined ||
                                      updates.language !== undefined ||
                                      updates.voiceId !== undefined || 
@@ -676,14 +676,14 @@ export function registerRoutes(app: Express): Server {
                                      updates.evaluationCriteria !== undefined ||
                                      updates.dataCollection !== undefined;
 
-      if (needsElevenLabsUpdate && agent.elevenLabsAgentId) {
+      if (needsVoiceAPIUpdate && agent.elevenLabsAgentId) {
         const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
         if (integration && integration.apiKey) {
           const decryptedKey = decryptApiKey(integration.apiKey);
           
           try {
-            // Build comprehensive ElevenLabs payload
-            const elevenLabsPayload: any = {
+            // Build comprehensive Voice API payload
+            const voiceAPIPayload: any = {
               name: agent.name,
               conversation_config: {
                 agent: {
@@ -697,7 +697,7 @@ export function registerRoutes(app: Express): Server {
             // Add LLM settings if provided
             if (updates.llmSettings || agent.llmSettings) {
               const llmSettings = updates.llmSettings || agent.llmSettings;
-              elevenLabsPayload.conversation_config.llm = {
+              voiceAPIPayload.conversation_config.llm = {
                 model: llmSettings.model || "gpt-4",
                 temperature: llmSettings.temperature || 0.7,
                 max_tokens: llmSettings.maxTokens || 150,
@@ -707,7 +707,7 @@ export function registerRoutes(app: Express): Server {
             // Add voice/TTS settings if provided
             if (updates.voiceId || updates.voiceSettings || agent.voiceId || agent.voiceSettings) {
               const voiceSettings = updates.voiceSettings || agent.voiceSettings || {};
-              elevenLabsPayload.conversation_config.tts = {
+              voiceAPIPayload.conversation_config.tts = {
                 voice_id: updates.voiceId || agent.voiceId,
                 agent_output_audio_format: "pcm_16000",
                 optimize_streaming_latency: 3,
@@ -722,7 +722,7 @@ export function registerRoutes(app: Express): Server {
             if (updates.knowledgeBase || agent.knowledgeBase) {
               const kb = updates.knowledgeBase || agent.knowledgeBase;
               if (kb.useRag) {
-                elevenLabsPayload.conversation_config.knowledge_base = {
+                voiceAPIPayload.conversation_config.knowledge_base = {
                   use_rag: kb.useRag,
                   max_chunks: kb.maxChunks || 5,
                   vector_distance: kb.vectorDistance || 0.8,
@@ -735,16 +735,16 @@ export function registerRoutes(app: Express): Server {
             if (updates.tools || agent.tools) {
               const tools = updates.tools || agent.tools;
               if (tools.toolIds && tools.toolIds.length > 0) {
-                elevenLabsPayload.conversation_config.agent.tool_ids = tools.toolIds;
+                voiceAPIPayload.conversation_config.agent.tool_ids = tools.toolIds;
               }
-              // Note: webhook tools need to be created separately via ElevenLabs tools API
+              // Note: webhook tools need to be created separately via Voice tools API
             }
 
             // Add dynamic variables if provided
             if (updates.dynamicVariables || agent.dynamicVariables) {
               const vars = updates.dynamicVariables || agent.dynamicVariables;
               if (vars && Object.keys(vars).length > 0) {
-                elevenLabsPayload.conversation_config.agent.dynamic_variables = vars;
+                voiceAPIPayload.conversation_config.agent.dynamic_variables = vars;
               }
             }
 
@@ -752,8 +752,8 @@ export function registerRoutes(app: Express): Server {
             if (updates.evaluationCriteria || agent.evaluationCriteria) {
               const evaluation = updates.evaluationCriteria || agent.evaluationCriteria;
               if (evaluation.enabled && evaluation.criteria) {
-                elevenLabsPayload.platform_settings = {
-                  ...elevenLabsPayload.platform_settings,
+                voiceAPIPayload.platform_settings = {
+                  ...voiceAPIPayload.platform_settings,
                   evaluation: {
                     criteria: evaluation.criteria.map((c: string) => ({
                       name: c,
@@ -769,8 +769,8 @@ export function registerRoutes(app: Express): Server {
             if (updates.dataCollection || agent.dataCollection) {
               const collection = updates.dataCollection || agent.dataCollection;
               if (collection.enabled && collection.fields) {
-                elevenLabsPayload.platform_settings = {
-                  ...elevenLabsPayload.platform_settings,
+                voiceAPIPayload.platform_settings = {
+                  ...voiceAPIPayload.platform_settings,
                   data_collection: {
                     fields: collection.fields
                   }
@@ -778,7 +778,7 @@ export function registerRoutes(app: Express): Server {
               }
             }
 
-            console.log("Updating ElevenLabs agent with payload:", JSON.stringify(elevenLabsPayload, null, 2));
+            console.log("Updating Voice agent with payload:", JSON.stringify(voiceAPIPayload, null, 2));
 
             const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
               method: "PATCH",
@@ -786,19 +786,19 @@ export function registerRoutes(app: Express): Server {
                 "xi-api-key": decryptedKey,
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify(elevenLabsPayload),
+              body: JSON.stringify(voiceAPIPayload),
             });
 
             if (!response.ok) {
               const errorText = await response.text();
-              console.error("Failed to update agent in ElevenLabs:", errorText);
+              console.error("Failed to update agent in Voice service:", errorText);
               // Continue anyway - we'll still update locally
             } else {
-              console.log("Successfully updated agent in ElevenLabs");
+              console.log("Successfully updated agent in Voice service");
             }
-          } catch (elevenLabsError) {
-            console.error("Error updating ElevenLabs agent:", elevenLabsError);
-            // Continue with local update even if ElevenLabs update fails
+          } catch (voiceAPIError) {
+            console.error("Error updating Voice agent:", voiceAPIError);
+            // Continue with local update even if Voice service update fails
           }
         }
       }
@@ -989,7 +989,7 @@ export function registerRoutes(app: Express): Server {
       const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
       if (!integration || integration.status !== "ACTIVE") {
         console.log("No active integration found");
-        return res.status(400).json({ message: "Active ElevenLabs integration required" });
+        return res.status(400).json({ message: "Active voice service integration required" });
       }
       console.log("Integration found, status:", integration.status);
 
@@ -1007,7 +1007,7 @@ export function registerRoutes(app: Express): Server {
           console.log(`\n--- Syncing agent: ${agent.name} (${agent.elevenLabsAgentId}) ---`);
           
           // Get conversations for this agent
-          const conversations = await callElevenLabsAPI(
+          const conversations = await callVoiceAPI(
             apiKey, 
             `/v1/convai/conversations?agent_id=${agent.elevenLabsAgentId}&page_size=100`
           );
@@ -1029,7 +1029,7 @@ export function registerRoutes(app: Express): Server {
               console.log(`  Fetching details for conversation: ${conversation.conversation_id}`);
               
               // Get detailed conversation data
-              const details = await callElevenLabsAPI(
+              const details = await callVoiceAPI(
                 apiKey,
                 `/v1/convai/conversations/${conversation.conversation_id}`
               );
@@ -1134,15 +1134,15 @@ export function registerRoutes(app: Express): Server {
 
       const { conversationId } = req.params;
       
-      // Get the ElevenLabs integration to get the API key
+      // Get the Voice service integration to get the API key
       const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
       if (!integration || integration.status !== "ACTIVE") {
-        return res.status(400).json({ message: "Active ElevenLabs integration required" });
+        return res.status(400).json({ message: "Active voice service integration required" });
       }
 
       const apiKey = decryptApiKey(integration.apiKey);
       
-      // Fetch the audio from ElevenLabs
+      // Fetch the audio from Voice service
       const audioResponse = await fetch(
         `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}/audio`,
         {
@@ -1373,8 +1373,8 @@ export function registerRoutes(app: Express): Server {
       try {
         data = JSON.parse(responseText);
       } catch (e) {
-        console.error("Failed to parse ElevenLabs response:", responseText);
-        return res.status(500).json({ message: "Invalid response from ElevenLabs API" });
+        console.error("Failed to parse Voice API response:", responseText);
+        return res.status(500).json({ message: "Invalid response from Voice API" });
       }
       
       console.log("ElevenLabs response:", data);
