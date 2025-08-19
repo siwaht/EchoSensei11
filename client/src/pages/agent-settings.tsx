@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -12,10 +12,18 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { 
   Save, ArrowLeft, Mic, Settings2, MessageSquare, Zap, Search, Play, 
   Volume2, Check, X, RotateCcw, Brain, Database, Wrench, Plus, Trash2,
-  Globe, ChevronDown, ChevronRight, FileText, Link, Code
+  Globe, ChevronDown, ChevronRight, FileText, Link, Code, Upload
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -91,6 +99,10 @@ export default function AgentSettings() {
     evaluation: false,
     collection: false,
   });
+  const [documentUploadOpen, setDocumentUploadOpen] = useState(false);
+  const [documentType, setDocumentType] = useState<'file' | 'url'>('file');
+  const [documentUrl, setDocumentUrl] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch agent data
   const { data: agents = [], isLoading: agentsLoading } = useQuery<Agent[]>({
@@ -242,6 +254,60 @@ export default function AgentSettings() {
       webhooks: [...settings.webhooks, newWebhook],
     });
     setHasUnsavedChanges(true);
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const newDocument = {
+        id: Date.now().toString(),
+        name: file.name,
+        type: 'file',
+        url: '',
+        size: file.size,
+      };
+      setSettings({
+        ...settings,
+        documents: [...settings.documents, newDocument],
+      });
+      setHasUnsavedChanges(true);
+      setDocumentUploadOpen(false);
+      toast({
+        title: "Document Added",
+        description: `${file.name} has been added to the knowledge base`,
+      });
+    }
+  };
+
+  const handleUrlAdd = () => {
+    if (!documentUrl.trim()) {
+      toast({
+        title: "Invalid URL",
+        description: "Please enter a valid URL",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const newDocument = {
+      id: Date.now().toString(),
+      name: documentUrl.split('/').pop() || 'Web Document',
+      type: 'url',
+      url: documentUrl,
+      size: 0,
+    };
+    setSettings({
+      ...settings,
+      documents: [...settings.documents, newDocument],
+    });
+    setHasUnsavedChanges(true);
+    setDocumentUploadOpen(false);
+    setDocumentUrl('');
+    toast({
+      title: "URL Added",
+      description: "The URL has been added to the knowledge base",
+    });
   };
 
   const removeWebhook = (id: string) => {
@@ -741,21 +807,89 @@ export default function AgentSettings() {
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <Label>Knowledge Base Documents</Label>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          toast({
-                            title: "Document Upload",
-                            description: "Document upload feature coming soon",
-                          });
-                        }}
-                        className="gap-1"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Add Document
-                      </Button>
+                      <Dialog open={documentUploadOpen} onOpenChange={setDocumentUploadOpen}>
+                        <DialogTrigger asChild>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Add Document
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Add Document to Knowledge Base</DialogTitle>
+                            <DialogDescription>
+                              Upload a file or add a URL to your agent's knowledge base
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <Tabs value={documentType} onValueChange={(v) => setDocumentType(v as 'file' | 'url')}>
+                              <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="file">
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  Upload File
+                                </TabsTrigger>
+                                <TabsTrigger value="url">
+                                  <Link className="w-4 h-4 mr-2" />
+                                  Add URL
+                                </TabsTrigger>
+                              </TabsList>
+                              <TabsContent value="file" className="space-y-4">
+                                <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                                  <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+                                  <p className="text-sm text-muted-foreground mb-2">
+                                    Click to upload or drag and drop
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    PDF, TXT, DOC, DOCX (Max 10MB)
+                                  </p>
+                                  <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    className="hidden"
+                                    accept=".pdf,.txt,.doc,.docx"
+                                    onChange={handleFileUpload}
+                                  />
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    className="mt-4"
+                                    onClick={() => fileInputRef.current?.click()}
+                                  >
+                                    Choose File
+                                  </Button>
+                                </div>
+                              </TabsContent>
+                              <TabsContent value="url" className="space-y-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="document-url">Document URL</Label>
+                                  <Input
+                                    id="document-url"
+                                    placeholder="https://example.com/document.pdf"
+                                    value={documentUrl}
+                                    onChange={(e) => setDocumentUrl(e.target.value)}
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    Enter the URL of a publicly accessible document
+                                  </p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  className="w-full"
+                                  onClick={handleUrlAdd}
+                                  disabled={!documentUrl.trim()}
+                                >
+                                  Add URL
+                                </Button>
+                              </TabsContent>
+                            </Tabs>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                     {settings.documents.length === 0 ? (
                       <div className="text-center py-8 border-2 border-dashed rounded-lg">
