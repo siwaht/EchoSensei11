@@ -52,17 +52,17 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
           Settings
         </h2>
-        <p className="text-gray-600 dark:text-gray-400" data-testid="text-page-description">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400" data-testid="text-page-description">
           Manage your account settings and preferences
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Profile Settings */}
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-6">

@@ -136,24 +136,24 @@ export default function AgentSettings() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+    <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setLocation("/dashboard")}
-            className="gap-2"
+            className="gap-1 sm:gap-2 px-2 sm:px-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back
+            <span className="hidden sm:inline">Back</span>
           </Button>
-          <h1 className="text-3xl font-bold">Agent Settings</h1>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Agent Settings</h1>
         </div>
         <Button
           onClick={handleSave}
           disabled={updateAgentMutation.isPending}
-          className="gap-2"
+          className="gap-2 w-full sm:w-auto"
           data-testid="button-save-agent-settings"
         >
           <Save className="w-4 h-4" />

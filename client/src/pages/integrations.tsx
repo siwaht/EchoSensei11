@@ -120,31 +120,31 @@ export default function Integrations() {
 
   if (isLoading) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+      <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6 px-4 sm:px-0">
+        <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mx-auto" />
         <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8 px-4 sm:px-0">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2" data-testid="text-page-title">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2" data-testid="text-page-title">
           ElevenLabs Integration
         </h2>
-        <p className="text-gray-600 dark:text-gray-400" data-testid="text-page-description">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400" data-testid="text-page-description">
           Connect your ElevenLabs account to start monitoring your voice agents
         </p>
       </div>
 
       {/* Integration Status */}
-      <Card className="p-6 border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold" data-testid="text-connection-status-title">Connection Status</h3>
+      <Card className="p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h3 className="text-base sm:text-lg font-semibold" data-testid="text-connection-status-title">Connection Status</h3>
           {getStatusBadge()}
         </div>
-        <div className="grid md:grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-gray-600 dark:text-gray-400">API Key Status:</p>
             <p className="font-medium" data-testid="text-api-key-status">
@@ -179,8 +179,8 @@ export default function Integrations() {
       </Card>
 
       {/* API Key Form */}
-      <Card className="p-6 border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold mb-4" data-testid="text-api-key-config-title">API Key Configuration</h3>
+      <Card className="p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-base sm:text-lg font-semibold mb-4" data-testid="text-api-key-config-title">API Key Configuration</h3>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -217,10 +217,11 @@ export default function Integrations() {
               )}
             />
             
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button 
                 type="submit" 
                 disabled={saveApiKeyMutation.isPending}
+                className="w-full sm:w-auto"
                 data-testid="button-update-api-key"
               >
                 {saveApiKeyMutation.isPending ? "Saving..." : "Update API Key"}
@@ -230,6 +231,7 @@ export default function Integrations() {
                 variant="outline"
                 onClick={() => testConnectionMutation.mutate()}
                 disabled={testConnectionMutation.isPending || !integration}
+                className="w-full sm:w-auto"
                 data-testid="button-test-connection"
               >
                 {testConnectionMutation.isPending ? "Testing..." : "Test Connection"}
@@ -240,8 +242,8 @@ export default function Integrations() {
       </Card>
 
       {/* Webhook Configuration */}
-      <Card className="p-6 border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold mb-4" data-testid="text-webhook-config-title">Webhook Configuration</h3>
+      <Card className="p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-base sm:text-lg font-semibold mb-4" data-testid="text-webhook-config-title">Webhook Configuration</h3>
         <div className="space-y-4">
           <div>
             <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

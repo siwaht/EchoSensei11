@@ -98,28 +98,28 @@ export default function History() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
             Call History
           </h2>
-          <p className="text-gray-600 dark:text-gray-400" data-testid="text-page-description">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400" data-testid="text-page-description">
             View and analyze past voice interactions
           </p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <Button
             onClick={() => syncCallsMutation.mutate()}
             disabled={syncCallsMutation.isPending}
-            className="flex items-center gap-2"
+            className="flex items-center justify-center gap-2 w-full sm:w-auto"
             data-testid="button-sync-calls"
           >
             <RefreshCw className={`w-4 h-4 ${syncCallsMutation.isPending ? 'animate-spin' : ''}`} />
             {syncCallsMutation.isPending ? 'Syncing...' : 'Sync Calls'}
           </Button>
           <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-            <SelectTrigger className="w-48" data-testid="select-agent-filter">
+            <SelectTrigger className="w-full sm:w-48" data-testid="select-agent-filter">
               <SelectValue placeholder="All Agents" />
             </SelectTrigger>
             <SelectContent>
@@ -135,7 +135,7 @@ export default function History() {
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-48"
+            className="w-full sm:w-48"
             data-testid="input-date-filter"
           />
         </div>

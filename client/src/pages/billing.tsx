@@ -11,9 +11,9 @@ export default function Billing() {
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-        <div className="grid lg:grid-cols-3 gap-6">
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 px-4 sm:px-0">
+        <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mx-auto" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="h-48 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
           ))}
@@ -23,18 +23,18 @@ export default function Billing() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8 px-4 sm:px-0">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2" data-testid="text-page-title">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2" data-testid="text-page-title">
           Billing & Usage
         </h2>
-        <p className="text-gray-600 dark:text-gray-400" data-testid="text-page-description">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400" data-testid="text-page-description">
           Track your usage and manage billing information
         </p>
       </div>
 
       {/* Current Usage */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="p-6 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold" data-testid="text-current-month-title">Current Month</h3>
@@ -45,7 +45,7 @@ export default function Billing() {
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600 dark:text-gray-400">Total Calls</span>
                 <span className="font-medium" data-testid="text-current-calls">
-                  {stats?.totalCalls || 0}
+                  {(stats as any)?.totalCalls || 0}
                 </span>
               </div>
               <Progress value={62} className="h-2" />
@@ -54,7 +54,7 @@ export default function Billing() {
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600 dark:text-gray-400">Minutes Used</span>
                 <span className="font-medium" data-testid="text-current-minutes">
-                  {stats?.totalMinutes || 0}
+                  {(stats as any)?.totalMinutes || 0}
                 </span>
               </div>
               <Progress value={57} className="h-2" />
@@ -68,7 +68,7 @@ export default function Billing() {
             <DollarSign className="w-5 h-5 text-green-600" />
           </div>
           <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2" data-testid="text-estimated-cost-value">
-            ${stats?.estimatedCost?.toFixed(2) || '0.00'}
+            ${(stats as any)?.estimatedCost?.toFixed(2) || '0.00'}
           </div>
           <div className="text-sm text-gray-600 dark:text-gray-400">
             Based on ElevenLabs pricing

@@ -82,12 +82,12 @@ export default function Agents() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
           <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-          <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div className="h-10 w-full sm:w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
         </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
           ))}
@@ -97,24 +97,24 @@ export default function Agents() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
             Voice Agents
           </h2>
-          <p className="text-gray-600 dark:text-gray-400" data-testid="text-page-description">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400" data-testid="text-page-description">
             Manage your ElevenLabs voice agents
           </p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} data-testid="button-add-agent">
+        <Button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto" data-testid="button-add-agent">
           <Plus className="w-4 h-4 mr-2" />
           Add Agent
         </Button>
       </div>
 
       {/* Agents Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {!agents || agents.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <Bot className="w-12 h-12 mx-auto text-gray-400 mb-4" />
