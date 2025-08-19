@@ -15,6 +15,7 @@ import Integrations from "@/pages/integrations";
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
 import Admin from "@/pages/admin-new";
+import Checkout from "@/pages/checkout";
 import AppShell from "@/components/layout/app-shell";
 
 function Router() {
@@ -38,6 +39,7 @@ function Router() {
         <Route path="/history" component={History} />
         <Route path="/integrations" component={Integrations} />
         <Route path="/billing" component={Billing} />
+        <Route path="/checkout" component={Checkout} />
         <Route path="/settings" component={Settings} />
         <Route path="/admin" component={Admin} />
         <Route component={NotFound} />

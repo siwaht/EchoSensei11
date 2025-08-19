@@ -889,6 +889,89 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Payment Routes
+  app.post("/api/payments/create-intent", isAuthenticated, async (req: any, res) => {
+    try {
+      const { packageId, amount } = req.body;
+      const organizationId = req.user.organizationId;
+      
+      // Check if Stripe is configured
+      const stripe = await import('./stripe');
+      if (!stripe.isStripeConfigured()) {
+        return res.status(400).json({ 
+          error: 'Payment gateway is not configured. Please contact support.' 
+        });
+      }
+      
+      await stripe.createPaymentIntent({ 
+        body: { organizationId, packageId, amount } 
+      } as any, res);
+    } catch (error) {
+      console.error("Error creating payment intent:", error);
+      res.status(500).json({ error: "Failed to create payment" });
+    }
+  });
+
+  app.post("/api/payments/confirm", isAuthenticated, async (req: any, res) => {
+    try {
+      const stripe = await import('./stripe');
+      await stripe.confirmPayment(req, res);
+    } catch (error) {
+      console.error("Error confirming payment:", error);
+      res.status(500).json({ error: "Failed to confirm payment" });
+    }
+  });
+
+  app.post("/api/payments/subscribe", isAuthenticated, async (req: any, res) => {
+    try {
+      const { priceId } = req.body;
+      const organizationId = req.user.organizationId;
+      const email = req.user.email;
+      
+      const stripe = await import('./stripe');
+      await stripe.createSubscription({ 
+        body: { organizationId, priceId, email } 
+      } as any, res);
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ error: "Failed to create subscription" });
+    }
+  });
+
+  // Stripe webhook endpoint (no auth required)
+  app.post("/api/webhooks/stripe", async (req, res) => {
+    try {
+      const stripe = await import('./stripe');
+      await stripe.handleWebhook(req, res);
+    } catch (error) {
+      console.error("Webhook error:", error);
+      res.status(400).json({ error: "Webhook processing failed" });
+    }
+  });
+
+  // Get payment history for an organization
+  app.get("/api/payments/history", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = req.user.organizationId;
+      const paymentHistory = await storage.getPaymentHistory(organizationId);
+      res.json(paymentHistory);
+    } catch (error) {
+      console.error("Error fetching payment history:", error);
+      res.status(500).json({ error: "Failed to fetch payment history" });
+    }
+  });
+
+  // Admin: Get all payments
+  app.get("/api/admin/payments", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const allPayments = await storage.getAllPayments();
+      res.json(allPayments);
+    } catch (error) {
+      console.error("Error fetching all payments:", error);
+      res.status(500).json({ error: "Failed to fetch payments" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

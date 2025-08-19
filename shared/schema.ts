@@ -58,6 +58,10 @@ export const organizations = pgTable("organizations", {
   customRateEnabled: boolean("custom_rate_enabled").default(false),
   maxAgents: integer("max_agents").default(5),
   maxUsers: integer("max_users").default(10),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  subscriptionId: varchar("subscription_id"),
+  billingStatus: varchar("billing_status").default('inactive'), // active, inactive, past_due
+  lastPaymentDate: timestamp("last_payment_date"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -114,12 +118,34 @@ export const callLogs = pgTable("call_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Payment status enum
+export const paymentStatusEnum = pgEnum("payment_status", ["pending", "completed", "failed", "refunded"]);
+
+// Payments table for tracking all payments
+export const payments = pgTable("payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull(),
+  packageId: varchar("package_id"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").default('usd'),
+  status: paymentStatusEnum("status").notNull().default("pending"),
+  paymentMethod: varchar("payment_method"), // stripe, paypal
+  transactionId: varchar("transaction_id"), // External payment provider transaction ID
+  description: text("description"),
+  completedAt: timestamp("completed_at"),
+  failedAt: timestamp("failed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+
+
 // Relations
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   users: many(users),
   integrations: many(integrations),
   agents: many(agents),
   callLogs: many(callLogs),
+  payments: many(payments),
 }));
 
 export const usersRelations = relations(users, ({ one }) => ({
@@ -155,6 +181,8 @@ export const callLogsRelations = relations(callLogs, ({ one }) => ({
   }),
 }));
 
+
+
 // Zod schemas
 export const upsertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -185,6 +213,11 @@ export const insertCallLogSchema = createInsertSchema(callLogs).omit({
   createdAt: true,
 });
 
+export const insertPaymentSchema = createInsertSchema(payments).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Billing Packages table
 export const billingPackages = pgTable("billing_packages", {
   id: varchar("id").primaryKey(),
@@ -197,6 +230,10 @@ export const billingPackages = pgTable("billing_packages", {
   maxUsers: integer("max_users").notNull(),
   features: jsonb("features").notNull().default('[]'),
   monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull(),
+  yearlyPrice: decimal("yearly_price", { precision: 10, scale: 2 }),
+  stripeProductId: varchar("stripe_product_id"),
+  stripePriceId: varchar("stripe_price_id"),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -205,6 +242,22 @@ export const insertBillingPackageSchema = createInsertSchema(billingPackages).om
   createdAt: true,
   updatedAt: true,
 });
+
+// Payment relations (defined after billingPackages table)
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [payments.organizationId],
+    references: [organizations.id],
+  }),
+  package: one(billingPackages, {
+    fields: [payments.packageId],
+    references: [billingPackages.id],
+  }),
+}));
+
+export const billingPackagesRelations = relations(billingPackages, ({ many }) => ({
+  payments: many(payments),
+}));
 
 // Types
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
@@ -217,5 +270,7 @@ export type Agent = typeof agents.$inferSelect;
 export type InsertAgent = z.infer<typeof insertAgentSchema>;
 export type CallLog = typeof callLogs.$inferSelect;
 export type InsertCallLog = z.infer<typeof insertCallLogSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type BillingPackage = typeof billingPackages.$inferSelect;
 export type InsertBillingPackage = z.infer<typeof insertBillingPackageSchema>;

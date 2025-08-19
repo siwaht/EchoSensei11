@@ -15,7 +15,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Users, Building2, DollarSign, Phone, Edit, Trash2, Plus, Shield, 
   Activity, TrendingUp, Package, CreditCard, UserPlus, Settings,
-  Save, X, Eye
+  Save, X, Eye, Wallet, CheckCircle, AlertCircle
 } from "lucide-react";
 import type { User, Organization, BillingPackage } from "@shared/schema";
 
@@ -312,7 +312,7 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="w-full flex flex-col sm:grid sm:grid-cols-3 gap-1 sm:gap-0 h-auto sm:h-10">
+        <TabsList className="w-full flex flex-col sm:grid sm:grid-cols-4 gap-1 sm:gap-0 h-auto sm:h-10">
           <TabsTrigger value="users" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
             <Users className="w-4 h-4 mr-2 sm:hidden" />
             <span className="hidden sm:inline">User Management</span>
@@ -327,6 +327,11 @@ export default function AdminDashboard() {
             <Building2 className="w-4 h-4 mr-2 sm:hidden" />
             <span className="hidden sm:inline">Organizations</span>
             <span className="sm:hidden">Orgs</span>
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
+            <Wallet className="w-4 h-4 mr-2 sm:hidden" />
+            <span className="hidden sm:inline">Payment Gateways</span>
+            <span className="sm:hidden">Payments</span>
           </TabsTrigger>
         </TabsList>
 
@@ -769,6 +774,202 @@ export default function AdminDashboard() {
               </div>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Payment Gateways Tab */}
+        <TabsContent value="payments" className="space-y-4">
+          {/* Payment Gateway Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Stripe Configuration */}
+            <Card className="p-4 sm:p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                      <CreditCard className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Stripe</h3>
+                      <p className="text-sm text-muted-foreground">Accept credit cards and digital wallets</p>
+                    </div>
+                  </div>
+                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Connected
+                  </Badge>
+                </div>
+                
+                <div className="space-y-3 pt-2">
+                  <div className="text-sm">
+                    <p className="text-muted-foreground">Public Key</p>
+                    <p className="font-mono text-xs bg-muted p-2 rounded mt-1">pk_live_51H...***...9Ks</p>
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-muted-foreground">Webhook Status</p>
+                    <p className="text-green-600 font-medium">Active - Last received 2 hours ago</p>
+                  </div>
+                  <div className="text-sm">
+                    <p className="text-muted-foreground">Total Processed</p>
+                    <p className="text-lg font-bold">$0.00</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <Settings className="w-3 h-3 mr-1" />
+                    Configure
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1 text-red-600 hover:text-red-700">
+                    Disconnect
+                  </Button>
+                </div>
+              </div>
+            </Card>
+
+            {/* PayPal Configuration */}
+            <Card className="p-4 sm:p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                      <Wallet className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">PayPal</h3>
+                      <p className="text-sm text-muted-foreground">Accept PayPal and Venmo payments</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-muted-foreground">
+                    Not Connected
+                  </Badge>
+                </div>
+                
+                <div className="space-y-3 pt-2">
+                  <div className="p-4 bg-muted/50 rounded-lg text-center">
+                    <AlertCircle className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">PayPal is not configured</p>
+                    <p className="text-xs mt-1">Connect your PayPal business account to start accepting payments</p>
+                  </div>
+                </div>
+
+                <Button className="w-full" size="sm">
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Connect PayPal Account
+                </Button>
+              </div>
+            </Card>
+          </div>
+
+          {/* Payment Settings */}
+          <Card className="p-4 sm:p-6">
+            <h3 className="font-semibold text-lg mb-4">Payment Settings</h3>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Default Payment Gateway</Label>
+                  <Select defaultValue="stripe">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="stripe">Stripe</SelectItem>
+                      <SelectItem value="paypal">PayPal</SelectItem>
+                      <SelectItem value="both">Let customer choose</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label>Payment Mode</Label>
+                  <Select defaultValue="live">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="test">Test Mode</SelectItem>
+                      <SelectItem value="live">Live Mode</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-3 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Auto-charge on billing date</Label>
+                    <p className="text-sm text-muted-foreground">Automatically charge organizations on their billing date</p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Send payment receipts</Label>
+                    <p className="text-sm text-muted-foreground">Email receipts to customers after successful payment</p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Enable payment retry</Label>
+                    <p className="text-sm text-muted-foreground">Retry failed payments automatically</p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline">Cancel</Button>
+                <Button>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Settings
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Recent Transactions */}
+          <Card className="p-4 sm:p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-lg">Recent Transactions</h3>
+              <Button variant="outline" size="sm">View All</Button>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 text-sm font-medium">Organization</th>
+                    <th className="text-left py-2 text-sm font-medium">Amount</th>
+                    <th className="text-left py-2 text-sm font-medium">Gateway</th>
+                    <th className="text-left py-2 text-sm font-medium">Status</th>
+                    <th className="text-left py-2 text-sm font-medium">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b">
+                    <td className="py-3 text-sm">cc</td>
+                    <td className="py-3 text-sm font-medium">$0.41</td>
+                    <td className="py-3 text-sm">
+                      <Badge variant="outline" className="text-xs">Stripe</Badge>
+                    </td>
+                    <td className="py-3">
+                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
+                        Success
+                      </Badge>
+                    </td>
+                    <td className="py-3 text-sm text-muted-foreground">Aug 19, 2025</td>
+                  </tr>
+                </tbody>
+              </table>
+              
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">No more transactions to display</p>
+              </div>
+            </div>
+          </Card>
         </TabsContent>
       </Tabs>
 

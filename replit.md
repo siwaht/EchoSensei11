@@ -12,6 +12,9 @@ VoiceAI Dashboard is a multi-tenant SaaS application that allows organizations t
 - **Enhanced Audio Player**: Fixed play/pause functionality with proper state management and controls
 - **Call Timestamp Syncing**: Integrated actual call timestamps from ElevenLabs API using start_time_unix_secs field
 - **Redesigned Organizations Tab**: Created comprehensive organization management interface with detailed metrics and insights
+- **Payment Gateway Integration**: Added complete payment processing infrastructure with Stripe and PayPal support
+- **Checkout System**: Created checkout page for organizations to select and pay for billing packages
+- **Payment Tracking**: Implemented payment history tracking and transaction management in database
 
 ## User Preferences
 
@@ -77,6 +80,8 @@ BYOK integration pattern for secure third-party service access:
 
 ### Third-party Services
 - **ElevenLabs API**: Voice AI service integration with BYOK model
+- **Stripe**: Payment processing for credit card and digital wallet payments (configuration pending)
+- **PayPal**: Alternative payment gateway for PayPal and Venmo payments (configuration pending)
 - **Font Services**: Google Fonts for typography (Architects Daughter, DM Sans, Fira Code, Geist Mono)
 
 ### Development Tools

@@ -5,6 +5,7 @@ import {
   agents,
   callLogs,
   billingPackages,
+  payments,
   type User,
   type UpsertUser,
   type Organization,
@@ -16,6 +17,8 @@ import {
   type CallLog,
   type InsertCallLog,
   type BillingPackage,
+  type Payment,
+  type InsertPayment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sum, avg, max } from "drizzle-orm";
@@ -91,6 +94,12 @@ export interface IStorage {
   createBillingPackage(pkg: Partial<BillingPackage>): Promise<BillingPackage>;
   updateBillingPackage(id: string, updates: Partial<BillingPackage>): Promise<BillingPackage>;
   deleteBillingPackage(id: string): Promise<void>;
+
+  // Payment operations  
+  getPaymentHistory(organizationId: string): Promise<Payment[]>;
+  getAllPayments(): Promise<Payment[]>;
+  createPayment(data: InsertPayment): Promise<Payment>;
+  updatePayment(id: string, data: Partial<Payment>): Promise<Payment>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -457,6 +466,39 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBillingPackage(id: string): Promise<void> {
     await db.delete(billingPackages).where(eq(billingPackages.id, id));
+  }
+
+  // Payment operations
+  async getPaymentHistory(organizationId: string): Promise<Payment[]> {
+    return await db
+      .select()
+      .from(payments)
+      .where(eq(payments.organizationId, organizationId))
+      .orderBy(desc(payments.createdAt));
+  }
+
+  async getAllPayments(): Promise<Payment[]> {
+    return await db
+      .select()
+      .from(payments)
+      .orderBy(desc(payments.createdAt));
+  }
+
+  async createPayment(data: InsertPayment): Promise<Payment> {
+    const [payment] = await db.insert(payments).values(data).returning();
+    return payment;
+  }
+
+  async updatePayment(id: string, data: Partial<Payment>): Promise<Payment> {
+    const [updated] = await db
+      .update(payments)
+      .set(data)
+      .where(eq(payments.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error("Payment not found");
+    }
+    return updated;
   }
 }
 
