@@ -4,6 +4,12 @@
 
 VoiceAI Dashboard is a multi-tenant SaaS application that allows organizations to monitor their ElevenLabs voice AI agents. The platform follows a "Bring Your Own Key" (BYOK) model where clients securely connect their own ElevenLabs API credentials to monitor call logs, agent performance, and usage analytics. The application provides comprehensive dashboards for tracking voice agent interactions, billing information, and system integrations.
 
+### Recent Updates (August 19, 2025)
+- **Complete Mobile Responsiveness**: Implemented full mobile responsiveness across all application pages
+- **Mobile-First Call History**: Converted call history table to responsive card layout on mobile devices
+- **Responsive Navigation**: Updated AppShell with mobile-friendly collapsible navigation
+- **Adaptive UI Components**: All buttons, forms, and grids now stack appropriately on smaller screens
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

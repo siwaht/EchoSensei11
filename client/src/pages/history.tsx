@@ -156,124 +156,211 @@ export default function History() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Call Details
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Agent
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Duration
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Recording
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredCallLogs.map((callLog) => (
-                  <tr key={callLog.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4">
+          <>
+            {/* Mobile Card View */}
+            <div className="block md:hidden space-y-4 p-4">
+              {filteredCallLogs.map((callLog) => (
+                <Card key={callLog.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
+                        <Bot className="w-5 h-5 text-primary-600" />
+                      </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-white" data-testid={`text-call-id-${callLog.id}`}>
+                        <div className="font-semibold text-gray-900 dark:text-white" data-testid={`text-call-id-${callLog.id}`}>
                           Call #{callLog.id.slice(-6)}
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400" data-testid={`text-call-time-${callLog.id}`}>
-                          {callLog.createdAt ? new Date(callLog.createdAt).toLocaleString() : "Unknown"}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center mr-3">
-                          <Bot className="w-4 h-4 text-primary-600" />
-                        </div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-white" data-testid={`text-agent-name-${callLog.id}`}>
+                        <div className="text-sm text-gray-500 dark:text-gray-400" data-testid={`text-agent-name-${callLog.id}`}>
                           {getAgentName(callLog.agentId)}
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white" data-testid={`text-duration-${callLog.id}`}>
-                      {formatDuration(callLog.duration)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {callLog.audioUrl ? (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="group hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-                            onClick={() => {
-                              const audio = new Audio(callLog.audioUrl!);
-                              audio.play();
-                            }}
-                            data-testid={`button-play-audio-${callLog.id}`}
-                          >
-                            <svg className="w-4 h-4 mr-1 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                            </svg>
-                            Play
-                          </Button>
-                          <a
-                            href={callLog.audioUrl}
-                            download={`call-${callLog.id.slice(-6)}.mp3`}
-                            className="text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors"
-                            title="Download recording"
-                            data-testid={`link-download-audio-${callLog.id}`}
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                          </a>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-400 dark:text-gray-500">No recording</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge className={getStatusColor(callLog.status)} data-testid={`badge-status-${callLog.id}`}>
-                        {callLog.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedCallLog(callLog)}
-                        data-testid={`button-view-details-${callLog.id}`}
-                      >
-                        View Details
-                      </Button>
-                    </td>
+                    </div>
+                    <Badge className={getStatusColor(callLog.status)} data-testid={`badge-status-${callLog.id}`}>
+                      {callLog.status}
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">Date:</span>
+                      <span className="text-gray-900 dark:text-white" data-testid={`text-call-time-${callLog.id}`}>
+                        {callLog.createdAt ? new Date(callLog.createdAt).toLocaleString() : "Unknown"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">Duration:</span>
+                      <span className="text-gray-900 dark:text-white" data-testid={`text-duration-${callLog.id}`}>
+                        {formatDuration(callLog.duration)}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 pt-2">
+                    {callLog.audioUrl && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            const audio = new Audio(callLog.audioUrl!);
+                            audio.play();
+                          }}
+                          data-testid={`button-play-audio-${callLog.id}`}
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                          </svg>
+                          Play
+                        </Button>
+                        <a
+                          href={callLog.audioUrl}
+                          download={`call-${callLog.id.slice(-6)}.mp3`}
+                          className="flex items-center justify-center px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
+                          data-testid={`link-download-audio-${callLog.id}`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                        </a>
+                      </>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setSelectedCallLog(callLog)}
+                      data-testid={`button-view-details-${callLog.id}`}
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Call Details
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Agent
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Duration
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Recording
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredCallLogs.map((callLog) => (
+                    <tr key={callLog.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-white" data-testid={`text-call-id-${callLog.id}`}>
+                            Call #{callLog.id.slice(-6)}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400" data-testid={`text-call-time-${callLog.id}`}>
+                            {callLog.createdAt ? new Date(callLog.createdAt).toLocaleString() : "Unknown"}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center mr-3">
+                            <Bot className="w-4 h-4 text-primary-600" />
+                          </div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-white" data-testid={`text-agent-name-${callLog.id}`}>
+                            {getAgentName(callLog.agentId)}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white" data-testid={`text-duration-${callLog.id}`}>
+                        {formatDuration(callLog.duration)}
+                      </td>
+                      <td className="px-6 py-4">
+                        {callLog.audioUrl ? (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="group hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                              onClick={() => {
+                                const audio = new Audio(callLog.audioUrl!);
+                                audio.play();
+                              }}
+                              data-testid={`button-play-audio-${callLog.id}`}
+                            >
+                              <svg className="w-4 h-4 mr-1 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                              </svg>
+                              Play
+                            </Button>
+                            <a
+                              href={callLog.audioUrl}
+                              download={`call-${callLog.id.slice(-6)}.mp3`}
+                              className="text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors"
+                              title="Download recording"
+                              data-testid={`link-download-audio-${callLog.id}`}
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400 dark:text-gray-500">No recording</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge className={getStatusColor(callLog.status)} data-testid={`badge-status-${callLog.id}`}>
+                          {callLog.status}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedCallLog(callLog)}
+                          data-testid={`button-view-details-${callLog.id}`}
+                        >
+                          View Details
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
         
         {filteredCallLogs && filteredCallLogs.length > 0 && (
-          <div className="bg-gray-50 dark:bg-gray-700 px-6 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-600">
-            <div className="text-sm text-gray-500 dark:text-gray-400" data-testid="text-pagination-info">
+          <div className="bg-gray-50 dark:bg-gray-700 px-4 sm:px-6 py-3 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between border-t border-gray-200 dark:border-gray-600">
+            <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left" data-testid="text-pagination-info">
               Showing 1 to {filteredCallLogs.length} of {filteredCallLogs.length} results
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-center sm:justify-end space-x-2">
               <Button variant="outline" size="sm" disabled data-testid="button-previous-page">
-                Previous
+                <span className="hidden sm:inline">Previous</span>
+                <span className="sm:hidden">&lt;</span>
               </Button>
               <Button size="sm" data-testid="button-current-page">1</Button>
               <Button variant="outline" size="sm" disabled data-testid="button-next-page">
-                Next
+                <span className="hidden sm:inline">Next</span>
+                <span className="sm:hidden">&gt;</span>
               </Button>
             </div>
           </div>
