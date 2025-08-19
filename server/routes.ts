@@ -992,6 +992,8 @@ export function registerRoutes(app: Express): Server {
       const { agentId } = req.body;
       const organizationId = req.user.organizationId;
 
+      console.log("Starting playground session with agent:", agentId);
+
       if (!agentId) {
         return res.status(400).json({ message: "Agent ID is required" });
       }
@@ -1005,36 +1007,38 @@ export function registerRoutes(app: Express): Server {
       const apiKey = decryptApiKey(integration.apiKey);
 
       // Get signed URL from ElevenLabs for WebSocket connection
-      const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversation`, {
-        method: "POST",
+      const url = `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${agentId}`;
+      console.log("Calling ElevenLabs API:", url);
+      
+      const response = await fetch(url, {
+        method: "GET",
         headers: {
-          "xi-api-key": apiKey,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          agent_id: agentId
-        })
+          "xi-api-key": apiKey
+        }
       });
 
       if (!response.ok) {
         const error = await response.text();
         console.error("ElevenLabs API error:", error);
+        console.error("Status:", response.status);
         return res.status(response.status).json({ 
           message: "Failed to start conversation session",
-          error 
+          error,
+          details: `ElevenLabs API returned ${response.status}`
         });
       }
 
       const data = await response.json();
+      console.log("ElevenLabs response:", data);
       
       // Return the signed URL for WebSocket connection
       res.json({ 
-        signedUrl: data.signed_url || data.url,
+        signedUrl: data.signed_url,
         sessionId: data.conversation_id 
       });
     } catch (error) {
       console.error("Error starting playground session:", error);
-      res.status(500).json({ message: "Failed to start session" });
+      res.status(500).json({ message: "Failed to start session", error: error.message });
     }
   });
 

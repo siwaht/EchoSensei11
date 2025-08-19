@@ -141,11 +141,13 @@ export default function Playground() {
         agentId: agent.elevenLabsAgentId
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to start session");
+        throw new Error(data.message || "Failed to start session");
       }
 
-      const { signedUrl } = await response.json();
+      const { signedUrl } = data;
 
       // Connect to ElevenLabs WebSocket
       const ws = new WebSocket(signedUrl);
@@ -419,19 +421,18 @@ export default function Playground() {
                 <div className={`relative w-64 h-64 rounded-full flex items-center justify-center transition-all ${
                   isCallActive ? "animate-pulse" : ""
                 }`}>
-                  {/* Background circles */}
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-400/20 to-orange-400/20" />
-                  <div className="absolute inset-4 rounded-full bg-gradient-to-br from-green-400/30 to-orange-400/30" />
-                  <div className="absolute inset-8 rounded-full bg-gradient-to-br from-green-400/40 to-orange-400/40" />
+                  {/* Background circles - subtle borders only */}
+                  <div className="absolute inset-0 rounded-full border border-gray-200 dark:border-gray-800" />
+                  <div className="absolute inset-4 rounded-full border border-gray-200 dark:border-gray-800" />
+                  <div className="absolute inset-8 rounded-full border border-gray-200 dark:border-gray-800" />
                   
                   {/* Center button */}
-                  <Button
-                    size="lg"
-                    className={`relative z-10 rounded-full w-32 h-32 ${
+                  <button
+                    className={`relative z-10 rounded-full w-32 h-32 transition-all duration-200 ${
                       isCallActive 
                         ? "bg-red-500 hover:bg-red-600 text-white" 
-                        : "bg-primary hover:bg-primary/90"
-                    }`}
+                        : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                    } ${isConnecting || !selectedAgent ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                     onClick={isCallActive ? endCall : startCall}
                     disabled={isConnecting || !selectedAgent}
                     data-testid="button-call"
@@ -446,7 +447,7 @@ export default function Playground() {
                         <span className="text-sm font-medium">Try a call</span>
                       </div>
                     )}
-                  </Button>
+                  </button>
                 </div>
 
                 {/* Audio level indicator */}
