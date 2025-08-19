@@ -216,7 +216,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(agents).where(eq(agents.organizationId, organizationId));
   }
 
-  async getAgent(id: string, organizationId: string): Promise<Agent | undefined> {
+  async getAgent(organizationId: string, id: string): Promise<Agent | undefined> {
     const [agent] = await db
       .select()
       .from(agents)
@@ -232,12 +232,23 @@ export class DatabaseStorage implements IStorage {
     return agent;
   }
 
-  async createAgent(agentData: InsertAgent): Promise<Agent> {
-    const [agent] = await db.insert(agents).values(agentData).returning();
+  async createAgent(agentData: any): Promise<Agent> {
+    // Ensure the JSON fields are properly typed
+    const data = {
+      ...agentData,
+      voiceSettings: agentData.voiceSettings || null,
+      llmSettings: agentData.llmSettings || null,
+      knowledgeBase: agentData.knowledgeBase || null,
+      tools: agentData.tools || null,
+      dynamicVariables: agentData.dynamicVariables || null,
+      evaluationCriteria: agentData.evaluationCriteria || null,
+      dataCollection: agentData.dataCollection || null,
+    };
+    const [agent] = await db.insert(agents).values([data]).returning();
     return agent;
   }
 
-  async updateAgent(id: string, organizationId: string, updates: Partial<InsertAgent>): Promise<Agent> {
+  async updateAgent(organizationId: string, id: string, updates: Partial<Omit<Agent, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'>>): Promise<Agent> {
     const [agent] = await db
       .update(agents)
       .set({ ...updates, updatedAt: new Date() })
@@ -246,7 +257,7 @@ export class DatabaseStorage implements IStorage {
     return agent;
   }
 
-  async deleteAgent(id: string, organizationId: string): Promise<void> {
+  async deleteAgent(organizationId: string, id: string): Promise<void> {
     await db
       .delete(agents)
       .where(and(eq(agents.id, id), eq(agents.organizationId, organizationId)));

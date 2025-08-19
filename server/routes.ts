@@ -687,11 +687,9 @@ export function registerRoutes(app: Express): Server {
               name: agent.name,
               conversation_config: {
                 agent: {
-                  prompt: {
-                    prompt: updates.systemPrompt || agent.systemPrompt || "",
-                    first_message: updates.firstMessage || agent.firstMessage || "",
-                    language: updates.language || agent.language || "en",
-                  }
+                  prompt: updates.systemPrompt || agent.systemPrompt || "",
+                  first_message: updates.firstMessage || agent.firstMessage || "",
+                  language: updates.language || agent.language || "en",
                 }
               }
             };
@@ -699,7 +697,7 @@ export function registerRoutes(app: Express): Server {
             // Add LLM settings if provided
             if (updates.llmSettings || agent.llmSettings) {
               const llmSettings = updates.llmSettings || agent.llmSettings;
-              elevenLabsPayload.conversation_config.agent.llm = {
+              elevenLabsPayload.conversation_config.llm = {
                 model: llmSettings.model || "gpt-4",
                 temperature: llmSettings.temperature || 0.7,
                 max_tokens: llmSettings.maxTokens || 150,
@@ -737,15 +735,17 @@ export function registerRoutes(app: Express): Server {
             if (updates.tools || agent.tools) {
               const tools = updates.tools || agent.tools;
               if (tools.toolIds && tools.toolIds.length > 0) {
-                elevenLabsPayload.conversation_config.agent.prompt.tool_ids = tools.toolIds;
+                elevenLabsPayload.conversation_config.agent.tool_ids = tools.toolIds;
               }
               // Note: webhook tools need to be created separately via ElevenLabs tools API
             }
 
             // Add dynamic variables if provided
             if (updates.dynamicVariables || agent.dynamicVariables) {
-              elevenLabsPayload.conversation_config.agent.dynamic_variables = 
-                updates.dynamicVariables || agent.dynamicVariables;
+              const vars = updates.dynamicVariables || agent.dynamicVariables;
+              if (vars && Object.keys(vars).length > 0) {
+                elevenLabsPayload.conversation_config.agent.dynamic_variables = vars;
+              }
             }
 
             // Add evaluation criteria if provided
