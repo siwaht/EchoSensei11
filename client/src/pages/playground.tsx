@@ -37,6 +37,7 @@ export default function Playground() {
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const audioQueueRef = useRef<string[]>([]);
   const isPlayingRef = useRef(false);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   
   const { toast } = useToast();
 
@@ -352,15 +353,23 @@ export default function Playground() {
 
       ws.onclose = (event) => {
         console.log('WebSocket closed:', { code: event.code, reason: event.reason, wasClean: event.wasClean });
-        setIsCallActive(false);
-        setIsConnecting(false);
         
-        if (!event.wasClean) {
-          toast({
-            title: "Connection lost",
-            description: `Connection closed unexpectedly (Code: ${event.code})`,
-            variant: "destructive",
-          });
+        // Only show error if not a normal closure (1000 or 1001 are normal closures)
+        if (!event.wasClean && event.code !== 1000 && event.code !== 1001) {
+          // Check if this is an unexpected closure and we haven't already ended the call
+          if (wsRef.current === ws && isCallActive) {
+            toast({
+              title: "Connection lost",
+              description: `Connection closed unexpectedly (Code: ${event.code})`,
+              variant: "destructive",
+            });
+            endCall();
+          }
+        } else if (event.code === 1000 || event.code === 1001) {
+          // Normal closure, just cleanup
+          if (wsRef.current === ws) {
+            wsRef.current = null;
+          }
         }
       };
 
@@ -378,36 +387,89 @@ export default function Playground() {
   };
 
   const endCall = () => {
-    // Clear audio queue
+    console.log('Ending call immediately...');
+    
+    // Save duration before resetting
+    const finalDuration = callDuration;
+    
+    // Immediately update UI state
+    setIsCallActive(false);
+    setIsConnecting(false);
+    setCallDuration(0);
+    setTranscript([]);
+    setAudioLevel(0);
+    
+    // Clear audio queue and stop playback
     audioQueueRef.current = [];
     isPlayingRef.current = false;
     
-    // Close WebSocket
+    // Stop any currently playing audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.src = '';
+      currentAudioRef.current = null;
+    }
+    
+    // Stop all audio elements on page
+    const audioElements = document.querySelectorAll('audio');
+    audioElements.forEach(audio => {
+      audio.pause();
+      audio.src = '';
+      audio.remove();
+    });
+    
+    // Close WebSocket immediately with normal closure code
     if (wsRef.current) {
-      wsRef.current.close();
+      // Disconnect audio processor if it exists
+      const ws: any = wsRef.current;
+      if (ws.audioProcessor) {
+        ws.audioProcessor.disconnect();
+        ws.audioProcessor = null;
+      }
+      if (ws.audioContext && ws.audioContext.state !== 'closed') {
+        try {
+          ws.audioContext.close();
+        } catch (e) {
+          console.error('Error closing audio context from ws:', e);
+        }
+        ws.audioContext = null;
+      }
+      
+      if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
+        try {
+          wsRef.current.close(1000, 'User ended call');
+        } catch (e) {
+          console.error('Error closing WebSocket:', e);
+        }
+      }
       wsRef.current = null;
     }
-
-    // Stop media stream
+    
+    // Stop media stream tracks immediately
     if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current.getTracks().forEach(track => {
+        track.stop();
+        track.enabled = false;
+      });
       mediaStreamRef.current = null;
     }
 
-    // Close audio context
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
+    // Close audio context immediately
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      try {
+        audioContextRef.current.close();
+      } catch (e) {
+        console.error('Error closing audio context:', e);
+      }
       audioContextRef.current = null;
     }
-
-    setIsCallActive(false);
-    setIsConnecting(false);
-    setAudioLevel(0);
-
+    
     toast({
       title: "Call ended",
-      description: `Duration: ${formatDuration(callDuration)}`,
+      description: `Duration: ${formatDuration(finalDuration)}`,
     });
+    
+    console.log('Call ended successfully');
   };
 
   const toggleMute = () => {
@@ -541,17 +603,20 @@ export default function Playground() {
       const blob = new Blob([wavBuffer], { type: 'audio/wav' });
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
+      currentAudioRef.current = audio;
       
       // When audio ends, process next in queue
       audio.addEventListener('ended', () => {
         URL.revokeObjectURL(audioUrl);
         isPlayingRef.current = false;
+        currentAudioRef.current = null;
         processAudioQueue(); // Process next audio in queue
       });
       
       audio.addEventListener('error', () => {
         console.error('Audio playback error');
         isPlayingRef.current = false;
+        currentAudioRef.current = null;
         processAudioQueue(); // Continue with next audio even on error
       });
       
