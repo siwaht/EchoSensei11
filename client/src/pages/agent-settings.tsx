@@ -308,7 +308,7 @@ export default function AgentSettings() {
         <div className="flex gap-2 w-full sm:w-auto">
           <Button 
             variant="outline" 
-            onClick={() => setLocation(`/agents/${agentId}/playground`)}
+            onClick={() => setLocation('/playground')}
             className="flex-1 sm:flex-initial"
             data-testid="button-test"
           >
