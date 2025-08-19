@@ -166,19 +166,15 @@ export default function Playground() {
       ws.onopen = () => {
         console.log("WebSocket connected, sending initialization message");
         
-        // Send conversation initiation immediately
+        // Send minimal conversation initiation without overrides
+        // Most agents don't allow overrides by default for security
         const initMessage = {
-          type: "conversation_initiation_client_data",
-          conversation_config_override: {
-            agent: {
-              prompt: {
-                prompt: "You are a helpful assistant. Start by greeting the user and asking how you can help."
-              },
-              first_message: "Hello! How can I help you today?",
-              language: "en"
-            }
-          }
+          type: "conversation_initiation_client_data"
         };
+        
+        // Only add overrides if you know the agent allows them
+        // You can check if overrides are enabled in your agent's Security settings
+        // For now, we'll send an empty override or minimal config
         
         console.log("Sending init message:", initMessage);
         ws.send(JSON.stringify(initMessage));
@@ -208,31 +204,66 @@ export default function Playground() {
               description: `Connected to ${agents.find(a => a.id === selectedAgent)?.name}`,
             });
             
-            // The agent should automatically send first_message, no need to trigger
+            // Send a small audio chunk to trigger the agent to speak first
+            // This is a workaround for agents that don't automatically start
+            setTimeout(() => {
+              if (ws.readyState === WebSocket.OPEN) {
+                // Send a tiny silence to trigger agent response
+                const silentAudio = new Int16Array(160); // 10ms of silence at 16kHz
+                const uint8 = new Uint8Array(silentAudio.buffer);
+                const binaryString = Array.from(uint8)
+                  .map(byte => String.fromCharCode(byte))
+                  .join('');
+                const base64Audio = btoa(binaryString);
+                
+                ws.send(JSON.stringify({
+                  user_audio_chunk: base64Audio
+                }));
+                console.log("Sent trigger audio to start conversation");
+              }
+            }, 500);
           } else if (data.audio || data.audio_event) {
             // Agent audio response
-            const audioData = data.audio || data.audio_event?.audio_base_64 || data.audio_event?.audio;
+            const audioData = data.audio || data.audio_event?.audio_base_64 || data.audio_event?.audio || data.audio_base_64;
             if (audioData && isSpeakerOn) {
               console.log("Playing agent audio, length:", audioData.length);
               playAudio(audioData);
             } else if (audioData) {
               console.log("Received audio but speaker is off");
             }
-          } else if (data.transcript_event) {
-            // Transcript event
-            const transcript = data.transcript_event;
-            if (transcript.role === "user" && transcript.text) {
-              console.log("User said:", transcript.text);
+          } else if (data.audio_base_64) {
+            // Some agents send audio directly as audio_base_64
+            if (isSpeakerOn) {
+              console.log("Playing agent audio (direct), length:", data.audio_base_64.length);
+              playAudio(data.audio_base_64);
+            }
+          } else if (data.transcript_event || data.user_transcription_event) {
+            // Handle transcript events
+            const transcript = data.transcript_event || data.user_transcription_event;
+            
+            if (transcript.user_transcript) {
+              console.log("User said:", transcript.user_transcript);
               setTranscript(prev => [...prev, {
                 role: "user",
+                message: transcript.user_transcript,
+                timestamp: new Date()
+              }]);
+            } else if (transcript.text) {
+              const role = transcript.role || (data.user_transcription_event ? "user" : "assistant");
+              console.log(`${role} said:`, transcript.text);
+              setTranscript(prev => [...prev, {
+                role: role as "user" | "assistant",
                 message: transcript.text,
                 timestamp: new Date()
               }]);
-            } else if (transcript.role === "assistant" && transcript.text) {
-              console.log("Agent said:", transcript.text);
+            }
+          } else if (data.agent_response_event) {
+            // Handle agent response text
+            if (data.agent_response_event.text) {
+              console.log("Agent response:", data.agent_response_event.text);
               setTranscript(prev => [...prev, {
                 role: "assistant",
-                message: transcript.text,
+                message: data.agent_response_event.text,
                 timestamp: new Date()
               }]);
             }
@@ -441,54 +472,69 @@ export default function Playground() {
     if (!isSpeakerOn) return;
     
     try {
-      // Convert base64 to blob
+      // ElevenLabs sends PCM 16-bit audio at 16kHz encoded in base64
+      // We need to convert it to a playable format
+      
+      // Decode base64 to binary
       const binaryString = atob(audioData);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
       
-      // Try multiple audio formats
-      const audioFormats = ['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/pcm'];
-      let audioPlayed = false;
+      // Convert PCM to WAV format for playback
+      const pcmData = new Int16Array(bytes.buffer);
+      const wavBuffer = createWavFromPcm(pcmData, 16000); // 16kHz sample rate
       
-      for (const format of audioFormats) {
-        try {
-          const blob = new Blob([bytes.buffer], { type: format });
-          const audioUrl = URL.createObjectURL(blob);
-          const audio = new Audio(audioUrl);
-          
-          // Set up event handlers
-          audio.addEventListener('loadeddata', () => {
-            console.log(`Audio loaded successfully with format: ${format}`);
-          });
-          
-          audio.addEventListener('error', (e) => {
-            console.log(`Audio format ${format} failed:`, e);
-            URL.revokeObjectURL(audioUrl);
-          });
-          
-          audio.addEventListener('ended', () => {
-            URL.revokeObjectURL(audioUrl);
-          });
-          
-          // Play the audio
-          await audio.play();
-          audioPlayed = true;
-          console.log(`Successfully played audio with format: ${format}`);
-          break;
-        } catch (formatError) {
-          console.log(`Format ${format} not supported, trying next...`);
-          continue;
-        }
-      }
+      // Create blob and play
+      const blob = new Blob([wavBuffer], { type: 'audio/wav' });
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
       
-      if (!audioPlayed) {
-        console.error('Failed to play audio with any supported format');
-      }
+      audio.addEventListener('ended', () => {
+        URL.revokeObjectURL(audioUrl);
+      });
+      
+      await audio.play();
+      console.log('Successfully played PCM audio as WAV');
     } catch (error) {
       console.error('Error playing audio:', error);
     }
+  };
+  
+  // Helper function to create WAV header for PCM data
+  const createWavFromPcm = (pcmData: Int16Array, sampleRate: number): ArrayBuffer => {
+    const length = pcmData.length * 2; // 2 bytes per sample
+    const arrayBuffer = new ArrayBuffer(44 + length);
+    const view = new DataView(arrayBuffer);
+    
+    // WAV header
+    const writeString = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i));
+      }
+    };
+    
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + length, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true); // fmt chunk size
+    view.setUint16(20, 1, true); // PCM format
+    view.setUint16(22, 1, true); // Mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true); // byte rate
+    view.setUint16(32, 2, true); // block align
+    view.setUint16(34, 16, true); // bits per sample
+    writeString(36, 'data');
+    view.setUint32(40, length, true);
+    
+    // Copy PCM data
+    const uint8View = new Uint8Array(arrayBuffer, 44);
+    const pcmUint8 = new Uint8Array(pcmData.buffer);
+    uint8View.set(pcmUint8);
+    
+    return arrayBuffer;
   };
 
   return (
