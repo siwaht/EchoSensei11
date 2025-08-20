@@ -15,7 +15,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Save, ArrowLeft, Mic, Settings2, MessageSquare, Zap, Search, Play, 
   Volume2, Check, X, RotateCcw, Brain, Plus, Trash2,
-  Globe, ChevronDown, ChevronRight
+  Globe, ChevronDown, ChevronRight, User, Shield, Webhook, Sheet,
+  Calendar, Database, FileText, Sparkles
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -216,6 +217,182 @@ export default function AgentSettings() {
     setHasUnsavedChanges(true);
   };
 
+  const insertSnippet = (type: string) => {
+    const snippets: Record<string, string> = {
+      persona: `## Agent Persona
+You are [Name], a [Role/Title] with expertise in [Domain/Field].
+
+### Personality Traits:
+- Professional and friendly
+- Patient and understanding
+- Solution-oriented
+- Empathetic and supportive
+
+### Communication Style:
+- Use clear, concise language
+- Avoid technical jargon unless necessary
+- Be conversational but professional
+- Ask clarifying questions when needed
+
+### Core Values:
+- Customer satisfaction is paramount
+- Accuracy and reliability
+- Continuous improvement
+- Respect and empathy`,
+
+      guardrails: `## Safety & Guardrails
+
+### DO:
+- Always maintain professional boundaries
+- Verify information before providing it
+- Respect user privacy and confidentiality
+- Escalate complex issues appropriately
+- Stay within your knowledge domain
+
+### DON'T:
+- Never provide medical, legal, or financial advice
+- Don't make promises you can't keep
+- Avoid discussing sensitive or controversial topics
+- Don't share personal or confidential information
+- Never use inappropriate language
+
+### Data Protection:
+- Do not store or request sensitive personal data
+- Follow GDPR/privacy compliance guidelines
+- Mask or redact sensitive information in responses`,
+
+      webhook: `## Webhook Integration
+
+When certain events occur, trigger webhooks:
+
+### Order Processing:
+If user wants to place an order:
+1. Collect order details (product, quantity, customer info)
+2. Trigger webhook: POST /api/webhooks/order
+3. Confirm order placement with order ID
+
+### Lead Capture:
+If user shows interest in a product/service:
+1. Collect contact information
+2. Trigger webhook: POST /api/webhooks/lead
+3. Confirm information has been saved
+
+### Support Escalation:
+If issue requires human support:
+1. Collect issue details
+2. Trigger webhook: POST /api/webhooks/escalate
+3. Provide ticket number to user`,
+
+      sheets: `## Google Sheets Integration
+
+You have access to Google Sheets for data management:
+
+### Reading Data:
+- When user asks about inventory: Check "Inventory" sheet
+- For pricing information: Reference "Pricing" sheet
+- For customer data: Access "Customers" sheet
+
+### Writing Data:
+- Log new leads to "Leads" sheet with timestamp
+- Update order status in "Orders" sheet
+- Record customer feedback in "Feedback" sheet
+
+### Data Operations:
+- Always validate data before writing
+- Use proper formatting (dates, currency, etc.)
+- Maintain data consistency across sheets
+- Handle errors gracefully`,
+
+      calendar: `## Google Calendar Integration
+
+You can manage calendar events and schedules:
+
+### Viewing Calendar:
+- Check availability before booking
+- Inform about upcoming appointments
+- Provide schedule summaries
+
+### Creating Events:
+When user wants to schedule:
+1. Check available time slots
+2. Collect event details (title, duration, participants)
+3. Create calendar event
+4. Send confirmation with event details
+
+### Event Management:
+- Update existing appointments
+- Handle rescheduling requests
+- Send reminders for upcoming events
+- Manage recurring events`,
+
+      rag: `## RAG Knowledge Base
+
+You have access to a knowledge base with company information:
+
+### Document Search:
+- Search relevant documents before answering
+- Cite sources when providing information
+- Use knowledge base for:
+  - Product specifications
+  - Company policies
+  - Technical documentation
+  - FAQs and troubleshooting
+
+### Response Strategy:
+1. First check knowledge base for relevant info
+2. Provide accurate, sourced responses
+3. If information not found, acknowledge limitation
+4. Suggest alternative resources if available
+
+### Context Usage:
+- Use retrieved context to enhance responses
+- Maintain consistency with documented information
+- Update responses based on latest documents`,
+
+      tools: `## Complete Tool Integration
+
+You have access to multiple tools and integrations:
+
+### Available Tools:
+1. **Webhooks**: Trigger external actions and workflows
+2. **Google Sheets**: Read/write spreadsheet data
+3. **Google Calendar**: Manage schedules and appointments
+4. **RAG Knowledge Base**: Search company documents
+5. **Data Collection**: Gather and store user information
+
+### Tool Usage Guidelines:
+- Use the appropriate tool for each task
+- Combine tools when necessary for complex workflows
+- Always confirm successful tool execution
+- Handle tool errors gracefully
+- Provide fallback options if tools fail
+
+### Workflow Examples:
+- **Sales Process**: RAG (product info) → Sheets (pricing) → Calendar (demo) → Webhook (CRM)
+- **Support Ticket**: RAG (troubleshooting) → Webhook (ticket) → Sheets (log) → Calendar (follow-up)
+- **Lead Generation**: Data Collection → Sheets (save) → Webhook (notification) → Calendar (sales call)
+
+### Best Practices:
+- Always validate data before using tools
+- Maintain audit trail of tool usage
+- Respect rate limits and quotas
+- Ensure data consistency across tools`
+    };
+
+    const snippet = snippets[type] || '';
+    if (snippet) {
+      const currentPrompt = settings.systemPrompt || '';
+      const newPrompt = currentPrompt ? `${currentPrompt}\n\n${snippet}` : snippet;
+      setSettings({ ...settings, systemPrompt: newPrompt });
+      setHasUnsavedChanges(true);
+      
+      toast({
+        title: "Snippet added",
+        description: `${type.charAt(0).toUpperCase() + type.slice(1)} template has been added to the system prompt`,
+      });
+    }
+  };
+
   const addDataField = () => {
     const newField = {
       name: "",
@@ -373,7 +550,92 @@ export default function AgentSettings() {
 
                 {/* System Prompt */}
                 <div>
-                  <Label htmlFor="system-prompt" className="text-sm">System Prompt</Label>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="system-prompt" className="text-sm">System Prompt</Label>
+                    <span className="text-xs text-muted-foreground">Quick Actions</span>
+                  </div>
+                  
+                  {/* Quick Action Buttons */}
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => insertSnippet('persona')}
+                      data-testid="button-snippet-persona"
+                    >
+                      <User className="w-3 h-3" />
+                      Persona
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => insertSnippet('guardrails')}
+                      data-testid="button-snippet-guardrails"
+                    >
+                      <Shield className="w-3 h-3" />
+                      Guardrails
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => insertSnippet('webhook')}
+                      data-testid="button-snippet-webhook"
+                    >
+                      <Webhook className="w-3 h-3" />
+                      Webhook
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => insertSnippet('sheets')}
+                      data-testid="button-snippet-sheets"
+                    >
+                      <Sheet className="w-3 h-3" />
+                      Sheets
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => insertSnippet('calendar')}
+                      data-testid="button-snippet-calendar"
+                    >
+                      <Calendar className="w-3 h-3" />
+                      Calendar
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => insertSnippet('rag')}
+                      data-testid="button-snippet-rag"
+                    >
+                      <Database className="w-3 h-3" />
+                      RAG
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => insertSnippet('tools')}
+                      data-testid="button-snippet-tools"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      All Tools
+                    </Button>
+                  </div>
+                  
                   <Textarea
                     id="system-prompt"
                     placeholder="Define your agent's personality, knowledge, and behavior..."
@@ -382,7 +644,7 @@ export default function AgentSettings() {
                       setSettings({ ...settings, systemPrompt: e.target.value });
                       setHasUnsavedChanges(true);
                     }}
-                    className="min-h-[100px] text-sm"
+                    className="min-h-[150px] text-sm"
                     data-testid="textarea-system-prompt"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
