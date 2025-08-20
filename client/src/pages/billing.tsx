@@ -47,19 +47,25 @@ export default function Billing() {
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600 dark:text-gray-400">Total Calls</span>
                 <span className="font-medium" data-testid="text-current-calls">
-                  {(stats as any)?.totalCalls || 0}
+                  {(stats as any)?.totalCalls || 0} / 1000
                 </span>
               </div>
-              <Progress value={62} className="h-2" />
+              <Progress 
+                value={Math.min(((stats as any)?.totalCalls || 0) / 10, 100)} 
+                className="h-2" 
+              />
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600 dark:text-gray-400">Minutes Used</span>
                 <span className="font-medium" data-testid="text-current-minutes">
-                  {(stats as any)?.totalMinutes || 0}
+                  {(stats as any)?.totalMinutes || 0} / 5000
                 </span>
               </div>
-              <Progress value={57} className="h-2" />
+              <Progress 
+                value={Math.min(((stats as any)?.totalMinutes || 0) / 50, 100)} 
+                className="h-2" 
+              />
             </div>
           </div>
         </Card>
