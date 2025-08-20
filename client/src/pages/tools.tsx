@@ -7,13 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Plus, Trash2, Save, Globe, Webhook, Code, Wrench, 
   ChevronDown, ChevronRight, Settings2, Zap, Hammer,
-  Sheet, Calendar, CheckCircle, XCircle
+  Sheet, Calendar, CheckCircle, XCircle, Database,
+  Brain, FileText, Upload, Search
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -52,6 +54,29 @@ interface GoogleCalendarConfig {
   operations?: string[]; // read, create, update, delete
 }
 
+interface RAGToolConfig {
+  enabled: boolean;
+  name: string;
+  description?: string;
+  vectorDatabase?: 'pinecone' | 'weaviate' | 'chroma' | 'qdrant';
+  embeddingModel?: 'openai' | 'cohere' | 'huggingface';
+  apiKey?: string;
+  indexName?: string;
+  namespace?: string;
+  topK?: number;
+  similarityThreshold?: number;
+  maxTokens?: number;
+  temperature?: number;
+  systemPrompt?: string;
+  knowledgeBases?: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    documentCount?: number;
+    lastUpdated?: string;
+  }>;
+}
+
 export default function Tools() {
   const { toast } = useToast();
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
@@ -82,6 +107,22 @@ export default function Tools() {
       enabled: false,
       config: {} as GoogleCalendarConfig,
     },
+    ragTool: {
+      enabled: false,
+      name: 'Knowledge Base RAG',
+      description: '',
+      vectorDatabase: 'pinecone' as 'pinecone' | 'weaviate' | 'chroma' | 'qdrant',
+      embeddingModel: 'openai' as 'openai' | 'cohere' | 'huggingface',
+      apiKey: '',
+      indexName: '',
+      namespace: 'default',
+      topK: 5,
+      similarityThreshold: 0.7,
+      maxTokens: 2000,
+      temperature: 0.7,
+      systemPrompt: '',
+      knowledgeBases: [],
+    } as RAGToolConfig,
   });
 
   // Load agent's tools configuration when agent is selected
@@ -89,6 +130,7 @@ export default function Tools() {
     if (selectedAgent) {
       const googleSheetsIntegration = selectedAgent.tools?.integrations?.find(i => i.type === 'google-sheets');
       const googleCalendarIntegration = selectedAgent.tools?.integrations?.find(i => i.type === 'google-calendar');
+      const ragToolConfig = selectedAgent.tools?.customTools?.find(t => t.type === 'rag');
       
       setToolsConfig({
         webhooks: selectedAgent.tools?.webhooks || [],
@@ -101,6 +143,22 @@ export default function Tools() {
         googleCalendar: {
           enabled: googleCalendarIntegration?.enabled || false,
           config: googleCalendarIntegration?.configuration || {},
+        },
+        ragTool: ragToolConfig?.configuration || {
+          enabled: false,
+          name: 'Knowledge Base RAG',
+          description: '',
+          vectorDatabase: 'pinecone',
+          embeddingModel: 'openai',
+          apiKey: '',
+          indexName: '',
+          namespace: 'default',
+          topK: 5,
+          similarityThreshold: 0.7,
+          maxTokens: 2000,
+          temperature: 0.7,
+          systemPrompt: '',
+          knowledgeBases: [],
         },
       });
     }
@@ -166,11 +224,25 @@ export default function Tools() {
       });
     }
 
+    // Build custom tools array
+    const customTools = [...toolsConfig.customTools.filter(t => t.type !== 'rag')];
+    
+    // Add RAG tool if configured
+    if (toolsConfig.ragTool.enabled) {
+      customTools.push({
+        id: 'rag-tool',
+        name: toolsConfig.ragTool.name,
+        type: 'rag',
+        configuration: toolsConfig.ragTool,
+        enabled: true,
+      });
+    }
+
     updateAgentMutation.mutate({
       tools: {
         webhooks: toolsConfig.webhooks,
         integrations: filteredIntegrations,
-        customTools: toolsConfig.customTools,
+        customTools: customTools,
         toolIds: [], // Maintain backward compatibility
       },
     });
@@ -711,21 +783,434 @@ export default function Tools() {
 
           {/* Custom Tools Tab */}
           <TabsContent value="custom" className="space-y-4">
+            {/* RAG Tool */}
             <Card className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-base sm:text-lg font-semibold">Custom Tools</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    Build and configure custom tools for your agent
-                  </p>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                    <Database className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-semibold">RAG Knowledge Base</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                      Retrieval-Augmented Generation with custom knowledge bases
+                    </p>
+                  </div>
                 </div>
+                <Switch
+                  checked={toolsConfig.ragTool.enabled}
+                  onCheckedChange={(checked) => {
+                    setToolsConfig({
+                      ...toolsConfig,
+                      ragTool: {
+                        ...toolsConfig.ragTool,
+                        enabled: checked,
+                      },
+                    });
+                    setHasUnsavedChanges(true);
+                  }}
+                  data-testid="switch-rag-tool"
+                />
               </div>
 
-              <div className="text-center py-12 text-muted-foreground">
-                <Code className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <h4 className="text-lg font-medium mb-2">Coming Soon</h4>
+              {toolsConfig.ragTool.enabled && (
+                <div className="space-y-4 pt-4 border-t">
+                  {/* Basic Configuration */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="rag-name" className="text-sm">Tool Name</Label>
+                      <Input
+                        id="rag-name"
+                        placeholder="e.g., Product Knowledge Base"
+                        value={toolsConfig.ragTool.name}
+                        onChange={(e) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            ragTool: {
+                              ...toolsConfig.ragTool,
+                              name: e.target.value,
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm mt-1"
+                        data-testid="input-rag-name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="rag-description" className="text-sm">Description</Label>
+                      <Input
+                        id="rag-description"
+                        placeholder="Brief description of the knowledge base"
+                        value={toolsConfig.ragTool.description || ""}
+                        onChange={(e) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            ragTool: {
+                              ...toolsConfig.ragTool,
+                              description: e.target.value,
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm mt-1"
+                        data-testid="input-rag-description"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Vector Database Configuration */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Database className="w-4 h-4" />
+                      Vector Database Configuration
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="vector-db" className="text-sm">Vector Database</Label>
+                        <Select
+                          value={toolsConfig.ragTool.vectorDatabase}
+                          onValueChange={(value: 'pinecone' | 'weaviate' | 'chroma' | 'qdrant') => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              ragTool: {
+                                ...toolsConfig.ragTool,
+                                vectorDatabase: value,
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                        >
+                          <SelectTrigger className="text-sm mt-1" data-testid="select-vector-db">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pinecone">Pinecone</SelectItem>
+                            <SelectItem value="weaviate">Weaviate</SelectItem>
+                            <SelectItem value="chroma">Chroma</SelectItem>
+                            <SelectItem value="qdrant">Qdrant</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="embedding-model" className="text-sm">Embedding Model</Label>
+                        <Select
+                          value={toolsConfig.ragTool.embeddingModel}
+                          onValueChange={(value: 'openai' | 'cohere' | 'huggingface') => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              ragTool: {
+                                ...toolsConfig.ragTool,
+                                embeddingModel: value,
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                        >
+                          <SelectTrigger className="text-sm mt-1" data-testid="select-embedding-model">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="openai">OpenAI (text-embedding-ada-002)</SelectItem>
+                            <SelectItem value="cohere">Cohere (embed-english-v3.0)</SelectItem>
+                            <SelectItem value="huggingface">HuggingFace (all-MiniLM-L6-v2)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="rag-api-key" className="text-sm">API Key</Label>
+                        <Input
+                          id="rag-api-key"
+                          type="password"
+                          placeholder="Enter your vector database API key"
+                          value={toolsConfig.ragTool.apiKey || ""}
+                          onChange={(e) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              ragTool: {
+                                ...toolsConfig.ragTool,
+                                apiKey: e.target.value,
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          className="text-sm mt-1"
+                          data-testid="input-rag-api-key"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="index-name" className="text-sm">Index/Collection Name</Label>
+                        <Input
+                          id="index-name"
+                          placeholder="e.g., product-docs-index"
+                          value={toolsConfig.ragTool.indexName || ""}
+                          onChange={(e) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              ragTool: {
+                                ...toolsConfig.ragTool,
+                                indexName: e.target.value,
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          className="text-sm mt-1"
+                          data-testid="input-index-name"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="namespace" className="text-sm">Namespace (Optional)</Label>
+                      <Input
+                        id="namespace"
+                        placeholder="e.g., default"
+                        value={toolsConfig.ragTool.namespace || ""}
+                        onChange={(e) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            ragTool: {
+                              ...toolsConfig.ragTool,
+                              namespace: e.target.value,
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm mt-1"
+                        data-testid="input-namespace"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Retrieval Settings */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Search className="w-4 h-4" />
+                      Retrieval Settings
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <Label className="text-sm">Top K Results</Label>
+                          <span className="text-sm text-muted-foreground">{toolsConfig.ragTool.topK}</span>
+                        </div>
+                        <Slider
+                          value={[toolsConfig.ragTool.topK || 5]}
+                          onValueChange={(value) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              ragTool: {
+                                ...toolsConfig.ragTool,
+                                topK: value[0],
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          min={1}
+                          max={20}
+                          step={1}
+                          className="w-full"
+                          data-testid="slider-top-k"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Number of most relevant documents to retrieve
+                        </p>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <Label className="text-sm">Similarity Threshold</Label>
+                          <span className="text-sm text-muted-foreground">
+                            {(toolsConfig.ragTool.similarityThreshold || 0.7).toFixed(2)}
+                          </span>
+                        </div>
+                        <Slider
+                          value={[toolsConfig.ragTool.similarityThreshold || 0.7]}
+                          onValueChange={(value) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              ragTool: {
+                                ...toolsConfig.ragTool,
+                                similarityThreshold: value[0],
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          className="w-full"
+                          data-testid="slider-similarity"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Minimum similarity score for retrieved documents
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Generation Settings */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Brain className="w-4 h-4" />
+                      Generation Settings
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="max-tokens" className="text-sm">Max Response Tokens</Label>
+                        <Input
+                          id="max-tokens"
+                          type="number"
+                          placeholder="2000"
+                          value={toolsConfig.ragTool.maxTokens || 2000}
+                          onChange={(e) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              ragTool: {
+                                ...toolsConfig.ragTool,
+                                maxTokens: parseInt(e.target.value) || 2000,
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          className="text-sm mt-1"
+                          data-testid="input-max-tokens"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <Label className="text-sm">Temperature</Label>
+                          <span className="text-sm text-muted-foreground">
+                            {(toolsConfig.ragTool.temperature || 0.7).toFixed(2)}
+                          </span>
+                        </div>
+                        <Slider
+                          value={[toolsConfig.ragTool.temperature || 0.7]}
+                          onValueChange={(value) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              ragTool: {
+                                ...toolsConfig.ragTool,
+                                temperature: value[0],
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          min={0}
+                          max={2}
+                          step={0.01}
+                          className="w-full"
+                          data-testid="slider-temperature"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="system-prompt" className="text-sm">System Prompt for RAG</Label>
+                      <Textarea
+                        id="system-prompt"
+                        placeholder="You are a helpful assistant with access to a knowledge base. Use the retrieved context to answer questions accurately..."
+                        value={toolsConfig.ragTool.systemPrompt || ""}
+                        onChange={(e) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            ragTool: {
+                              ...toolsConfig.ragTool,
+                              systemPrompt: e.target.value,
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm mt-1 min-h-[100px]"
+                        data-testid="textarea-system-prompt"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Instructions for how the agent should use retrieved knowledge
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Knowledge Base Management */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Knowledge Bases
+                      </h4>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1"
+                        data-testid="button-add-knowledge-base"
+                      >
+                        <Upload className="w-3 h-3" />
+                        Upload Documents
+                      </Button>
+                    </div>
+                    
+                    {toolsConfig.ragTool.knowledgeBases?.length === 0 ? (
+                      <div className="text-center py-6 border rounded-lg text-muted-foreground">
+                        <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No knowledge bases configured</p>
+                        <p className="text-xs mt-1">Upload documents to create your first knowledge base</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {toolsConfig.ragTool.knowledgeBases?.map((kb) => (
+                          <div key={kb.id} className="p-3 border rounded-lg flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium">{kb.name}</p>
+                              {kb.description && (
+                                <p className="text-xs text-muted-foreground mt-0.5">{kb.description}</p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {kb.documentCount || 0} documents • Last updated {kb.lastUpdated || 'Never'}
+                              </p>
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              data-testid={`button-delete-kb-${kb.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                    <div className="flex gap-2">
+                      <Brain className="w-4 h-4 text-purple-600 dark:text-purple-400 mt-0.5" />
+                      <div className="text-sm text-purple-800 dark:text-purple-200">
+                        <p className="font-medium">RAG Setup Guide</p>
+                        <ol className="text-xs mt-1 space-y-1 list-decimal list-inside">
+                          <li>Choose your vector database provider and get an API key</li>
+                          <li>Create an index/collection in your vector database</li>
+                          <li>Select an embedding model that matches your use case</li>
+                          <li>Upload documents to build your knowledge base</li>
+                          <li>Configure retrieval settings for optimal performance</li>
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Card>
+
+            {/* Other Custom Tools Coming Soon */}
+            <Card className="p-4 sm:p-6">
+              <div className="text-center py-8 text-muted-foreground">
+                <Code className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <h4 className="text-base font-medium mb-2">More Custom Tools Coming Soon</h4>
                 <p className="text-sm">
-                  Create custom functions, scripts, and tools for advanced agent capabilities
+                  API connectors, custom functions, workflow automation, and more
                 </p>
               </div>
             </Card>
