@@ -5,10 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Play, UserCheck, Settings, Plus, ExternalLink } from "lucide-react";
+import { Search, Play, UserCheck, Settings } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Agent } from "@shared/schema";
@@ -40,10 +39,6 @@ export default function Voices() {
   const [showAgentDialog, setShowAgentDialog] = useState(false);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [customVoiceId, setCustomVoiceId] = useState("");
-  const [showCustomVoiceDialog, setShowCustomVoiceDialog] = useState(false);
-  const [customVoiceLoading, setCustomVoiceLoading] = useState(false);
-  const [customVoiceData, setCustomVoiceData] = useState<Voice | null>(null);
 
   // Fetch voices from API
   const { data: voicesData, isLoading } = useQuery<Voice[]>({
@@ -269,13 +264,6 @@ export default function Voices() {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
             Voice Library
           </h2>
-          <Button
-            onClick={() => setShowCustomVoiceDialog(true)}
-            data-testid="button-add-custom-voice"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Use Voice by ID
-          </Button>
         </div>
 
         {/* Search */}
@@ -518,138 +506,6 @@ export default function Voices() {
               data-testid="button-confirm-assignment"
             >
               {updateAgent.isPending ? "Assigning..." : "Assign Voice"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Custom Voice ID Dialog */}
-      <Dialog open={showCustomVoiceDialog} onOpenChange={setShowCustomVoiceDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Use Voice by ID</DialogTitle>
-            <DialogDescription>
-              Enter an ElevenLabs voice ID to test and use any voice. You can find voice IDs in the ElevenLabs voice lab.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="voice-id">Voice ID</Label>
-              <Input
-                id="voice-id"
-                placeholder="e.g., kdmDKE6EkgrWrrykO9Qt"
-                value={customVoiceId}
-                onChange={(e) => setCustomVoiceId(e.target.value)}
-                data-testid="input-custom-voice-id"
-              />
-              <p className="text-xs text-gray-500">
-                Enter any valid ElevenLabs voice ID. The voice will be fetched directly from ElevenLabs.
-              </p>
-            </div>
-
-            {customVoiceData && (
-              <div className="border rounded-lg p-4 space-y-2">
-                <h4 className="font-medium">Voice Details</h4>
-                <div className="text-sm space-y-1">
-                  <p><span className="text-gray-500">Name:</span> {customVoiceData.name}</p>
-                  <p><span className="text-gray-500">ID:</span> <span className="font-mono text-xs">{customVoiceData.voice_id}</span></p>
-                  {customVoiceData.description && (
-                    <p><span className="text-gray-500">Description:</span> {customVoiceData.description}</p>
-                  )}
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const voiceId = customVoiceData.voice_id;
-                      setPlayingVoiceId(voiceId);
-                      const audio = new Audio(`/api/voiceai/voices/${voiceId}/preview`);
-                      audio.play();
-                      audio.onended = () => setPlayingVoiceId(null);
-                    }}
-                    disabled={playingVoiceId === customVoiceData.voice_id}
-                    data-testid={`button-play-custom-voice`}
-                  >
-                    <Play className="w-4 h-4 mr-1" />
-                    {playingVoiceId === customVoiceData.voice_id ? "Playing..." : "Test Voice"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setSelectedVoiceId(customVoiceData.voice_id);
-                      setShowCustomVoiceDialog(false);
-                      setShowAgentDialog(true);
-                    }}
-                    data-testid={`button-use-custom-voice`}
-                  >
-                    <UserCheck className="w-4 h-4 mr-1" />
-                    Use in Agent
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <div className="flex gap-2">
-                <ExternalLink className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
-                <div className="text-sm text-blue-800 dark:text-blue-200">
-                  <p className="font-medium">Finding Voice IDs</p>
-                  <p className="text-xs mt-1">
-                    You can find voice IDs in your ElevenLabs account under Voice Lab or by browsing the public voice library.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowCustomVoiceDialog(false);
-                setCustomVoiceId("");
-                setCustomVoiceData(null);
-              }}
-              data-testid="button-cancel-custom-voice"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!customVoiceId.trim()) {
-                  toast({
-                    title: "Voice ID required",
-                    description: "Please enter a valid ElevenLabs voice ID",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-
-                setCustomVoiceLoading(true);
-                try {
-                  // Fetch voice details from ElevenLabs
-                  const response = await apiRequest("GET", `/api/voiceai/voices/${customVoiceId.trim()}`) as unknown as Voice;
-                  setCustomVoiceData(response);
-                  toast({
-                    title: "Voice found",
-                    description: `Successfully loaded voice: ${response.name}`,
-                  });
-                } catch (error: any) {
-                  toast({
-                    title: "Voice not found",
-                    description: error.message || "Could not find voice with this ID. Please check the ID and try again.",
-                    variant: "destructive",
-                  });
-                } finally {
-                  setCustomVoiceLoading(false);
-                }
-              }}
-              disabled={!customVoiceId.trim() || customVoiceLoading}
-              data-testid="button-fetch-custom-voice"
-            >
-              {customVoiceLoading ? "Loading..." : "Fetch Voice"}
             </Button>
           </DialogFooter>
         </DialogContent>
