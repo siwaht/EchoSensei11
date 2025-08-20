@@ -734,10 +734,25 @@ export function registerRoutes(app: Express): Server {
       );
 
       if (!audioResponse.ok) {
-        const error = await audioResponse.text();
-        console.error("ElevenLabs TTS error:", error);
+        const errorText = await audioResponse.text();
+        console.error("ElevenLabs TTS error:", errorText);
+        
+        // Parse error message
+        let errorMessage = "Failed to generate voice preview";
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.detail?.message) {
+            errorMessage = errorData.detail.message;
+          } else if (errorData.detail?.status === 'voice_not_found') {
+            errorMessage = "This voice is not accessible. It may need to be added to your ElevenLabs account first.";
+          }
+        } catch (e) {
+          // If error text is not JSON, use it as is
+          errorMessage = errorText || "Failed to generate voice preview";
+        }
+        
         return res.status(audioResponse.status).json({ 
-          error: "Failed to generate voice preview" 
+          error: errorMessage
         });
       }
 

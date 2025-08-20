@@ -541,7 +541,14 @@ export default function Voices() {
       </Dialog>
 
       {/* Custom Voice ID Dialog */}
-      <Dialog open={showCustomVoiceDialog} onOpenChange={setShowCustomVoiceDialog}>
+      <Dialog open={showCustomVoiceDialog} onOpenChange={(open) => {
+        setShowCustomVoiceDialog(open);
+        if (!open) {
+          setPlayingVoiceId(null);
+          setCustomVoiceId("");
+          setCustomVoiceData(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Use Voice by ID</DialogTitle>
@@ -616,25 +623,49 @@ export default function Voices() {
                         return;
                       }
                       setPlayingVoiceId(voiceId);
-                      const audio = new Audio(`/api/voiceai/voices/${voiceId}/preview`);
-                      audio.play().catch((error) => {
-                        console.error("Audio playback error:", error);
+                      
+                      // First check if the voice can generate audio
+                      fetch(`/api/voiceai/voices/${voiceId}/preview`, {
+                        method: 'GET',
+                        credentials: 'include',
+                      })
+                      .then(async (response) => {
+                        if (!response.ok) {
+                          const error = await response.json();
+                          throw new Error(error.error || 'Failed to generate preview');
+                        }
+                        return response.blob();
+                      })
+                      .then((audioBlob) => {
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        const audio = new Audio(audioUrl);
+                        
+                        audio.onended = () => {
+                          setPlayingVoiceId(null);
+                          URL.revokeObjectURL(audioUrl);
+                        };
+                        
+                        audio.onerror = () => {
+                          setPlayingVoiceId(null);
+                          URL.revokeObjectURL(audioUrl);
+                          toast({
+                            title: "Playback error",
+                            description: "Failed to play audio",
+                            variant: "destructive",
+                          });
+                        };
+                        
+                        return audio.play();
+                      })
+                      .catch((error) => {
+                        console.error("Voice preview error:", error);
                         setPlayingVoiceId(null);
                         toast({
-                          title: "Playback failed",
-                          description: "Could not play voice preview. The voice may not be accessible.",
+                          title: "Voice preview failed",
+                          description: error.message || "This voice may not be in your ElevenLabs account. Add it from the Voice Library first.",
                           variant: "destructive",
                         });
                       });
-                      audio.onended = () => setPlayingVoiceId(null);
-                      audio.onerror = () => {
-                        setPlayingVoiceId(null);
-                        toast({
-                          title: "Audio error",
-                          description: "Failed to load voice preview",
-                          variant: "destructive",
-                        });
-                      };
                     }}
                     disabled={playingVoiceId === customVoiceData.voice_id || !customVoiceData.voice_id}
                     data-testid={`button-play-custom-voice`}
@@ -681,6 +712,7 @@ export default function Voices() {
                 setShowCustomVoiceDialog(false);
                 setCustomVoiceId("");
                 setCustomVoiceData(null);
+                setPlayingVoiceId(null);
               }}
               data-testid="button-cancel-custom-voice"
             >
