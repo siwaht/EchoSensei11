@@ -581,34 +581,31 @@ export default function OutboundCalling() {
             </div>
           </div>
 
-          <DialogFooter className="flex justify-between">
-            <div className="flex gap-2">
-              {formData.recipients.length > 0 && formData.agentId && formData.phoneNumberId && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedBatchCall({
-                      id: 'temp',
-                      name: formData.name,
-                      agentId: formData.agentId,
-                      phoneNumberId: formData.phoneNumberId,
-                      organizationId: '',
-                      userId: '',
-                      status: 'draft',
-                      totalRecipients: formData.recipients.length,
-                      completedCalls: 0,
-                      failedCalls: 0,
-                      createdAt: new Date(),
-                      updatedAt: new Date(),
-                    } as BatchCall);
-                    setShowTestDialog(true);
-                  }}
-                  data-testid="button-test-call"
-                >
-                  Test call
-                </Button>
-              )}
-            </div>
+          <DialogFooter className="flex justify-between sm:justify-between">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedBatchCall({
+                  id: 'temp',
+                  name: formData.name || 'Test Batch',
+                  agentId: formData.agentId,
+                  phoneNumberId: formData.phoneNumberId,
+                  organizationId: '',
+                  userId: '',
+                  status: 'draft',
+                  totalRecipients: formData.recipients.length,
+                  completedCalls: 0,
+                  failedCalls: 0,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                } as BatchCall);
+                setShowTestDialog(true);
+              }}
+              disabled={!formData.agentId || !formData.phoneNumberId}
+              data-testid="button-test-call"
+            >
+              Test call
+            </Button>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -666,6 +663,13 @@ export default function OutboundCalling() {
               />
               <p className="text-xs text-gray-500">
                 Enter the phone number where you want to receive the test call
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Note</Label>
+              <p className="text-xs text-gray-500">
+                The test call will use the agent and phone number you selected. Recipients file is not required for testing.
               </p>
             </div>
 
