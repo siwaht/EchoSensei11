@@ -196,10 +196,10 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="organizations">Organizations</TabsTrigger>
-          <TabsTrigger value="billing">Billing Overview</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
           <TabsTrigger value="quick-actions">
             <Sparkles className="w-4 h-4 mr-1" />
             Quick Actions
