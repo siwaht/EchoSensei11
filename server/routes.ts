@@ -1024,51 +1024,133 @@ export function registerRoutes(app: Express): Server {
             // Add tools configuration if provided
             if (updates.tools || agent.tools) {
               const tools = updates.tools || agent.tools;
+              const toolConfigs: any[] = [];
               
-              // Handle webhook tools
-              if (tools.webhooks && tools.webhooks.length > 0) {
-                const webhookToolIds = [];
+              // Handle system tools
+              if (tools.systemTools) {
+                // End call tool
+                if (tools.systemTools.endCall?.enabled) {
+                  toolConfigs.push({
+                    type: 'system',
+                    name: 'end_call',
+                    description: tools.systemTools.endCall.description || 'Allows agent to end the call'
+                  });
+                }
                 
-                for (const webhook of tools.webhooks) {
-                  if (webhook.name && webhook.url) {
-                    try {
-                      // Create webhook tool in ElevenLabs
-                      const toolResponse = await fetch('https://api.elevenlabs.io/v1/convai/tools', {
-                        method: 'POST',
-                        headers: {
-                          'xi-api-key': decryptedKey,
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                          type: 'webhook',
-                          name: webhook.name,
-                          description: webhook.description || '',
-                          webhook: {
-                            url: webhook.url,
-                            method: webhook.method || 'POST',
+                // Detect language tool
+                if (tools.systemTools.detectLanguage?.enabled) {
+                  toolConfigs.push({
+                    type: 'system',
+                    name: 'language_detection',
+                    description: tools.systemTools.detectLanguage.description || 'Detect and switch languages',
+                    config: {
+                      supported_languages: tools.systemTools.detectLanguage.supportedLanguages || []
+                    }
+                  });
+                }
+                
+                // Skip turn tool
+                if (tools.systemTools.skipTurn?.enabled) {
+                  toolConfigs.push({
+                    type: 'system',
+                    name: 'skip_turn',
+                    description: tools.systemTools.skipTurn.description || 'Skip agent turn when user needs a moment'
+                  });
+                }
+                
+                // Transfer to agent tool
+                if (tools.systemTools.transferToAgent?.enabled) {
+                  toolConfigs.push({
+                    type: 'system',
+                    name: 'transfer_to_agent',
+                    description: tools.systemTools.transferToAgent.description || 'Transfer to another AI agent',
+                    config: {
+                      target_agent_id: tools.systemTools.transferToAgent.targetAgentId
+                    }
+                  });
+                }
+                
+                // Transfer to number tool
+                if (tools.systemTools.transferToNumber?.enabled) {
+                  toolConfigs.push({
+                    type: 'system',
+                    name: 'transfer_to_number',
+                    description: tools.systemTools.transferToNumber.description || 'Transfer to human operator',
+                    config: {
+                      phone_numbers: tools.systemTools.transferToNumber.phoneNumbers || []
+                    }
+                  });
+                }
+                
+                // Play keypad tone tool (DTMF)
+                if (tools.systemTools.playKeypadTone?.enabled) {
+                  toolConfigs.push({
+                    type: 'system',
+                    name: 'play_dtmf',
+                    description: tools.systemTools.playKeypadTone.description || 'Play keypad touch tones'
+                  });
+                }
+                
+                // Voicemail detection tool
+                if (tools.systemTools.voicemailDetection?.enabled) {
+                  toolConfigs.push({
+                    type: 'system',
+                    name: 'voicemail_detection',
+                    description: tools.systemTools.voicemailDetection.description || 'Detect voicemail systems',
+                    config: {
+                      leave_message: tools.systemTools.voicemailDetection.leaveMessage || false,
+                      message_content: tools.systemTools.voicemailDetection.messageContent
+                    }
+                  });
+                }
+              }
+              
+              // Handle custom tools (webhooks, integrations)
+              if (tools.customTools && tools.customTools.length > 0) {
+                for (const customTool of tools.customTools) {
+                  if (customTool.enabled && customTool.name) {
+                    if (customTool.type === 'webhook' && customTool.url) {
+                      try {
+                        // Create webhook tool in ElevenLabs
+                        const toolResponse = await fetch('https://api.elevenlabs.io/v1/convai/tools', {
+                          method: 'POST',
+                          headers: {
+                            'xi-api-key': decryptedKey,
+                            'Content-Type': 'application/json',
                           },
-                        }),
-                      });
-                      
-                      if (toolResponse.ok) {
-                        const toolData = await toolResponse.json();
-                        webhookToolIds.push(toolData.tool_id);
-                      } else {
-                        console.error(`Failed to create webhook tool ${webhook.name}:`, await toolResponse.text());
+                          body: JSON.stringify({
+                            type: 'webhook',
+                            name: customTool.name,
+                            description: customTool.description || '',
+                            webhook: {
+                              url: customTool.url,
+                              method: customTool.method || 'POST',
+                              headers: customTool.headers || {}
+                            },
+                          }),
+                        });
+                        
+                        if (toolResponse.ok) {
+                          const toolData = await toolResponse.json();
+                          toolConfigs.push({
+                            type: 'custom',
+                            tool_id: toolData.tool_id,
+                            name: customTool.name
+                          });
+                        } else {
+                          console.error(`Failed to create webhook tool ${customTool.name}:`, await toolResponse.text());
+                        }
+                      } catch (toolError) {
+                        console.error(`Error creating webhook tool ${customTool.name}:`, toolError);
                       }
-                    } catch (toolError) {
-                      console.error(`Error creating webhook tool ${webhook.name}:`, toolError);
                     }
                   }
                 }
-                
-                // Combine webhook tool IDs with existing tool IDs
-                const allToolIds = [...(tools.toolIds || []), ...webhookToolIds];
-                if (allToolIds.length > 0) {
-                  elevenLabsPayload.conversation_config.agent.tool_ids = allToolIds;
-                }
-              } else if (tools.toolIds && tools.toolIds.length > 0) {
-                elevenLabsPayload.conversation_config.agent.tool_ids = tools.toolIds;
+              }
+              
+              // Set tools configuration in payload
+              if (toolConfigs.length > 0) {
+                elevenLabsPayload.conversation_config.agent.tools = toolConfigs;
               }
             }
 

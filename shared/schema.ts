@@ -147,28 +147,64 @@ export const agents = pgTable("agents", {
     maxTokens?: number;
   }>(),
   tools: json("tools").$type<{
-    toolIds?: string[];
-    webhooks?: Array<{
-      id: string;
-      name: string;
-      url: string;
-      method: string;
-      description?: string;
-      headers?: Record<string, string>;
-      enabled?: boolean;
-    }>;
-    integrations?: Array<{
-      id: string;
-      name: string;
-      type: string;
-      configuration: Record<string, any>;
-      enabled: boolean;
-    }>;
+    // ElevenLabs System Tools
+    systemTools?: {
+      endCall?: {
+        enabled: boolean;
+        description?: string;
+      };
+      detectLanguage?: {
+        enabled: boolean;
+        supportedLanguages?: string[];
+        description?: string;
+      };
+      skipTurn?: {
+        enabled: boolean;
+        description?: string;
+      };
+      transferToAgent?: {
+        enabled: boolean;
+        targetAgentId?: string;
+        description?: string;
+      };
+      transferToNumber?: {
+        enabled: boolean;
+        phoneNumbers?: Array<{
+          number: string;
+          label: string;
+        }>;
+        description?: string;
+      };
+      playKeypadTone?: {
+        enabled: boolean;
+        description?: string;
+      };
+      voicemailDetection?: {
+        enabled: boolean;
+        leaveMessage?: boolean;
+        messageContent?: string;
+        description?: string;
+      };
+    };
+    // Custom Tools (webhooks, integrations)
     customTools?: Array<{
       id: string;
       name: string;
-      type: string;
-      configuration: Record<string, any>;
+      type: 'webhook' | 'integration' | 'server' | 'client';
+      url?: string;
+      method?: string;
+      headers?: Record<string, string>;
+      parameters?: Record<string, any>;
+      description?: string;
+      enabled: boolean;
+    }>;
+    // MCP Servers
+    mcpServers?: Array<{
+      id: string;
+      name: string;
+      url: string;
+      apiKey?: string;
+      configuration?: Record<string, any>;
       enabled: boolean;
     }>;
   }>(),

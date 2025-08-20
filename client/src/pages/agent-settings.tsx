@@ -16,7 +16,8 @@ import {
   Save, ArrowLeft, Mic, Settings2, MessageSquare, Zap, Search, Play, 
   Volume2, Check, X, RotateCcw, Brain, Plus, Trash2,
   Globe, ChevronDown, ChevronRight, User, Shield, Webhook, Sheet,
-  Calendar, Database, FileText, Sparkles, Edit2
+  Calendar, Database, FileText, Sparkles, Edit2, Wrench, Phone,
+  Languages, SkipForward, UserPlus, Voicemail, Hash
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -70,6 +71,21 @@ export default function AgentSettings() {
     
     // Custom prompt templates
     promptTemplates: [] as Array<{ id: string; name: string; content: string }>,
+    
+    // Tools configuration
+    tools: {
+      systemTools: {
+        endCall: { enabled: true },
+        detectLanguage: { enabled: true, supportedLanguages: [] },
+        skipTurn: { enabled: true },
+        transferToAgent: { enabled: false, targetAgentId: "" },
+        transferToNumber: { enabled: false, phoneNumbers: [] },
+        playKeypadTone: { enabled: false },
+        voicemailDetection: { enabled: false, leaveMessage: false, messageContent: "" },
+      },
+      customTools: [] as Array<{ id: string; name: string; type: string; url?: string; enabled: boolean }>,
+      mcpServers: [] as Array<{ id: string; name: string; url: string; enabled: boolean }>,
+    } as any,
   });
 
   const [voiceSearch, setVoiceSearch] = useState("");
@@ -132,6 +148,19 @@ export default function AgentSettings() {
         dataCollectionEnabled: agent.dataCollection?.enabled || false,
         dataCollectionFields: agent.dataCollection?.fields || [],
         promptTemplates: (agent as any).promptTemplates || [],
+        tools: (agent as any).tools || {
+          systemTools: {
+            endCall: { enabled: true },
+            detectLanguage: { enabled: true, supportedLanguages: [] },
+            skipTurn: { enabled: true },
+            transferToAgent: { enabled: false, targetAgentId: "" },
+            transferToNumber: { enabled: false, phoneNumbers: [] },
+            playKeypadTone: { enabled: false },
+            voicemailDetection: { enabled: false, leaveMessage: false, messageContent: "" },
+          },
+          customTools: [],
+          mcpServers: [],
+        },
       });
     }
   }, [agent]);
@@ -182,6 +211,7 @@ export default function AgentSettings() {
         fields: settings.dataCollectionFields,
       },
       promptTemplates: settings.promptTemplates,
+      tools: settings.tools,
     } as any);
   };
 
@@ -413,7 +443,7 @@ export default function AgentSettings() {
 
         {/* Settings Tabs */}
         <Tabs defaultValue="conversation" className="space-y-4">
-          <TabsList className="grid grid-cols-4 w-full p-1">
+          <TabsList className="grid grid-cols-5 w-full p-1">
             <TabsTrigger value="conversation" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <MessageSquare className="w-4 h-4" />
               <span className="text-[10px] sm:text-sm">Chat</span>
@@ -421,6 +451,10 @@ export default function AgentSettings() {
             <TabsTrigger value="templates" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <FileText className="w-4 h-4" />
               <span className="text-[10px] sm:text-sm">Templates</span>
+            </TabsTrigger>
+            <TabsTrigger value="tools" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
+              <Wrench className="w-4 h-4" />
+              <span className="text-[10px] sm:text-sm">Tools</span>
             </TabsTrigger>
             <TabsTrigger value="llm" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <Brain className="w-4 h-4" />
@@ -758,6 +792,457 @@ export default function AgentSettings() {
                   </div>
                 )}
               </div>
+            </Card>
+          </TabsContent>
+
+          {/* Tools Tab */}
+          <TabsContent value="tools" className="space-y-4 mt-4">
+            <Card className="p-4">
+              <h3 className="text-base font-semibold mb-4">System Tools</h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Configure built-in ElevenLabs conversational AI tools that control agent behavior
+              </p>
+              
+              <div className="space-y-4">
+                {/* End Call Tool */}
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">End call</p>
+                      <p className="text-xs text-muted-foreground">
+                        Gives agent the ability to end the call with the user
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.tools?.systemTools?.endCall?.enabled || false}
+                    onCheckedChange={(checked) => {
+                      setSettings({
+                        ...settings,
+                        tools: {
+                          ...settings.tools,
+                          systemTools: {
+                            ...settings.tools.systemTools,
+                            endCall: { ...settings.tools.systemTools.endCall, enabled: checked },
+                          },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-end-call"
+                  />
+                </div>
+
+                {/* Detect Language Tool */}
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Languages className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">Detect language</p>
+                      <p className="text-xs text-muted-foreground">
+                        Gives agent the ability to change the language during conversation
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.tools?.systemTools?.detectLanguage?.enabled || false}
+                    onCheckedChange={(checked) => {
+                      setSettings({
+                        ...settings,
+                        tools: {
+                          ...settings.tools,
+                          systemTools: {
+                            ...settings.tools.systemTools,
+                            detectLanguage: { ...settings.tools.systemTools.detectLanguage, enabled: checked },
+                          },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-detect-language"
+                  />
+                </div>
+
+                {/* Skip Turn Tool */}
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <SkipForward className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">Skip turn</p>
+                      <p className="text-xs text-muted-foreground">
+                        Agent will skip its turn if user explicitly indicates they need a moment
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.tools?.systemTools?.skipTurn?.enabled || false}
+                    onCheckedChange={(checked) => {
+                      setSettings({
+                        ...settings,
+                        tools: {
+                          ...settings.tools,
+                          systemTools: {
+                            ...settings.tools.systemTools,
+                            skipTurn: { ...settings.tools.systemTools.skipTurn, enabled: checked },
+                          },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-skip-turn"
+                  />
+                </div>
+
+                {/* Transfer to Agent Tool */}
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <UserPlus className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">Transfer to agent</p>
+                      <p className="text-xs text-muted-foreground">
+                        Gives agent the ability to transfer the call to another AI agent
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.tools?.systemTools?.transferToAgent?.enabled || false}
+                    onCheckedChange={(checked) => {
+                      setSettings({
+                        ...settings,
+                        tools: {
+                          ...settings.tools,
+                          systemTools: {
+                            ...settings.tools.systemTools,
+                            transferToAgent: { ...settings.tools.systemTools.transferToAgent, enabled: checked },
+                          },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-transfer-agent"
+                  />
+                </div>
+
+                {/* Transfer to Number Tool */}
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">Transfer to number</p>
+                      <p className="text-xs text-muted-foreground">
+                        Gives agent the ability to transfer the call to a human
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.tools?.systemTools?.transferToNumber?.enabled || false}
+                    onCheckedChange={(checked) => {
+                      setSettings({
+                        ...settings,
+                        tools: {
+                          ...settings.tools,
+                          systemTools: {
+                            ...settings.tools.systemTools,
+                            transferToNumber: { ...settings.tools.systemTools.transferToNumber, enabled: checked },
+                          },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-transfer-number"
+                  />
+                </div>
+
+                {/* Play Keypad Touch Tone Tool */}
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Hash className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">Play keypad touch tone</p>
+                      <p className="text-xs text-muted-foreground">
+                        Gives agent the ability to play keypad touch tones during a phone call
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.tools?.systemTools?.playKeypadTone?.enabled || false}
+                    onCheckedChange={(checked) => {
+                      setSettings({
+                        ...settings,
+                        tools: {
+                          ...settings.tools,
+                          systemTools: {
+                            ...settings.tools.systemTools,
+                            playKeypadTone: { ...settings.tools.systemTools.playKeypadTone, enabled: checked },
+                          },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-keypad-tone"
+                  />
+                </div>
+
+                {/* Voicemail Detection Tool */}
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Voicemail className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">Voicemail detection</p>
+                      <p className="text-xs text-muted-foreground">
+                        Allows agent to detect voicemail systems and optionally leave a message
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.tools?.systemTools?.voicemailDetection?.enabled || false}
+                    onCheckedChange={(checked) => {
+                      setSettings({
+                        ...settings,
+                        tools: {
+                          ...settings.tools,
+                          systemTools: {
+                            ...settings.tools.systemTools,
+                            voicemailDetection: { ...settings.tools.systemTools.voicemailDetection, enabled: checked },
+                          },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-voicemail"
+                  />
+                </div>
+              </div>
+            </Card>
+
+            {/* Custom Tools Section */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-semibold">Custom Tools</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Provide the agent with custom tools it can use to help users
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const newTool = {
+                      id: Date.now().toString(),
+                      name: "",
+                      type: "webhook",
+                      url: "",
+                      enabled: true,
+                    };
+                    setSettings({
+                      ...settings,
+                      tools: {
+                        ...settings.tools,
+                        customTools: [...(settings.tools?.customTools || []), newTool],
+                      },
+                    });
+                    setHasUnsavedChanges(true);
+                  }}
+                  data-testid="button-add-custom-tool"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Tool
+                </Button>
+              </div>
+
+              {settings.tools?.customTools?.length === 0 || !settings.tools?.customTools ? (
+                <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                  <Wrench className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    No custom tools configured. Add custom webhooks or integrations.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {settings.tools.customTools.map((tool, index) => (
+                    <div key={tool.id} className="border rounded-lg p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Input
+                          placeholder="Tool name"
+                          value={tool.name}
+                          onChange={(e) => {
+                            const updated = [...settings.tools.customTools];
+                            updated[index] = { ...tool, name: e.target.value };
+                            setSettings({
+                              ...settings,
+                              tools: { ...settings.tools, customTools: updated },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          className="text-sm max-w-xs"
+                          data-testid={`input-tool-name-${tool.id}`}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={tool.enabled}
+                            onCheckedChange={(checked) => {
+                              const updated = [...settings.tools.customTools];
+                              updated[index] = { ...tool, enabled: checked };
+                              setSettings({
+                                ...settings,
+                                tools: { ...settings.tools, customTools: updated },
+                              });
+                              setHasUnsavedChanges(true);
+                            }}
+                            data-testid={`switch-tool-enabled-${tool.id}`}
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const filtered = settings.tools.customTools.filter(t => t.id !== tool.id);
+                              setSettings({
+                                ...settings,
+                                tools: { ...settings.tools, customTools: filtered },
+                              });
+                              setHasUnsavedChanges(true);
+                            }}
+                            data-testid={`button-delete-tool-${tool.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      {tool.type === 'webhook' && (
+                        <Input
+                          placeholder="Webhook URL"
+                          value={tool.url || ""}
+                          onChange={(e) => {
+                            const updated = [...settings.tools.customTools];
+                            updated[index] = { ...tool, url: e.target.value };
+                            setSettings({
+                              ...settings,
+                              tools: { ...settings.tools, customTools: updated },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          className="text-sm"
+                          data-testid={`input-tool-url-${tool.id}`}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* MCP Servers Section */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-semibold">Custom MCP Servers</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Connect Model Context Protocol servers for advanced integrations
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const newServer = {
+                      id: Date.now().toString(),
+                      name: "",
+                      url: "",
+                      enabled: true,
+                    };
+                    setSettings({
+                      ...settings,
+                      tools: {
+                        ...settings.tools,
+                        mcpServers: [...(settings.tools?.mcpServers || []), newServer],
+                      },
+                    });
+                    setHasUnsavedChanges(true);
+                  }}
+                  data-testid="button-add-mcp-server"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Server
+                </Button>
+              </div>
+
+              {settings.tools?.mcpServers?.length === 0 || !settings.tools?.mcpServers ? (
+                <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                  <Database className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    No MCP servers configured. Add servers for advanced capabilities.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {settings.tools.mcpServers.map((server, index) => (
+                    <div key={server.id} className="border rounded-lg p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Input
+                          placeholder="Server name"
+                          value={server.name}
+                          onChange={(e) => {
+                            const updated = [...settings.tools.mcpServers];
+                            updated[index] = { ...server, name: e.target.value };
+                            setSettings({
+                              ...settings,
+                              tools: { ...settings.tools, mcpServers: updated },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          className="text-sm max-w-xs"
+                          data-testid={`input-server-name-${server.id}`}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={server.enabled}
+                            onCheckedChange={(checked) => {
+                              const updated = [...settings.tools.mcpServers];
+                              updated[index] = { ...server, enabled: checked };
+                              setSettings({
+                                ...settings,
+                                tools: { ...settings.tools, mcpServers: updated },
+                              });
+                              setHasUnsavedChanges(true);
+                            }}
+                            data-testid={`switch-server-enabled-${server.id}`}
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const filtered = settings.tools.mcpServers.filter(s => s.id !== server.id);
+                              setSettings({
+                                ...settings,
+                                tools: { ...settings.tools, mcpServers: filtered },
+                              });
+                              setHasUnsavedChanges(true);
+                            }}
+                            data-testid={`button-delete-server-${server.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <Input
+                        placeholder="Server URL"
+                        value={server.url || ""}
+                        onChange={(e) => {
+                          const updated = [...settings.tools.mcpServers];
+                          updated[index] = { ...server, url: e.target.value };
+                          setSettings({
+                            ...settings,
+                            tools: { ...settings.tools, mcpServers: updated },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm"
+                        data-testid={`input-server-url-${server.id}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </TabsContent>
 
