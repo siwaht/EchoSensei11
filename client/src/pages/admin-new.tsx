@@ -15,10 +15,9 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Users, Building2, DollarSign, Phone, Edit, Trash2, Plus, Shield, 
   Activity, TrendingUp, Package, CreditCard, UserPlus, Settings,
-  Save, X, Eye, Wallet, CheckCircle, AlertCircle, Sparkles
+  Save, X, Eye, Wallet, CheckCircle, AlertCircle
 } from "lucide-react";
 import type { User, Organization, BillingPackage } from "@shared/schema";
-import AdminQuickActions from "./admin-quick-actions";
 
 interface BillingData {
   totalUsers: number;
@@ -338,10 +337,10 @@ export default function AdminDashboard() {
             <span className="hidden sm:inline">Organizations</span>
             <span className="sm:hidden">Orgs</span>
           </TabsTrigger>
-          <TabsTrigger value="quick-actions" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
-            <Sparkles className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Quick Actions</span>
-            <span className="sm:hidden">Actions</span>
+          <TabsTrigger value="payments" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
+            <Wallet className="w-4 h-4 mr-2 sm:hidden" />
+            <span className="hidden sm:inline">Payment Gateways</span>
+            <span className="sm:hidden">Payments</span>
           </TabsTrigger>
         </TabsList>
 
@@ -839,38 +838,21 @@ export default function AdminDashboard() {
           </div>
         </TabsContent>
 
-        {/* Quick Actions Tab */}
-        <TabsContent value="quick-actions" className="space-y-4">
-          <AdminQuickActions />
-        </TabsContent>
-      </Tabs>
-
-      {/* Create User Dialog */}
-      <Dialog open={creatingUser} onOpenChange={setCreatingUser}>
-        <DialogContent className="w-[95vw] max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Create New User</DialogTitle>
-            <DialogDescription>Add a new user to the platform</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>First Name</Label>
-                <Input
-                  value={newUser.firstName}
-                  onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
-                  placeholder="John"
-                  data-testid="input-new-user-firstname"
-                />
-              </div>
-              <div>
-                <Label>Last Name</Label>
-                <Input
-                  value={newUser.lastName}
-                  onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
-                  placeholder="Doe"
-                  data-testid="input-new-user-lastname"
-                />
+        {/* Payment Gateways Tab */}
+        <TabsContent value="payments" className="space-y-4">
+          {/* Payment Gateway Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Stripe Configuration */}
+            <Card className="p-4 sm:p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                      <CreditCard className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Stripe</h3>
+                      <p className="text-sm text-muted-foreground">Accept credit cards and digital wallets</p>
                     </div>
                   </div>
                   <Badge variant="outline" className="text-muted-foreground">

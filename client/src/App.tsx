@@ -15,7 +15,7 @@ import History from "@/pages/history";
 import Integrations from "@/pages/integrations";
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
-import Admin from "@/pages/admin";
+import Admin from "@/pages/admin-new";
 import Checkout from "@/pages/checkout";
 import Playground from "@/pages/playground";
 import PhoneNumbers from "@/pages/phone-numbers";
