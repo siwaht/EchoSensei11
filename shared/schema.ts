@@ -141,6 +141,22 @@ export const agents = pgTable("agents", {
       url: string;
       method: string;
       description?: string;
+      headers?: Record<string, string>;
+      enabled?: boolean;
+    }>;
+    integrations?: Array<{
+      id: string;
+      name: string;
+      type: string;
+      configuration: Record<string, any>;
+      enabled: boolean;
+    }>;
+    customTools?: Array<{
+      id: string;
+      name: string;
+      type: string;
+      configuration: Record<string, any>;
+      enabled: boolean;
     }>;
   }>(),
   dynamicVariables: json("dynamic_variables").$type<Record<string, string>>(),

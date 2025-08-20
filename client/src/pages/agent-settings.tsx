@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Save, ArrowLeft, Mic, Settings2, MessageSquare, Zap, Search, Play, 
-  Volume2, Check, X, RotateCcw, Brain, Wrench, Plus, Trash2,
+  Volume2, Check, X, RotateCcw, Brain, Plus, Trash2,
   Globe, ChevronDown, ChevronRight
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
@@ -55,9 +55,6 @@ export default function AgentSettings() {
     temperature: 0.7,
     maxTokens: 150,
     
-    // Tools settings
-    toolIds: [] as string[],
-    webhooks: [] as Array<{ id: string; name: string; url: string; method: string; description?: string }>,
     
     // Dynamic variables
     dynamicVariables: {} as Record<string, string>,
@@ -78,7 +75,6 @@ export default function AgentSettings() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     prompt: true,
     llm: false,
-    tools: false,
     variables: false,
     evaluation: false,
     collection: false,
@@ -112,8 +108,6 @@ export default function AgentSettings() {
         model: agent.llmSettings?.model || "gpt-4",
         temperature: agent.llmSettings?.temperature || 0.7,
         maxTokens: agent.llmSettings?.maxTokens || 150,
-        toolIds: agent.tools?.toolIds || [],
-        webhooks: agent.tools?.webhooks || [],
         dynamicVariables: agent.dynamicVariables || {},
         evaluationEnabled: agent.evaluationCriteria?.enabled || false,
         evaluationCriteria: agent.evaluationCriteria?.criteria || [],
@@ -159,10 +153,6 @@ export default function AgentSettings() {
         temperature: settings.temperature,
         maxTokens: settings.maxTokens,
       },
-      tools: {
-        toolIds: settings.toolIds,
-        webhooks: settings.webhooks,
-      },
       dynamicVariables: settings.dynamicVariables,
       evaluationCriteria: {
         enabled: settings.evaluationEnabled,
@@ -207,21 +197,6 @@ export default function AgentSettings() {
         variant: "destructive" 
       });
     });
-  };
-
-  const addWebhook = () => {
-    const newWebhook = {
-      id: `webhook_${Date.now()}`,
-      name: "",
-      url: "",
-      method: "POST",
-      description: "",
-    };
-    setSettings({
-      ...settings,
-      webhooks: [...settings.webhooks, newWebhook],
-    });
-    setHasUnsavedChanges(true);
   };
 
   const addDynamicVariable = () => {
@@ -357,7 +332,7 @@ export default function AgentSettings() {
 
         {/* Settings Tabs */}
         <Tabs defaultValue="conversation" className="space-y-4">
-          <TabsList className="grid grid-cols-4 w-full p-1">
+          <TabsList className="grid grid-cols-3 w-full p-1">
             <TabsTrigger value="conversation" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <MessageSquare className="w-4 h-4" />
               <span className="text-[10px] sm:text-sm">Chat</span>
@@ -365,10 +340,6 @@ export default function AgentSettings() {
             <TabsTrigger value="llm" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <Brain className="w-4 h-4" />
               <span className="text-[10px] sm:text-sm">LLM</span>
-            </TabsTrigger>
-            <TabsTrigger value="tools" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
-              <Wrench className="w-4 h-4" />
-              <span className="text-[10px] sm:text-sm">Tools</span>
             </TabsTrigger>
             <TabsTrigger value="advanced" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <Settings2 className="w-4 h-4" />
@@ -729,106 +700,6 @@ export default function AgentSettings() {
                   <p className="text-xs text-muted-foreground mt-1">
                     Maximum response length in tokens
                   </p>
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
-
-          {/* Tools Tab */}
-          <TabsContent value="tools" className="space-y-4 mt-4">
-            <Card className="p-4">
-              <h3 className="text-base font-semibold mb-4">Tools & Webhooks</h3>
-              
-              {/* Webhooks */}
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-sm mb-2">Webhooks</Label>
-                  <div className="space-y-3">
-                    {settings.webhooks.map((webhook, index) => (
-                      <div key={webhook.id} className="p-3 border rounded-lg space-y-3">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <Input
-                            placeholder="Webhook name"
-                            value={webhook.name}
-                            onChange={(e) => {
-                              const updated = [...settings.webhooks];
-                              updated[index].name = e.target.value;
-                              setSettings({ ...settings, webhooks: updated });
-                              setHasUnsavedChanges(true);
-                            }}
-                            className="text-sm"
-                          />
-                          <Select
-                            value={webhook.method}
-                            onValueChange={(value) => {
-                              const updated = [...settings.webhooks];
-                              updated[index].method = value;
-                              setSettings({ ...settings, webhooks: updated });
-                              setHasUnsavedChanges(true);
-                            }}
-                          >
-                            <SelectTrigger className="text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="GET">GET</SelectItem>
-                              <SelectItem value="POST">POST</SelectItem>
-                              <SelectItem value="PUT">PUT</SelectItem>
-                              <SelectItem value="PATCH">PATCH</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Input
-                          placeholder="https://api.example.com/webhook"
-                          value={webhook.url}
-                          onChange={(e) => {
-                            const updated = [...settings.webhooks];
-                            updated[index].url = e.target.value;
-                            setSettings({ ...settings, webhooks: updated });
-                            setHasUnsavedChanges(true);
-                          }}
-                          className="text-sm"
-                        />
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Description (optional)"
-                            value={webhook.description || ""}
-                            onChange={(e) => {
-                              const updated = [...settings.webhooks];
-                              updated[index].description = e.target.value;
-                              setSettings({ ...settings, webhooks: updated });
-                              setHasUnsavedChanges(true);
-                            }}
-                            className="flex-1 text-sm"
-                          />
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => {
-                              setSettings({
-                                ...settings,
-                                webhooks: settings.webhooks.filter((_, i) => i !== index),
-                              });
-                              setHasUnsavedChanges(true);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={addWebhook}
-                      className="gap-1"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Add Webhook
-                    </Button>
-                  </div>
                 </div>
               </div>
             </Card>
