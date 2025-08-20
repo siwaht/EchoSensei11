@@ -638,6 +638,104 @@ export function registerRoutes(app: Express): Server {
   });
 
 
+  // Get a specific voice by ID from ElevenLabs
+  app.get("/api/voiceai/voices/:voiceId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || integration.status !== "ACTIVE") {
+        return res.status(400).json({ 
+          error: "ElevenLabs integration not configured or active" 
+        });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { voiceId } = req.params;
+
+      // Fetch specific voice from ElevenLabs
+      const response = await callElevenLabsAPI(
+        apiKey,
+        `/v1/voices/${voiceId}`,
+        "GET"
+      );
+
+      res.json(response);
+    } catch (error: any) {
+      console.error("Error fetching voice:", error);
+      if (error.response?.status === 404) {
+        res.status(404).json({ error: "Voice not found. Please check the voice ID." });
+      } else {
+        res.status(500).json({ 
+          error: error.message || "Failed to fetch voice from ElevenLabs" 
+        });
+      }
+    }
+  });
+
+  // Get voice preview audio
+  app.get("/api/voiceai/voices/:voiceId/preview", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || integration.status !== "ACTIVE") {
+        return res.status(400).json({ 
+          error: "ElevenLabs integration not configured or active" 
+        });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { voiceId } = req.params;
+
+      // Generate audio preview using ElevenLabs text-to-speech
+      const audioResponse = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+        {
+          method: 'POST',
+          headers: {
+            'xi-api-key': apiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: "Hello! This is a sample of my voice. I can help you with various tasks and conversations.",
+            model_id: "eleven_monolingual_v1",
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.5,
+            },
+          }),
+        }
+      );
+
+      if (!audioResponse.ok) {
+        const error = await audioResponse.text();
+        console.error("ElevenLabs TTS error:", error);
+        return res.status(audioResponse.status).json({ 
+          error: "Failed to generate voice preview" 
+        });
+      }
+
+      // Stream the audio response back to the client
+      res.setHeader('Content-Type', 'audio/mpeg');
+      const audioBuffer = await audioResponse.arrayBuffer();
+      res.send(Buffer.from(audioBuffer));
+    } catch (error: any) {
+      console.error("Error generating voice preview:", error);
+      res.status(500).json({ 
+        error: error.message || "Failed to generate voice preview" 
+      });
+    }
+  });
+
   // Get available VoiceAI voices (new endpoint)
   app.get("/api/voiceai/voices", isAuthenticated, async (req: any, res) => {
     try {

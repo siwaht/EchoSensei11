@@ -29,6 +29,7 @@ export default function OutboundCalling() {
     name: "",
     agentId: "",
     phoneNumberId: "",
+    voiceId: "",
     recipients: [] as any[],
   });
 
@@ -464,6 +465,20 @@ export default function OutboundCalling() {
                   )}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="voice">Voice ID (Optional)</Label>
+              <Input
+                id="voice"
+                placeholder="Enter ElevenLabs voice ID (e.g., kdmDKE6EkgrWrrykO9Qt)"
+                value={formData.voiceId}
+                onChange={(e) => setFormData({ ...formData, voiceId: e.target.value })}
+                data-testid="input-voice-id"
+              />
+              <p className="text-xs text-gray-500">
+                Override the agent's voice. Leave empty to use agent's default voice. You can also set voice_id per recipient in CSV.
+              </p>
             </div>
 
             <div className="space-y-2">
