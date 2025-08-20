@@ -357,14 +357,10 @@ export default function AgentSettings() {
 
         {/* Settings Tabs */}
         <Tabs defaultValue="conversation" className="space-y-4">
-          <TabsList className="grid grid-cols-5 w-full p-1">
+          <TabsList className="grid grid-cols-4 w-full p-1">
             <TabsTrigger value="conversation" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <MessageSquare className="w-4 h-4" />
               <span className="text-[10px] sm:text-sm">Chat</span>
-            </TabsTrigger>
-            <TabsTrigger value="voice" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
-              <Volume2 className="w-4 h-4" />
-              <span className="text-[10px] sm:text-sm">Voice</span>
             </TabsTrigger>
             <TabsTrigger value="llm" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <Brain className="w-4 h-4" />
