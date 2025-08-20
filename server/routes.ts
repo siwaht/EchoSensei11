@@ -1781,11 +1781,18 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Create recipient records
-      const recipientData = recipients.map((r: any) => ({
-        batchCallId: req.params.id,
-        phoneNumber: r.phone_number || r.phoneNumber,
-        variables: r,
-      }));
+      const recipientData = recipients.map((r: any) => {
+        // Extract phone number and store all data as variables
+        const phoneNumber = r.phone_number || r.phoneNumber;
+        if (!phoneNumber) {
+          throw new Error("Each recipient must have a phone_number field");
+        }
+        return {
+          batchCallId: req.params.id,
+          phoneNumber,
+          variables: r, // Store all fields including overrides
+        };
+      });
 
       const createdRecipients = await storage.createBatchCallRecipients(recipientData);
       
@@ -1902,10 +1909,24 @@ export function registerRoutes(app: Express): Server {
         name: batchCall.name,
         agent_id: agent.elevenLabsAgentId,
         phone_number_id: batchCall.phoneNumberId,
-        recipients: recipients.map(r => ({
-          phone_number: r.phoneNumber,
-          ...(r.variables && typeof r.variables === 'object' ? r.variables : {}),
-        })),
+        recipients: recipients.map(r => {
+          const recipientData: any = {
+            phone_number: r.phoneNumber,
+          };
+          
+          // Add all variables including overrides
+          if (r.variables && typeof r.variables === 'object') {
+            // Include all fields from the CSV, ElevenLabs will handle overrides
+            Object.entries(r.variables).forEach(([key, value]) => {
+              // Skip undefined or empty string values for override fields
+              if (value !== undefined && value !== '') {
+                recipientData[key] = value;
+              }
+            });
+          }
+          
+          return recipientData;
+        }),
       };
 
       // Submit to ElevenLabs

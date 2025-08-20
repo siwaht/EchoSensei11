@@ -156,17 +156,33 @@ export default function OutboundCalling() {
       const text = e.target?.result as string;
       // Parse CSV (simplified - in production, use a proper CSV parser)
       const lines = text.split('\n');
-      const headers = lines[0].split(',').map(h => h.trim());
+      const headers = lines[0].split(',').map(h => h.trim().replace(/\r/g, ''));
       const recipients = lines.slice(1)
         .filter(line => line.trim())
         .map(line => {
-          const values = line.split(',').map(v => v.trim());
+          const values = line.split(',').map(v => v.trim().replace(/\r/g, ''));
           const recipient: any = {};
           headers.forEach((header, index) => {
-            recipient[header] = values[index] || '';
+            const value = values[index] || '';
+            // Store empty strings as undefined for optional override fields
+            if (value === '' && ['language', 'voice_id', 'first_message', 'prompt'].includes(header)) {
+              recipient[header] = undefined;
+            } else {
+              recipient[header] = value;
+            }
           });
           return recipient;
         });
+      
+      // Validate that phone_number column exists
+      if (!headers.includes('phone_number')) {
+        toast({
+          title: "Invalid file format",
+          description: "The CSV file must contain a 'phone_number' column.",
+          variant: "destructive",
+        });
+        return;
+      }
       
       setFormData({ ...formData, recipients });
       toast({
@@ -179,7 +195,7 @@ export default function OutboundCalling() {
 
   // Download template
   const downloadTemplate = () => {
-    const template = "phone_number,name,user_name,language,phone_number\n+1234567890,John Doe,john_doe,en,+1234567890\n+0987654321,Jane Smith,jane_smith,en,+0987654321";
+    const template = "phone_number,language,voice_id,first_message,prompt,city,other_dyn_variable\n1234567890,en,,,,London,\n4851706793,pl,,,,Warsaw,";
     const blob = new Blob([template], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -517,7 +533,9 @@ export default function OutboundCalling() {
                 <div className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                     The <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1">phone_number</span> column is
-                    required. You can also pass certain overrides. Any other columns will be
+                    required. You can also pass overrides like <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1">language</span>,
+                    <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1">voice_id</span>, <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1">first_message</span>,
+                    and <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1">prompt</span>. Any other columns will be
                     passed as dynamic variables.
                   </p>
                   <div className="space-y-1 text-xs">
@@ -526,7 +544,12 @@ export default function OutboundCalling() {
                         <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1">{col}</span>
                         <span className="text-gray-500">→</span>
                         <span className="text-gray-600 dark:text-gray-400">
-                          {col === "phone_number" ? "Phone Number (required)" : "Dynamic variable"}
+                          {col === "phone_number" ? "Phone Number (required)" : 
+                           col === "language" ? "Language override" :
+                           col === "voice_id" ? "Voice override" :
+                           col === "first_message" ? "First message override" :
+                           col === "prompt" ? "Prompt override" :
+                           "Dynamic variable"}
                         </span>
                       </div>
                     ))}
