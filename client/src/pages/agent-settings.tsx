@@ -900,95 +900,38 @@ export default function AgentSettings() {
 
           <TabsContent value="voice" className="space-y-4 mt-4">
             <Card className="p-4">
-              <h3 className="text-base font-semibold mb-4">Voice Settings</h3>
+              <h3 className="text-base font-semibold mb-4">Voice Fine-tuning</h3>
               
-              {/* Voice Selection */}
+              {/* Currently Selected Voice */}
               <div className="mb-6">
-                <Label className="text-sm mb-2">Select Voice</Label>
-                <div className="flex gap-2 mb-3">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                    <Input
-                      placeholder="Search voices..."
-                      value={voiceSearch}
-                      onChange={(e) => setVoiceSearch(e.target.value)}
-                      className="pl-9 text-sm"
-                      data-testid="input-voice-search"
-                    />
+                <Label className="text-sm mb-2">Selected Voice</Label>
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                  <div>
+                    <p className="font-medium text-sm">
+                      {settings.voiceId ? 
+                        (voices.find(v => v.voice_id === settings.voiceId)?.name || "Voice selected") : 
+                        "No voice selected"
+                      }
+                    </p>
+                    {settings.voiceId && voices.find(v => v.voice_id === settings.voiceId) && (
+                      <p className="text-xs text-gray-500">
+                        {voices.find(v => v.voice_id === settings.voiceId)?.labels?.accent || "Conversational"}
+                      </p>
+                    )}
                   </div>
+                  <Button
+                    onClick={() => setLocation("/voices")}
+                    variant="outline"
+                    size="sm"
+                    data-testid="button-change-voice"
+                  >
+                    <Volume2 className="w-4 h-4 mr-2" />
+                    Change Voice
+                  </Button>
                 </div>
-                
-                {voicesLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                    <p className="mt-2 text-sm text-muted-foreground">Loading voices...</p>
-                  </div>
-                ) : (
-                  <div className="max-h-64 overflow-y-auto border rounded-lg">
-                    {filteredVoices.map((voice) => (
-                      <div
-                        key={voice.voice_id}
-                        className={`p-3 border-b last:border-b-0 cursor-pointer transition-colors ${
-                          settings.voiceId === voice.voice_id ? 'bg-primary/10' : 'hover:bg-muted/50'
-                        }`}
-                        onClick={() => {
-                          setSettings({ ...settings, voiceId: voice.voice_id });
-                          setHasUnsavedChanges(true);
-                        }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm">{voice.name}</span>
-                              {settings.voiceId === voice.voice_id && (
-                                <Check className="w-4 h-4 text-primary" />
-                              )}
-                            </div>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {voice.labels?.accent && (
-                                <span className="text-xs px-2 py-0.5 bg-muted rounded-full">
-                                  {voice.labels.accent}
-                                </span>
-                              )}
-                              {voice.labels?.gender && (
-                                <span className="text-xs px-2 py-0.5 bg-muted rounded-full">
-                                  {voice.labels.gender}
-                                </span>
-                              )}
-                              {voice.labels?.age && (
-                                <span className="text-xs px-2 py-0.5 bg-muted rounded-full">
-                                  {voice.labels.age}
-                                </span>
-                              )}
-                            </div>
-                            {voice.labels?.description && (
-                              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                                {voice.labels.description}
-                              </p>
-                            )}
-                          </div>
-                          {voice.preview_url && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                playVoicePreview(voice.voice_id, voice.preview_url!);
-                              }}
-                              data-testid={`button-preview-${voice.voice_id}`}
-                            >
-                              {playingVoiceId === voice.voice_id ? (
-                                <X className="w-4 h-4" />
-                              ) : (
-                                <Volume2 className="w-4 h-4" />
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Select a different voice from the Voice Library
+                </p>
               </div>
 
               {/* Voice Fine-tuning */}
