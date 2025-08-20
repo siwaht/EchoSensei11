@@ -623,7 +623,17 @@ export default function AdminDashboard() {
                   Manage and monitor all organizations on the platform
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-2"
+                onClick={() => {
+                  toast({ 
+                    title: "Create Organization",
+                    description: "Organization creation is not yet implemented. Organizations are created automatically when users sign up."
+                  });
+                }}
+              >
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Create Organization</span>
                 <span className="sm:hidden">Create</span>
@@ -696,6 +706,13 @@ export default function AdminDashboard() {
                               variant="ghost"
                               className="h-7 w-7 p-0"
                               title="View Details"
+                              onClick={() => {
+                                const orgBilling = billingData?.organizationsData.find(o => o.id === org.id);
+                                toast({
+                                  title: org.name,
+                                  description: `Users: ${users.filter(u => u.organizationId === org.id).length}/${org.maxUsers} • Agents: ${orgBilling?.agentCount || 0}/${org.maxAgents} • Calls: ${orgBilling?.totalCalls || 0} • Revenue: $${orgBilling?.estimatedCost?.toFixed(2) || '0.00'}`
+                                });
+                              }}
                             >
                               <Eye className="w-3 h-3" />
                             </Button>
@@ -704,6 +721,24 @@ export default function AdminDashboard() {
                               variant="ghost"
                               className="h-7 w-7 p-0"
                               title="Edit Organization"
+                              onClick={() => {
+                                const orgBilling = billingData?.organizationsData.find(o => o.id === org.id);
+                                setEditingOrg({
+                                  id: org.id,
+                                  name: org.name,
+                                  billingPackage: org.billingPackage || 'starter',
+                                  perCallRate: String(org.perCallRate || 0.30),
+                                  perMinuteRate: String(org.perMinuteRate || 0.30),
+                                  monthlyCredits: String(org.monthlyCredits || 0),
+                                  maxAgents: String(org.maxAgents || 5),
+                                  maxUsers: String(org.maxUsers || 10),
+                                  customRateEnabled: false,
+                                  userCount: users.filter(u => u.organizationId === org.id).length,
+                                  totalCalls: orgBilling?.totalCalls || 0,
+                                  usedCredits: orgBilling?.usedCredits || 0,
+                                  estimatedCost: orgBilling?.estimatedCost || 0,
+                                });
+                              }}
                             >
                               <Edit className="w-3 h-3" />
                             </Button>
@@ -712,6 +747,24 @@ export default function AdminDashboard() {
                               variant="ghost"
                               className="h-7 w-7 p-0"
                               title="Settings"
+                              onClick={() => {
+                                const orgBilling = billingData?.organizationsData.find(o => o.id === org.id);
+                                setEditingOrg({
+                                  id: org.id,
+                                  name: org.name,
+                                  billingPackage: org.billingPackage || 'starter',
+                                  perCallRate: String(org.perCallRate || 0.30),
+                                  perMinuteRate: String(org.perMinuteRate || 0.30),
+                                  monthlyCredits: String(org.monthlyCredits || 0),
+                                  maxAgents: String(org.maxAgents || 5),
+                                  maxUsers: String(org.maxUsers || 10),
+                                  customRateEnabled: false,
+                                  userCount: users.filter(u => u.organizationId === org.id).length,
+                                  totalCalls: orgBilling?.totalCalls || 0,
+                                  usedCredits: orgBilling?.usedCredits || 0,
+                                  estimatedCost: orgBilling?.estimatedCost || 0,
+                                });
+                              }}
                             >
                               <Settings className="w-3 h-3" />
                             </Button>
