@@ -709,6 +709,86 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Create a new agent on ElevenLabs
+  app.post("/api/agents/create", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || integration.status !== "ACTIVE") {
+        return res.status(400).json({ message: "Active ElevenLabs integration required" });
+      }
+
+      const { name, firstMessage, systemPrompt, language, voiceId } = req.body;
+      
+      if (!name || !firstMessage || !systemPrompt) {
+        return res.status(400).json({ message: "Name, first message, and system prompt are required" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      
+      // Create agent on ElevenLabs
+      const agentPayload: any = {
+        name,
+        conversation_config: {
+          agent: {
+            prompt: {
+              prompt: systemPrompt
+            },
+            first_message: firstMessage,
+            language: language || "en"
+          },
+          tts: voiceId ? {
+            voice_id: voiceId
+          } : undefined
+        }
+      };
+
+      console.log("Creating agent on ElevenLabs:", agentPayload);
+      
+      const elevenLabsResponse = await callElevenLabsAPI(
+        apiKey,
+        "/v1/convai/agents",
+        "POST",
+        agentPayload
+      );
+
+      console.log("ElevenLabs agent created:", elevenLabsResponse);
+
+      // Save agent to our database
+      const agentData = insertAgentSchema.parse({
+        organizationId: user.organizationId,
+        elevenLabsAgentId: elevenLabsResponse.agent_id,
+        name: name,
+        description: `Created via VoiceAI Dashboard`,
+        firstMessage: firstMessage,
+        systemPrompt: systemPrompt,
+        language: language || "en",
+        voiceId: voiceId,
+        isActive: true
+      });
+
+      const newAgent = await storage.createAgent(agentData);
+      
+      // Update integration status to active
+      await storage.updateIntegrationStatus(integration.id, "ACTIVE", new Date());
+
+      res.json({
+        ...newAgent,
+        message: "Agent created successfully"
+      });
+    } catch (error) {
+      console.error("Error creating agent:", error);
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Failed to create agent" 
+      });
+    }
+  });
+
   app.post("/api/agents", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -779,9 +859,14 @@ export function registerRoutes(app: Express): Server {
             
             
             if (agentConfig.tool_ids) {
+              // Map tool_ids to the expected tools structure
               agentData.tools = {
-                toolIds: agentConfig.tool_ids,
-                webhooks: [],
+                customTools: agentConfig.tool_ids ? agentConfig.tool_ids.map((id: string) => ({
+                  id,
+                  name: id,
+                  type: 'integration',
+                  enabled: true
+                })) : []
               };
             }
             
