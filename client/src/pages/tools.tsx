@@ -16,7 +16,8 @@ import {
   ChevronDown, ChevronRight, Settings2, Zap, Hammer,
   Sheet, Calendar, CheckCircle, XCircle, Database,
   Brain, FileText, Upload, Search, Phone, Languages,
-  SkipForward, UserPlus, Voicemail, Hash
+  SkipForward, UserPlus, Voicemail, Hash, Server,
+  Mic, AudioLines, Bot, Key, Shield, Sparkles
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -78,6 +79,35 @@ interface RAGToolConfig {
   }>;
 }
 
+interface MCPServerConfig {
+  enabled: boolean;
+  apiKey?: string;
+  basePath?: string;
+  deploymentType: 'docker' | 'uvx' | 'pip';
+  approvalMode: 'always_ask' | 'fine_grained' | 'no_approval';
+  enabledTools: {
+    textToSpeech: boolean;
+    speechToSpeech: boolean;
+    voiceCloning: boolean;
+    voiceDesign: boolean;
+    audioTranscription: boolean;
+    audioIsolation: boolean;
+    conversationalAgents: boolean;
+    outboundCalls: boolean;
+  };
+  voiceSettings?: {
+    defaultVoiceId?: string;
+    stability?: number;
+    similarityBoost?: number;
+    style?: number;
+  };
+  agentSettings?: {
+    defaultAgentId?: string;
+    maxCallDuration?: number;
+    enableRecording?: boolean;
+  };
+}
+
 export default function Tools() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -135,6 +165,34 @@ export default function Tools() {
       systemPrompt: '',
       knowledgeBases: [],
     } as RAGToolConfig,
+    mcpServer: {
+      enabled: false,
+      apiKey: '',
+      basePath: '',
+      deploymentType: 'docker' as 'docker' | 'uvx' | 'pip',
+      approvalMode: 'always_ask' as 'always_ask' | 'fine_grained' | 'no_approval',
+      enabledTools: {
+        textToSpeech: true,
+        speechToSpeech: true,
+        voiceCloning: true,
+        voiceDesign: true,
+        audioTranscription: true,
+        audioIsolation: true,
+        conversationalAgents: true,
+        outboundCalls: false,
+      },
+      voiceSettings: {
+        defaultVoiceId: '',
+        stability: 0.5,
+        similarityBoost: 0.75,
+        style: 0,
+      },
+      agentSettings: {
+        defaultAgentId: '',
+        maxCallDuration: 300,
+        enableRecording: true,
+      },
+    } as MCPServerConfig,
   });
 
   // Load agent's tools configuration when agent is selected
@@ -144,6 +202,7 @@ export default function Tools() {
       const googleSheetsIntegration = tools.integrations?.find((i: any) => i.type === 'google-sheets');
       const googleCalendarIntegration = tools.integrations?.find((i: any) => i.type === 'google-calendar');
       const ragToolConfig = tools.customTools?.find((t: any) => t.type === 'rag');
+      const mcpServerConfig = tools.customTools?.find((t: any) => t.type === 'mcp-server');
       
       setToolsConfig({
         systemTools: tools.systemTools || {
@@ -181,6 +240,34 @@ export default function Tools() {
           temperature: 0.7,
           systemPrompt: '',
           knowledgeBases: [],
+        },
+        mcpServer: mcpServerConfig?.configuration || {
+          enabled: false,
+          apiKey: '',
+          basePath: '',
+          deploymentType: 'docker',
+          approvalMode: 'always_ask',
+          enabledTools: {
+            textToSpeech: true,
+            speechToSpeech: true,
+            voiceCloning: true,
+            voiceDesign: true,
+            audioTranscription: true,
+            audioIsolation: true,
+            conversationalAgents: true,
+            outboundCalls: false,
+          },
+          voiceSettings: {
+            defaultVoiceId: '',
+            stability: 0.5,
+            similarityBoost: 0.75,
+            style: 0,
+          },
+          agentSettings: {
+            defaultAgentId: '',
+            maxCallDuration: 300,
+            enableRecording: true,
+          },
         },
       });
     }
@@ -247,7 +334,7 @@ export default function Tools() {
     }
 
     // Build custom tools array
-    const customTools = [...toolsConfig.customTools.filter(t => t.type !== 'rag')];
+    const customTools = [...toolsConfig.customTools.filter(t => t.type !== 'rag' && t.type !== 'mcp-server')];
     
     // Add RAG tool if configured
     if (toolsConfig.ragTool.enabled) {
@@ -256,6 +343,17 @@ export default function Tools() {
         name: toolsConfig.ragTool.name,
         type: 'rag',
         configuration: toolsConfig.ragTool,
+        enabled: true,
+      });
+    }
+    
+    // Add MCP Server if configured
+    if (toolsConfig.mcpServer.enabled) {
+      customTools.push({
+        id: 'mcp-server',
+        name: 'ElevenLabs MCP Server',
+        type: 'mcp-server',
+        configuration: toolsConfig.mcpServer,
         enabled: true,
       });
     }
@@ -1489,6 +1587,436 @@ export default function Tools() {
                           <li>Configure retrieval settings for optimal performance</li>
                           <li>Your agent can now answer questions using the knowledge base</li>
                         </ol>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Card>
+
+            {/* MCP Server Integration */}
+            <Card className="p-4 sm:p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <Server className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-semibold">ElevenLabs MCP Server</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                      Model Context Protocol for AI-powered voice and audio capabilities
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={toolsConfig.mcpServer.enabled}
+                  onCheckedChange={(checked) => {
+                    setToolsConfig({
+                      ...toolsConfig,
+                      mcpServer: {
+                        ...toolsConfig.mcpServer,
+                        enabled: checked,
+                      },
+                    });
+                    setHasUnsavedChanges(true);
+                  }}
+                  data-testid="switch-mcp-server"
+                />
+              </div>
+
+              {toolsConfig.mcpServer.enabled && (
+                <div className="space-y-4 pt-4 border-t">
+                  {/* API Configuration */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Key className="w-4 h-4" />
+                      API Configuration
+                    </h4>
+                    
+                    <div>
+                      <Label htmlFor="mcp-api-key" className="text-sm">
+                        ElevenLabs API Key
+                      </Label>
+                      <Input
+                        id="mcp-api-key"
+                        type="password"
+                        placeholder="Enter your ElevenLabs API key"
+                        value={toolsConfig.mcpServer.apiKey || ""}
+                        onChange={(e) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            mcpServer: {
+                              ...toolsConfig.mcpServer,
+                              apiKey: e.target.value,
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm mt-1"
+                        data-testid="input-mcp-api-key"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Your ElevenLabs API key for accessing voice and audio services
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="mcp-base-path" className="text-sm">
+                        Base Path (Optional)
+                      </Label>
+                      <Input
+                        id="mcp-base-path"
+                        placeholder="/path/to/your/directory"
+                        value={toolsConfig.mcpServer.basePath || ""}
+                        onChange={(e) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            mcpServer: {
+                              ...toolsConfig.mcpServer,
+                              basePath: e.target.value,
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm mt-1"
+                        data-testid="input-mcp-base-path"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Local directory for storing audio files and resources
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Deployment Configuration */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Settings2 className="w-4 h-4" />
+                      Deployment Settings
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="deployment-type" className="text-sm">
+                          Deployment Type
+                        </Label>
+                        <Select
+                          value={toolsConfig.mcpServer.deploymentType}
+                          onValueChange={(value: 'docker' | 'uvx' | 'pip') => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              mcpServer: {
+                                ...toolsConfig.mcpServer,
+                                deploymentType: value,
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                        >
+                          <SelectTrigger className="text-sm mt-1" data-testid="select-deployment-type">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="docker">Docker Container</SelectItem>
+                            <SelectItem value="uvx">UVX (Recommended)</SelectItem>
+                            <SelectItem value="pip">Python Package</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="approval-mode" className="text-sm">
+                          Security Mode
+                        </Label>
+                        <Select
+                          value={toolsConfig.mcpServer.approvalMode}
+                          onValueChange={(value: 'always_ask' | 'fine_grained' | 'no_approval') => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              mcpServer: {
+                                ...toolsConfig.mcpServer,
+                                approvalMode: value,
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                        >
+                          <SelectTrigger className="text-sm mt-1" data-testid="select-approval-mode">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="always_ask">Always Ask (Most Secure)</SelectItem>
+                            <SelectItem value="fine_grained">Fine-Grained Control</SelectItem>
+                            <SelectItem value="no_approval">No Approval (Trust Mode)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Enabled Tools */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Wrench className="w-4 h-4" />
+                      Enabled Capabilities
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Mic className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">Text to Speech</span>
+                        </div>
+                        <Switch
+                          checked={toolsConfig.mcpServer.enabledTools.textToSpeech}
+                          onCheckedChange={(checked) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              mcpServer: {
+                                ...toolsConfig.mcpServer,
+                                enabledTools: {
+                                  ...toolsConfig.mcpServer.enabledTools,
+                                  textToSpeech: checked,
+                                },
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          data-testid="switch-text-to-speech"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <AudioLines className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">Speech to Speech</span>
+                        </div>
+                        <Switch
+                          checked={toolsConfig.mcpServer.enabledTools.speechToSpeech}
+                          onCheckedChange={(checked) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              mcpServer: {
+                                ...toolsConfig.mcpServer,
+                                enabledTools: {
+                                  ...toolsConfig.mcpServer.enabledTools,
+                                  speechToSpeech: checked,
+                                },
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          data-testid="switch-speech-to-speech"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <UserPlus className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">Voice Cloning</span>
+                        </div>
+                        <Switch
+                          checked={toolsConfig.mcpServer.enabledTools.voiceCloning}
+                          onCheckedChange={(checked) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              mcpServer: {
+                                ...toolsConfig.mcpServer,
+                                enabledTools: {
+                                  ...toolsConfig.mcpServer.enabledTools,
+                                  voiceCloning: checked,
+                                },
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          data-testid="switch-voice-cloning"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">Voice Design</span>
+                        </div>
+                        <Switch
+                          checked={toolsConfig.mcpServer.enabledTools.voiceDesign}
+                          onCheckedChange={(checked) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              mcpServer: {
+                                ...toolsConfig.mcpServer,
+                                enabledTools: {
+                                  ...toolsConfig.mcpServer.enabledTools,
+                                  voiceDesign: checked,
+                                },
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          data-testid="switch-voice-design"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">Audio Transcription</span>
+                        </div>
+                        <Switch
+                          checked={toolsConfig.mcpServer.enabledTools.audioTranscription}
+                          onCheckedChange={(checked) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              mcpServer: {
+                                ...toolsConfig.mcpServer,
+                                enabledTools: {
+                                  ...toolsConfig.mcpServer.enabledTools,
+                                  audioTranscription: checked,
+                                },
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          data-testid="switch-audio-transcription"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Bot className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">Conversational Agents</span>
+                        </div>
+                        <Switch
+                          checked={toolsConfig.mcpServer.enabledTools.conversationalAgents}
+                          onCheckedChange={(checked) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              mcpServer: {
+                                ...toolsConfig.mcpServer,
+                                enabledTools: {
+                                  ...toolsConfig.mcpServer.enabledTools,
+                                  conversationalAgents: checked,
+                                },
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          data-testid="switch-conversational-agents"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">Outbound Calls</span>
+                        </div>
+                        <Switch
+                          checked={toolsConfig.mcpServer.enabledTools.outboundCalls}
+                          onCheckedChange={(checked) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              mcpServer: {
+                                ...toolsConfig.mcpServer,
+                                enabledTools: {
+                                  ...toolsConfig.mcpServer.enabledTools,
+                                  outboundCalls: checked,
+                                },
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          data-testid="switch-outbound-calls"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Voice Settings */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Mic className="w-4 h-4" />
+                      Voice Settings
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <Label className="text-sm">Stability</Label>
+                          <span className="text-sm text-muted-foreground">
+                            {(toolsConfig.mcpServer.voiceSettings?.stability || 0.5).toFixed(2)}
+                          </span>
+                        </div>
+                        <Slider
+                          value={[toolsConfig.mcpServer.voiceSettings?.stability || 0.5]}
+                          onValueChange={(value) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              mcpServer: {
+                                ...toolsConfig.mcpServer,
+                                voiceSettings: {
+                                  ...toolsConfig.mcpServer.voiceSettings,
+                                  stability: value[0],
+                                },
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          className="w-full"
+                          data-testid="slider-mcp-stability"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <Label className="text-sm">Similarity Boost</Label>
+                          <span className="text-sm text-muted-foreground">
+                            {(toolsConfig.mcpServer.voiceSettings?.similarityBoost || 0.75).toFixed(2)}
+                          </span>
+                        </div>
+                        <Slider
+                          value={[toolsConfig.mcpServer.voiceSettings?.similarityBoost || 0.75]}
+                          onValueChange={(value) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              mcpServer: {
+                                ...toolsConfig.mcpServer,
+                                voiceSettings: {
+                                  ...toolsConfig.mcpServer.voiceSettings,
+                                  similarityBoost: value[0],
+                                },
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          className="w-full"
+                          data-testid="slider-mcp-similarity"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <div className="flex gap-2">
+                      <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                      <div className="text-sm text-blue-800 dark:text-blue-200">
+                        <p className="font-medium">MCP Server Features</p>
+                        <ul className="text-xs mt-1 space-y-1 list-disc list-inside">
+                          <li>Generate speech from text with multiple voices</li>
+                          <li>Clone and design custom voices</li>
+                          <li>Transcribe audio files to text</li>
+                          <li>Create conversational AI agents</li>
+                          <li>Make outbound calls with AI agents</li>
+                          <li>Process and isolate audio elements</li>
+                        </ul>
+                        <p className="text-xs mt-2 font-medium">
+                          Note: API calls consume ElevenLabs credits (10,000 free monthly)
+                        </p>
                       </div>
                     </div>
                   </div>
