@@ -5,10 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Play, UserCheck, Settings } from "lucide-react";
+import { Search, Play, UserCheck, Settings } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Agent } from "@shared/schema";
@@ -30,8 +29,6 @@ export default function Voices() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [showFilters, setShowFilters] = useState(false);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [showAgentDialog, setShowAgentDialog] = useState(false);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
@@ -71,26 +68,19 @@ export default function Voices() {
     },
   });
 
-  // Filter voices based on search and category
+  // Filter voices based on search
   const filteredVoices = useMemo(() => {
-    let filtered = voices;
-
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (voice) =>
-          voice.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          voice.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Filter by category
-    if (selectedCategory !== "all") {
-      filtered = filtered.filter((voice) => voice.category === selectedCategory);
-    }
-
-    return filtered;
-  }, [voices, searchQuery, selectedCategory]);
+    if (!searchQuery) return voices;
+    
+    const query = searchQuery.toLowerCase();
+    return voices.filter(
+      (voice) =>
+        voice.name.toLowerCase().includes(query) ||
+        voice.description?.toLowerCase().includes(query) ||
+        voice.labels?.accent?.toLowerCase().includes(query) ||
+        voice.labels?.gender?.toLowerCase().includes(query)
+    );
+  }, [voices, searchQuery]);
 
   // Get language from labels
   const getLanguage = (voice: Voice): string => {
@@ -202,64 +192,26 @@ export default function Voices() {
           </h2>
         </div>
 
-        {/* Search and Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search voices..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-              data-testid="input-search-voices"
-            />
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className="gap-2"
-            data-testid="button-filters"
-          >
-            <Filter className="w-4 h-4" />
-            Filters
-            {selectedCategory !== "all" && (
-              <Badge variant="secondary" className="ml-1">
-                1
-              </Badge>
-            )}
-          </Button>
-        </div>
-
-        {/* Category Filter */}
-        {showFilters && (
-          <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <label className="text-sm font-medium">Category</label>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-[200px]" data-testid="select-category">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="conversational">Conversational</SelectItem>
-                <SelectItem value="narration">Narration</SelectItem>
-                <SelectItem value="news">News</SelectItem>
-                <SelectItem value="audiobook">Audiobook</SelectItem>
-                <SelectItem value="gaming">Gaming</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelectedCategory("all");
-                setSearchQuery("");
-              }}
-              data-testid="button-reset-filters"
+        {/* Search */}
+        <div className="relative flex-1 max-w-lg">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Search by name, accent, or gender..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+            data-testid="input-search-voices"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              data-testid="button-clear-search"
             >
-              Reset filters
-            </Button>
-          </div>
-        )}
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Results Header */}
@@ -282,8 +234,8 @@ export default function Voices() {
               No voices found
             </h3>
             <p className="text-gray-500 dark:text-gray-400">
-              {searchQuery || selectedCategory !== "all"
-                ? "Try adjusting your filters or search query"
+              {searchQuery
+                ? "Try a different search term"
                 : "No voices available"}
             </p>
           </div>
@@ -356,10 +308,6 @@ export default function Voices() {
                       )}
                     </div>
 
-                    {/* Category */}
-                    <span className="text-sm text-gray-500">
-                      {voice.category || "Conversational"}
-                    </span>
                   </div>
                 </div>
               </div>
