@@ -41,15 +41,11 @@ export default function Voices() {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 
   // Fetch voices from API
-  const { data: voices = [], isLoading } = useQuery<Voice[]>({
+  const { data: voicesData, isLoading } = useQuery<Voice[]>({
     queryKey: ["/api/voiceai/voices"],
-    onSuccess: (data) => {
-      // Log first voice to see available metadata
-      if (data && data.length > 0) {
-        console.log("Voice metadata example:", data[0]);
-      }
-    },
   });
+  
+  const voices: Voice[] = voicesData || [];
 
   // Fetch agents
   const { data: agents = [] } = useQuery<Agent[]>({
@@ -82,15 +78,18 @@ export default function Voices() {
 
   // Filter voices based on search
   const filteredVoices = useMemo(() => {
-    if (!searchQuery) return voices;
+    if (!searchQuery || !voices) return voices;
     
     const query = searchQuery.toLowerCase();
     return voices.filter(
-      (voice) =>
-        voice.name.toLowerCase().includes(query) ||
-        voice.description?.toLowerCase().includes(query) ||
-        voice.labels?.accent?.toLowerCase().includes(query) ||
-        voice.labels?.gender?.toLowerCase().includes(query)
+      (voice: Voice) => {
+        const nameMatch = voice.name.toLowerCase().includes(query);
+        const descMatch = voice.description?.toLowerCase().includes(query);
+        const labelMatch = voice.labels && Object.values(voice.labels).some(
+          (value) => typeof value === 'string' && value.toLowerCase().includes(query)
+        );
+        return nameMatch || descMatch || labelMatch;
+      }
     );
   }, [voices, searchQuery]);
 
@@ -255,7 +254,7 @@ export default function Voices() {
     );
   }
 
-  const selectedVoice = voices.find(v => v.voice_id === selectedVoiceId);
+  const selectedVoice = voices.find((v: Voice) => v.voice_id === selectedVoiceId);
 
   return (
     <div className="space-y-6">
@@ -317,7 +316,7 @@ export default function Voices() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredVoices.map((voice) => (
+          {filteredVoices.map((voice: Voice) => (
             <Card
               key={voice.voice_id}
               className="p-4 hover:shadow-md transition-shadow"
@@ -373,8 +372,8 @@ export default function Voices() {
                     {/* Language */}
                     {voice.labels && Object.entries(voice.labels).map(([key, value]) => {
                       // Show all labels as badges
-                      if (key && value) {
-                        let displayValue = value;
+                      if (key && value && typeof value === 'string') {
+                        let displayValue: string = value;
                         let variant: "default" | "secondary" | "outline" = "secondary";
                         
                         // Format certain labels
@@ -466,7 +465,7 @@ export default function Voices() {
                     <div>
                       <h4 className="font-medium">{agent.name}</h4>
                       <p className="text-sm text-gray-500">
-                        {agent.voiceId ? `Current voice: ${voices.find(v => v.voice_id === agent.voiceId)?.name || agent.voiceId}` : "No voice assigned"}
+                        {agent.voiceId ? `Current voice: ${voices.find((v: Voice) => v.voice_id === agent.voiceId)?.name || agent.voiceId}` : "No voice assigned"}
                       </p>
                     </div>
                     <Button
