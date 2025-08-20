@@ -558,7 +558,7 @@ export default function AgentSettings() {
                     })}
                     
                     {/* Divider if there are quick action buttons */}
-                    {quickActionButtons.length > 0 && (settings.promptTemplates.length > 0 || systemTemplates.length > 0) && (
+                    {quickActionButtons.length > 0 && settings.promptTemplates.length > 0 && (
                       <div className="w-full h-px bg-border my-1" />
                     )}
                     
@@ -586,41 +586,6 @@ export default function AgentSettings() {
                       </Button>
                     ))}
                     
-                    {/* Divider if there are custom templates */}
-                    {settings.promptTemplates.length > 0 && systemTemplates.length > 0 && (
-                      <div className="w-full h-px bg-border my-1" />
-                    )}
-                    
-                    {/* System Template Buttons (Admin-managed) */}
-                    {systemTemplates.map((template) => {
-                      const iconMap: Record<string, any> = {
-                        User, Shield, Webhook, Sheet, Calendar, Database, Sparkles
-                      };
-                      const IconComponent = iconMap[template.icon] || FileText;
-                      
-                      return (
-                        <Button
-                          key={template.id}
-                          type="button"
-                          size="sm"
-                          className={`h-8 px-3 text-xs gap-1.5 text-white border-0 ${template.color || 'bg-gray-500 hover:bg-gray-600'}`}
-                          onClick={() => {
-                            const currentPrompt = settings.systemPrompt || '';
-                            const newPrompt = currentPrompt ? `${currentPrompt}\n\n${template.content}` : template.content;
-                            setSettings({ ...settings, systemPrompt: newPrompt });
-                            setHasUnsavedChanges(true);
-                            toast({
-                              title: "Template inserted",
-                              description: `"${template.name}" has been added to the system prompt`,
-                            });
-                          }}
-                          data-testid={`button-system-template-${template.id}`}
-                        >
-                          <IconComponent className="w-3.5 h-3.5" />
-                          {template.name}
-                        </Button>
-                      );
-                    })}
                   </div>
                   
                   <Textarea
