@@ -3,8 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Calendar, DollarSign, Crown, TrendingUp } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function Billing() {
+  const [, setLocation] = useLocation();
   const { data: stats, isLoading } = useQuery({
     queryKey: ["/api/analytics/organization"],
   });
@@ -87,7 +89,11 @@ export default function Billing() {
           <div className="text-sm text-gray-600 dark:text-gray-400 mb-4" data-testid="text-plan-price">
             $49/month + usage
           </div>
-          <Button className="w-full" data-testid="button-manage-plan">
+          <Button 
+            className="w-full" 
+            data-testid="button-manage-plan"
+            onClick={() => setLocation("/checkout")}
+          >
             Manage Plan
           </Button>
         </Card>
