@@ -736,7 +736,7 @@ You have access to multiple tools and integrations:
                       setSettings({ ...settings, systemPrompt: e.target.value });
                       setHasUnsavedChanges(true);
                     }}
-                    className="min-h-[200px] max-h-[600px] text-sm resize-y"
+                    className="min-h-[350px] max-h-[800px] text-sm resize-y font-mono"
                     data-testid="textarea-system-prompt"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
