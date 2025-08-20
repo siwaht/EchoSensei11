@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Phone, Users, Clock, AlertCircle, Upload, Download, Play, Pause, Trash2 } from "lucide-react";
+import { Search, Plus, Phone, Users, Clock, AlertCircle, Upload, Download, Play, Pause, Trash2, TestTube } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Agent, PhoneNumber, BatchCall } from "@shared/schema";
 
@@ -20,6 +20,8 @@ export default function OutboundCalling() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedBatchCall, setSelectedBatchCall] = useState<BatchCall | null>(null);
+  const [showTestDialog, setShowTestDialog] = useState(false);
+  const [testPhoneNumber, setTestPhoneNumber] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Form state for creating batch call
@@ -93,6 +95,30 @@ export default function OutboundCalling() {
     onError: (error: any) => {
       toast({
         title: "Failed to submit batch call",
+        description: error.message || "An error occurred",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Test call mutation
+  const testCall = useMutation({
+    mutationFn: async (data: { batchCallId: string; phoneNumber: string }) => {
+      return await apiRequest("POST", `/api/batch-calls/${data.batchCallId}/test`, {
+        phoneNumber: data.phoneNumber,
+      });
+    },
+    onSuccess: () => {
+      setShowTestDialog(false);
+      setTestPhoneNumber("");
+      toast({
+        title: "Test call initiated",
+        description: "Your test call has been started. You should receive a call shortly.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to start test call",
         description: error.message || "An error occurred",
         variant: "destructive",
       });
@@ -298,6 +324,19 @@ export default function OutboundCalling() {
                         data-testid={`button-edit-${batchCall.id}`}
                       >
                         Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedBatchCall(batchCall);
+                          setShowTestDialog(true);
+                        }}
+                        disabled={!batchCall.agentId || !batchCall.phoneNumberId}
+                        data-testid={`button-test-${batchCall.id}`}
+                      >
+                        <TestTube className="w-4 h-4 mr-1" />
+                        Test
                       </Button>
                       <Button
                         size="sm"
@@ -526,6 +565,87 @@ export default function OutboundCalling() {
               data-testid="button-save-batch-call"
             >
               {createBatchCall.isPending ? "Creating..." : selectedBatchCall ? "Save Changes" : "Create Batch Call"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Call Dialog */}
+      <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Test Batch Call</DialogTitle>
+            <DialogDescription>
+              Make a test call to verify your agent and settings are working correctly before submitting the full batch.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="test-phone">Test Phone Number</Label>
+              <Input
+                id="test-phone"
+                placeholder="+1234567890"
+                value={testPhoneNumber}
+                onChange={(e) => setTestPhoneNumber(e.target.value)}
+                data-testid="input-test-phone-number"
+              />
+              <p className="text-xs text-gray-500">
+                Enter the phone number where you want to receive the test call
+              </p>
+            </div>
+
+            {selectedBatchCall && (
+              <div className="space-y-2">
+                <Label>Test Call Details</Label>
+                <div className="text-sm space-y-1 text-gray-600 dark:text-gray-400">
+                  <p>• Batch: {selectedBatchCall.name}</p>
+                  <p>• Agent: {agents.find(a => a.id === selectedBatchCall.agentId)?.name || "Unknown"}</p>
+                  <p>• From: {phoneNumbers.find(p => p.id === selectedBatchCall.phoneNumberId)?.phoneNumber || "Unknown"}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+              <div className="flex gap-2">
+                <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                <div className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <p className="font-medium">Test calls are billed at regular rates</p>
+                  <p className="text-xs mt-1">Standard per-minute charges apply to test calls</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowTestDialog(false);
+                setTestPhoneNumber("");
+                setSelectedBatchCall(null);
+              }}
+              data-testid="button-cancel-test"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedBatchCall && testPhoneNumber) {
+                  testCall.mutate({
+                    batchCallId: selectedBatchCall.id,
+                    phoneNumber: testPhoneNumber,
+                  });
+                }
+              }}
+              disabled={
+                !testPhoneNumber ||
+                !selectedBatchCall ||
+                testCall.isPending
+              }
+              data-testid="button-start-test-call"
+            >
+              {testCall.isPending ? "Starting..." : "Start Test Call"}
             </Button>
           </DialogFooter>
         </DialogContent>

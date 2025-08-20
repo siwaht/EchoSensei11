@@ -1801,6 +1801,71 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.post("/api/batch-calls/:id/test", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = req.user.organizationId;
+      const { phoneNumber } = req.body;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ error: "Phone number is required for test call" });
+      }
+      
+      const batchCall = await storage.getBatchCall(req.params.id, organizationId);
+      
+      if (!batchCall) {
+        return res.status(404).json({ error: "Batch call not found" });
+      }
+
+      // Get the integration
+      const integration = await storage.getIntegration(organizationId, "elevenlabs");
+      if (!integration || integration.status !== "ACTIVE") {
+        return res.status(400).json({ 
+          error: "ElevenLabs integration not configured or active" 
+        });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+
+      // Get agent details
+      const agent = await storage.getAgent(organizationId, batchCall.agentId);
+      if (!agent) {
+        return res.status(400).json({ error: "Agent not found" });
+      }
+
+      // Get phone number details
+      const phoneNumberRecord = await storage.getPhoneNumber(batchCall.phoneNumberId || "", organizationId);
+      if (!phoneNumberRecord) {
+        return res.status(400).json({ error: "Phone number not found" });
+      }
+
+      // Make a single test call using ElevenLabs conversational AI API
+      // This creates a single outbound call for testing
+      const payload = {
+        agent_id: agent.elevenLabsAgentId,
+        phone_number_id: phoneNumberRecord.elevenLabsPhoneId,
+        customer_phone_number: phoneNumber,
+        initial_message: "This is a test call for your batch calling campaign.",
+      };
+
+      // Call ElevenLabs to initiate the test call
+      const response = await callElevenLabsAPI(
+        apiKey,
+        "/v1/convai/conversations",
+        "POST",
+        payload
+      );
+
+      res.json({ 
+        message: "Test call initiated successfully", 
+        conversationId: response.conversation_id || response.id,
+        status: response.status
+      });
+    } catch (error: any) {
+      console.error("Error initiating test call:", error);
+      res.status(500).json({ error: error.message || "Failed to initiate test call" });
+    }
+  });
+
   app.post("/api/batch-calls/:id/submit", isAuthenticated, async (req: any, res) => {
     try {
       const organizationId = req.user.organizationId;
