@@ -508,57 +508,39 @@ export default function AgentSettings() {
                   
                   {/* Quick Action Buttons - Default Templates */}
                   <div className="flex flex-wrap gap-1.5 mb-2">
-                    {/* Quick Action Buttons (System and User) */}
-                    {quickActionButtons.map((button) => {
+                    {/* System Template Buttons (Admin-managed) */}
+                    {systemTemplates.map((template) => {
                       const iconMap: Record<string, any> = {
-                        User, Shield, Webhook, Sheet, Calendar, Database, 
-                        FileText, Sparkles, Zap, Globe, Brain, Wrench
+                        User, Shield, Webhook, Sheet, Calendar, Database, Sparkles
                       };
-                      const IconComponent = iconMap[button.icon] || Sparkles;
-                      
-                      // Map old color classes to new dark mode compatible ones
-                      const colorMap: Record<string, string> = {
-                        'bg-blue-500 hover:bg-blue-600': 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700',
-                        'bg-green-500 hover:bg-green-600': 'bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700',
-                        'bg-red-500 hover:bg-red-600': 'bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700',
-                        'bg-purple-500 hover:bg-purple-600': 'bg-purple-500 hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700',
-                        'bg-yellow-500 hover:bg-yellow-600': 'bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700',
-                        'bg-pink-500 hover:bg-pink-600': 'bg-pink-500 hover:bg-pink-600 dark:bg-pink-600 dark:hover:bg-pink-700',
-                        'bg-indigo-500 hover:bg-indigo-600': 'bg-indigo-500 hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700',
-                        'bg-gray-500 hover:bg-gray-600': 'bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700',
-                      };
-                      
-                      const buttonColor = colorMap[button.color] || button.color || 'bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700';
+                      const IconComponent = iconMap[template.icon] || FileText;
                       
                       return (
                         <Button
-                          key={button.id}
+                          key={template.id}
                           type="button"
                           size="sm"
-                          className={`h-8 px-3 text-xs gap-1.5 text-white border-0 ${buttonColor}`}
+                          className={`h-8 px-3 text-xs gap-1.5 text-white border-0 ${template.color || 'bg-gray-500 hover:bg-gray-600'}`}
                           onClick={() => {
                             const currentPrompt = settings.systemPrompt || '';
-                            const newPrompt = currentPrompt ? `${currentPrompt}\n\n${button.prompt}` : button.prompt;
+                            const newPrompt = currentPrompt ? `${currentPrompt}\n\n${template.content}` : template.content;
                             setSettings({ ...settings, systemPrompt: newPrompt });
                             setHasUnsavedChanges(true);
                             toast({
-                              title: "Quick action applied",
-                              description: `"${button.name}" has been added to the system prompt`,
+                              title: "Template inserted",
+                              description: `"${template.name}" has been added to the system prompt`,
                             });
                           }}
-                          data-testid={`button-quick-action-${button.id}`}
+                          data-testid={`button-system-template-${template.id}`}
                         >
                           <IconComponent className="w-3.5 h-3.5" />
-                          {button.name}
-                          {button.isSystem && (
-                            <Shield className="w-3 h-3 ml-0.5 opacity-60" />
-                          )}
+                          {template.name}
                         </Button>
                       );
                     })}
                     
-                    {/* Divider if there are quick action buttons */}
-                    {quickActionButtons.length > 0 && settings.promptTemplates.length > 0 && (
+                    {/* Divider if there are system templates */}
+                    {systemTemplates.length > 0 && settings.promptTemplates.length > 0 && (
                       <div className="w-full h-px bg-border my-1" />
                     )}
                     
