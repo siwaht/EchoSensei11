@@ -516,12 +516,26 @@ export default function AgentSettings() {
                       };
                       const IconComponent = iconMap[button.icon] || Sparkles;
                       
+                      // Map old color classes to new dark mode compatible ones
+                      const colorMap: Record<string, string> = {
+                        'bg-blue-500 hover:bg-blue-600': 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700',
+                        'bg-green-500 hover:bg-green-600': 'bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700',
+                        'bg-red-500 hover:bg-red-600': 'bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700',
+                        'bg-purple-500 hover:bg-purple-600': 'bg-purple-500 hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700',
+                        'bg-yellow-500 hover:bg-yellow-600': 'bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700',
+                        'bg-pink-500 hover:bg-pink-600': 'bg-pink-500 hover:bg-pink-600 dark:bg-pink-600 dark:hover:bg-pink-700',
+                        'bg-indigo-500 hover:bg-indigo-600': 'bg-indigo-500 hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700',
+                        'bg-gray-500 hover:bg-gray-600': 'bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700',
+                      };
+                      
+                      const buttonColor = colorMap[button.color] || button.color || 'bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700';
+                      
                       return (
                         <Button
                           key={button.id}
                           type="button"
                           size="sm"
-                          className={`h-8 px-3 text-xs gap-1.5 text-white border-0 ${button.color}`}
+                          className={`h-8 px-3 text-xs gap-1.5 text-white border-0 ${buttonColor}`}
                           onClick={() => {
                             const currentPrompt = settings.systemPrompt || '';
                             const newPrompt = currentPrompt ? `${currentPrompt}\n\n${button.prompt}` : button.prompt;

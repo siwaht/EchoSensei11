@@ -48,14 +48,14 @@ const iconOptions = [
 ];
 
 const colorOptions = [
-  { value: "bg-blue-500 hover:bg-blue-600", label: "Blue" },
-  { value: "bg-green-500 hover:bg-green-600", label: "Green" },
-  { value: "bg-red-500 hover:bg-red-600", label: "Red" },
-  { value: "bg-purple-500 hover:bg-purple-600", label: "Purple" },
-  { value: "bg-yellow-500 hover:bg-yellow-600", label: "Yellow" },
-  { value: "bg-pink-500 hover:bg-pink-600", label: "Pink" },
-  { value: "bg-indigo-500 hover:bg-indigo-600", label: "Indigo" },
-  { value: "bg-gray-500 hover:bg-gray-600", label: "Gray" },
+  { value: "bg-blue-500 hover:bg-blue-600", label: "Blue", display: "bg-blue-500" },
+  { value: "bg-green-500 hover:bg-green-600", label: "Green", display: "bg-green-500" },
+  { value: "bg-red-500 hover:bg-red-600", label: "Red", display: "bg-red-500" },
+  { value: "bg-purple-500 hover:bg-purple-600", label: "Purple", display: "bg-purple-500" },
+  { value: "bg-yellow-500 hover:bg-yellow-600", label: "Yellow", display: "bg-yellow-500" },
+  { value: "bg-pink-500 hover:bg-pink-600", label: "Pink", display: "bg-pink-500" },
+  { value: "bg-indigo-500 hover:bg-indigo-600", label: "Indigo", display: "bg-indigo-500" },
+  { value: "bg-gray-500 hover:bg-gray-600", label: "Gray", display: "bg-gray-500" },
 ];
 
 export default function AdminQuickActions() {
@@ -277,7 +277,7 @@ export default function AdminQuickActions() {
                                 {colorOptions.map((option) => (
                                   <SelectItem key={option.value} value={option.value}>
                                     <div className="flex items-center gap-2">
-                                      <div className={`w-4 h-4 rounded ${option.value.split(' ')[0]}`} />
+                                      <div className={`w-4 h-4 rounded ${option.display}`} />
                                       {option.label}
                                     </div>
                                   </SelectItem>
@@ -324,7 +324,16 @@ export default function AdminQuickActions() {
                           <GripVertical className="w-4 h-4 text-muted-foreground" />
                           <Button
                             size="sm"
-                            className={`${button.color} text-white`}
+                            className={`text-white ${
+                              button.color === 'bg-blue-500 hover:bg-blue-600' ? 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700' :
+                              button.color === 'bg-green-500 hover:bg-green-600' ? 'bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700' :
+                              button.color === 'bg-red-500 hover:bg-red-600' ? 'bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700' :
+                              button.color === 'bg-purple-500 hover:bg-purple-600' ? 'bg-purple-500 hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700' :
+                              button.color === 'bg-yellow-500 hover:bg-yellow-600' ? 'bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700' :
+                              button.color === 'bg-pink-500 hover:bg-pink-600' ? 'bg-pink-500 hover:bg-pink-600 dark:bg-pink-600 dark:hover:bg-pink-700' :
+                              button.color === 'bg-indigo-500 hover:bg-indigo-600' ? 'bg-indigo-500 hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700' :
+                              'bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700'
+                            }`}
                             variant="default"
                           >
                             <IconComponent className="w-4 h-4 mr-2" />
@@ -478,7 +487,7 @@ export default function AdminQuickActions() {
                       {colorOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           <div className="flex items-center gap-2">
-                            <div className={`w-4 h-4 rounded ${option.value.split(' ')[0]}`} />
+                            <div className={`w-4 h-4 rounded ${option.display}`} />
                             {option.label}
                           </div>
                         </SelectItem>
