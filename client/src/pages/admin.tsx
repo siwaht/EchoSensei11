@@ -196,13 +196,13 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full mt-6">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1 mb-6">
-          <TabsTrigger value="users">User Management</TabsTrigger>
-          <TabsTrigger value="billing">Billing & Packages</TabsTrigger>
-          <TabsTrigger value="organizations">Organizations</TabsTrigger>
-          <TabsTrigger value="quick-actions" className="flex items-center justify-center">
-            <Sparkles className="w-4 h-4 mr-1" />
-            Quick Actions
+        <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1">
+          <TabsTrigger value="users" className="flex-1 min-w-[120px]">User Management</TabsTrigger>
+          <TabsTrigger value="billing" className="flex-1 min-w-[120px]">Billing & Packages</TabsTrigger>
+          <TabsTrigger value="organizations" className="flex-1 min-w-[120px]">Organizations</TabsTrigger>
+          <TabsTrigger value="quick-actions" className="flex-1 min-w-[120px] flex items-center justify-center gap-1">
+            <Sparkles className="w-4 h-4" />
+            <span>Quick Actions</span>
           </TabsTrigger>
         </TabsList>
 
