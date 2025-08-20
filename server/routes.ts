@@ -667,7 +667,10 @@ export function registerRoutes(app: Express): Server {
       res.json(response);
     } catch (error: any) {
       console.error("Error fetching voice:", error);
-      if (error.response?.status === 404) {
+      // Handle voice not found error (ElevenLabs returns 400 with voice_not_found)
+      if (error.message?.includes('voice_not_found') || error.message?.includes('was not found')) {
+        res.status(404).json({ error: "Voice not found. Please check the voice ID and try again." });
+      } else if (error.response?.status === 404 || error.response?.status === 400) {
         res.status(404).json({ error: "Voice not found. Please check the voice ID." });
       } else {
         res.status(500).json({ 
@@ -2026,6 +2029,14 @@ export function registerRoutes(app: Express): Server {
           return recipientData;
         }),
       };
+      
+      // Add global voice override if provided
+      if (batchCall.voiceId) {
+        payload.recipients = payload.recipients.map(r => ({
+          ...r,
+          voice_id: r.voice_id || batchCall.voiceId // Use CSV override if present, otherwise use global
+        }));
+      }
 
       // Submit to ElevenLabs
       const response = await callElevenLabsAPI(

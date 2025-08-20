@@ -637,9 +637,13 @@ export default function Voices() {
                     description: `Successfully loaded voice: ${response.name}`,
                   });
                 } catch (error: any) {
+                  // Check if it's a 404 error (voice not found)
+                  const isNotFound = error.message?.includes('not found') || error.status === 404;
                   toast({
-                    title: "Voice not found",
-                    description: error.message || "Could not find voice with this ID. Please check the ID and try again.",
+                    title: isNotFound ? "Voice not found" : "Error fetching voice",
+                    description: isNotFound 
+                      ? `Voice ID "${customVoiceId.trim()}" was not found. Please check the ID and try again.`
+                      : (error.message || "Failed to fetch voice from ElevenLabs"),
                     variant: "destructive",
                   });
                 } finally {
