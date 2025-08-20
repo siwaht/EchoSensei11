@@ -257,17 +257,17 @@ export default function Voices() {
   const selectedVoice = voices.find((v: Voice) => v.voice_id === selectedVoiceId);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
             Voice Library
           </h2>
         </div>
 
         {/* Search */}
-        <div className="relative flex-1 max-w-lg">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
             placeholder="Search by name, accent, or gender..."
@@ -290,10 +290,10 @@ export default function Voices() {
 
       {/* Results Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">
+        <h3 className="text-base sm:text-lg font-semibold">
           Available Voices
           {filteredVoices.length > 0 && (
-            <span className="ml-2 text-sm text-gray-500">
+            <span className="ml-1 sm:ml-2 text-xs sm:text-sm text-gray-500">
               ({filteredVoices.length} {filteredVoices.length === 1 ? "voice" : "voices"})
             </span>
           )}
@@ -319,56 +319,45 @@ export default function Voices() {
           {filteredVoices.map((voice: Voice) => (
             <Card
               key={voice.voice_id}
-              className="p-4 hover:shadow-md transition-shadow"
+              className="p-3 sm:p-4 hover:shadow-md transition-shadow"
               data-testid={`card-voice-${voice.voice_id}`}
             >
-              <div className="flex items-start gap-4">
-                {/* Avatar */}
-                <Avatar className="w-12 h-12">
-                  <AvatarFallback className={`${getAvatarColor(voice.voice_id)} text-white`}>
-                    {getInitials(voice.name)}
-                  </AvatarFallback>
-                </Avatar>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                {/* Mobile: Avatar + Info in Row */}
+                <div className="flex items-start gap-3 flex-1">
+                  {/* Avatar */}
+                  <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
+                    <AvatarFallback className={`${getAvatarColor(voice.voice_id)} text-white text-sm sm:text-base`}>
+                      {getInitials(voice.name)}
+                    </AvatarFallback>
+                  </Avatar>
 
-                {/* Voice Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900 dark:text-white">
-                        {voice.name}
-                      </h4>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                        {voice.description || getVoiceMetadata(voice).description || voice.labels?.description || "Professional voice perfect for conversational AI"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
+                  {/* Voice Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
+                          {voice.name}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1 line-clamp-2">
+                          {voice.description || getVoiceMetadata(voice).description || voice.labels?.description || "Professional voice perfect for conversational AI"}
+                        </p>
+                      </div>
+                      {/* Play button on mobile */}
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="sm:hidden h-8 w-8"
                         onClick={() => handlePlayVoice(voice.voice_id, voice.preview_url)}
-                        data-testid={`button-play-${voice.voice_id}`}
+                        data-testid={`button-play-mobile-${voice.voice_id}`}
                         title="Play preview"
                       >
                         <Play className={`w-4 h-4 ${playingVoiceId === voice.voice_id ? "text-primary" : ""}`} />
                       </Button>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedVoiceId(voice.voice_id);
-                          setShowAgentDialog(true);
-                        }}
-                        className="gap-1"
-                        data-testid={`button-use-voice-${voice.voice_id}`}
-                      >
-                        <UserCheck className="w-3 h-3" />
-                        Use Voice
-                      </Button>
                     </div>
-                  </div>
 
-                  {/* Metadata */}
-                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    {/* Metadata */}
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2 sm:mt-3">
                     {/* Language */}
                     {voice.labels && Object.entries(voice.labels).map(([key, value]) => {
                       // Show all labels as badges
@@ -390,7 +379,7 @@ export default function Voices() {
                         }
                         
                         return (
-                          <Badge key={key} variant={variant} className="text-xs">
+                          <Badge key={key} variant={variant} className="text-xs px-2 py-0.5">
                             {displayValue}
                           </Badge>
                         );
@@ -398,20 +387,64 @@ export default function Voices() {
                       return null;
                     })}
                     
-                    {/* Show category if not in labels */}
-                    {voice.category && !voice.labels?.use_case && !voice.labels?.["use case"] && (
-                      <Badge variant="outline" className="text-xs">
-                        {voice.category}
-                      </Badge>
-                    )}
-                    
-                    {/* HD indicator */}
-                    {voice.high_quality_base_model_ids && voice.high_quality_base_model_ids.length > 0 && (
-                      <Badge variant="secondary" className="text-xs">
-                        HD
-                      </Badge>
-                    )}
+                      {/* Show category if not in labels */}
+                      {voice.category && !voice.labels?.use_case && !voice.labels?.["use case"] && (
+                        <Badge variant="outline" className="text-xs px-2 py-0.5">
+                          {voice.category}
+                        </Badge>
+                      )}
+                      
+                      {/* HD indicator */}
+                      {voice.high_quality_base_model_ids && voice.high_quality_base_model_ids.length > 0 && (
+                        <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                          HD
+                        </Badge>
+                      )}
+                    </div>
                   </div>
+                </div>
+
+                {/* Desktop: Action buttons */}
+                <div className="hidden sm:flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handlePlayVoice(voice.voice_id, voice.preview_url)}
+                    data-testid={`button-play-${voice.voice_id}`}
+                    title="Play preview"
+                  >
+                    <Play className={`w-4 h-4 ${playingVoiceId === voice.voice_id ? "text-primary" : ""}`} />
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedVoiceId(voice.voice_id);
+                      setShowAgentDialog(true);
+                    }}
+                    className="gap-1"
+                    data-testid={`button-use-voice-${voice.voice_id}`}
+                  >
+                    <UserCheck className="w-3 h-3" />
+                    Use Voice
+                  </Button>
+                </div>
+                
+                {/* Mobile: Use Voice button */}
+                <div className="sm:hidden mt-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      setSelectedVoiceId(voice.voice_id);
+                      setShowAgentDialog(true);
+                    }}
+                    data-testid={`button-use-voice-mobile-${voice.voice_id}`}
+                  >
+                    <UserCheck className="w-3 h-3 mr-1" />
+                    Use Voice
+                  </Button>
                 </div>
               </div>
 
