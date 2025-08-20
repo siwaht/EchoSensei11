@@ -83,7 +83,7 @@ export default function Agents() {
           <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
           <div className="h-10 w-full sm:w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
           ))}
@@ -110,7 +110,7 @@ export default function Agents() {
       </div>
 
       {/* Agents Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {!agents || agents.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <Bot className="w-12 h-12 mx-auto text-gray-400 mb-4" />

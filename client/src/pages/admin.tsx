@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, Building2, DollarSign, Phone, Edit, Trash2, Plus, Shield, Activity, TrendingUp, Package, CreditCard, UserPlus, Settings } from "lucide-react";
+import { Users, Building2, DollarSign, Edit, Trash2, Plus, Shield } from "lucide-react";
 import type { User, Organization, BillingPackage } from "@shared/schema";
 
 interface BillingData {
@@ -195,7 +195,7 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="organizations">Organizations</TabsTrigger>
           <TabsTrigger value="billing">Billing Overview</TabsTrigger>
@@ -209,7 +209,8 @@ export default function AdminDashboard() {
               <Badge variant="secondary">{users.length} users</Badge>
             </div>
             
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
@@ -271,6 +272,53 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {users.map((user) => (
+                <div key={user.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      {user.profileImageUrl && (
+                        <img src={user.profileImageUrl} alt="" className="w-10 h-10 rounded-full" />
+                      )}
+                      <div>
+                        <p className="font-medium">{user.firstName} {user.lastName}</p>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                      </div>
+                    </div>
+                    {user.isAdmin ? (
+                      <Badge variant="default">Admin</Badge>
+                    ) : (
+                      <Badge variant="secondary">User</Badge>
+                    )}
+                  </div>
+                  <div className="text-sm space-y-1">
+                    <p><span className="text-muted-foreground">Organization:</span> {organizations.find(org => org.id === user.organizationId)?.name || "N/A"}</p>
+                    <p><span className="text-muted-foreground">Created:</span> {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A"}</p>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEditingUser(user)}
+                      data-testid={`button-edit-user-mobile-${user.id}`}
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setDeletingUser(user)}
+                      data-testid={`button-delete-user-mobile-${user.id}`}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </Card>
         </TabsContent>
 
@@ -282,7 +330,8 @@ export default function AdminDashboard() {
               <Badge variant="secondary">{organizations.length} organizations</Badge>
             </div>
             
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
@@ -323,6 +372,48 @@ export default function AdminDashboard() {
                   })}
                 </tbody>
               </table>
+            </div>
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {billingData?.organizationsData.map((org) => {
+                const orgDetails = organizations.find(o => o.id === org.id);
+                return (
+                  <div key={org.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium text-lg">{org.name}</h3>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingOrg({ ...orgDetails, ...org })}
+                        data-testid={`button-edit-org-mobile-${org.id}`}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Users</p>
+                        <p className="font-medium">{org.userCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Total Calls</p>
+                        <p className="font-medium">{org.totalCalls}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Total Minutes</p>
+                        <p className="font-medium">{org.totalMinutes}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Revenue</p>
+                        <p className="font-medium">${org.estimatedCost.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Created: {orgDetails?.createdAt ? new Date(orgDetails.createdAt).toLocaleDateString() : "N/A"}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </Card>
         </TabsContent>

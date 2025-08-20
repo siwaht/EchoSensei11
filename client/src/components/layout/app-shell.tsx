@@ -75,15 +75,15 @@ export default function AppShell({ children }: AppShellProps) {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out",
+        "fixed inset-y-0 left-0 z-50 w-64 lg:w-72 bg-card border-r border-border transform transition-transform duration-200 ease-in-out",
         sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="flex items-center h-16 px-6 border-b border-border">
-          <div className="flex items-center space-x-3">
+        <div className="flex items-center h-16 px-4 lg:px-6 border-b border-border">
+          <div className="flex items-center space-x-2 lg:space-x-3">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <Mic className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="text-lg font-semibold text-card-foreground" data-testid="text-app-title">VoiceAI Dashboard</span>
+            <span className="text-base lg:text-lg font-semibold text-card-foreground truncate" data-testid="text-app-title">VoiceAI</span>
           </div>
         </div>
 

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Phone, Clock, DollarSign, Bot, TrendingUp, PhoneCall, MessageSquare, AlertCircle, BarChart3, Activity, RefreshCw } from "lucide-react";
+import { Phone, Clock, DollarSign, Bot, PhoneCall, MessageSquare, AlertCircle, RefreshCw, BarChart3, TrendingUp, Activity } from "lucide-react";
 import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -152,22 +152,52 @@ function AgentPerformanceTable() {
     <div className="space-y-2">
       {agentData.length > 0 ? (
         <>
-          <div className="grid grid-cols-5 gap-3 text-xs text-gray-500 dark:text-gray-400 pb-2 border-b">
+          {/* Desktop Table View */}
+          <div className="hidden md:grid grid-cols-5 gap-3 text-xs text-gray-500 dark:text-gray-400 pb-2 border-b">
             <div className="col-span-1">Agent name</div>
             <div className="text-center">Number of calls</div>
             <div className="text-center">Call minutes</div>
             <div className="text-center">LLM cost</div>
             <div className="text-center">Credits spent</div>
           </div>
-          {agentData.map((agent: any, index: number) => (
-            <div key={index} className="grid grid-cols-5 gap-3 text-sm py-2">
-              <div className="col-span-1 truncate">{agent.name}</div>
-              <div className="text-center">{agent.calls}</div>
-              <div className="text-center">{(agent.duration / 60).toFixed(3)}</div>
-              <div className="text-center">${agent.llmCost.toFixed(4)}</div>
-              <div className="text-center">{agent.credits.toLocaleString()}</div>
-            </div>
-          ))}
+          {/* Desktop Rows */}
+          <div className="hidden md:block">
+            {agentData.map((agent: any, index: number) => (
+              <div key={index} className="grid grid-cols-5 gap-3 text-sm py-2">
+                <div className="col-span-1 truncate">{agent.name}</div>
+                <div className="text-center">{agent.calls}</div>
+                <div className="text-center">{(agent.duration / 60).toFixed(3)}</div>
+                <div className="text-center">${agent.llmCost.toFixed(4)}</div>
+                <div className="text-center">{agent.credits.toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {agentData.map((agent: any, index: number) => (
+              <div key={index} className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg space-y-2">
+                <div className="font-medium">{agent.name}</div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Calls:</span>
+                    <span className="ml-2">{agent.calls}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Minutes:</span>
+                    <span className="ml-2">{(agent.duration / 60).toFixed(1)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Cost:</span>
+                    <span className="ml-2">${agent.llmCost.toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Credits:</span>
+                    <span className="ml-2">{agent.credits.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </>
       ) : (
         <div className="text-center py-4 text-muted-foreground text-sm">
