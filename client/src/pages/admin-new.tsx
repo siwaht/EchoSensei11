@@ -103,6 +103,11 @@ export default function AdminDashboard() {
     queryKey: ["/api/admin/billing-packages"],
   });
 
+  // Fetch payment transactions
+  const { data: transactions = [], isLoading: transactionsLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/payments"],
+  });
+
   // Create user mutation
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof newUser) => {
@@ -922,41 +927,78 @@ export default function AdminDashboard() {
           <Card className="p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Recent Transactions</h3>
-              <Button variant="outline" size="sm">View All</Button>
+              <span className="text-sm text-muted-foreground">
+                {transactions.length} total
+              </span>
             </div>
             
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 text-sm font-medium">Organization</th>
-                    <th className="text-left py-2 text-sm font-medium">Amount</th>
-                    <th className="text-left py-2 text-sm font-medium">Gateway</th>
-                    <th className="text-left py-2 text-sm font-medium">Status</th>
-                    <th className="text-left py-2 text-sm font-medium">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b">
-                    <td className="py-3 text-sm">cc</td>
-                    <td className="py-3 text-sm font-medium">$0.41</td>
-                    <td className="py-3 text-sm">
-                      <Badge variant="outline" className="text-xs">Stripe</Badge>
-                    </td>
-                    <td className="py-3">
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
-                        Success
-                      </Badge>
-                    </td>
-                    <td className="py-3 text-sm text-muted-foreground">Aug 19, 2025</td>
-                  </tr>
-                </tbody>
-              </table>
-              
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="text-sm">No more transactions to display</p>
+            {transactionsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            </div>
+            ) : transactions.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 text-sm font-medium">Organization</th>
+                      <th className="text-left py-2 text-sm font-medium">Amount</th>
+                      <th className="text-left py-2 text-sm font-medium">Gateway</th>
+                      <th className="text-left py-2 text-sm font-medium">Status</th>
+                      <th className="text-left py-2 text-sm font-medium">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.slice(0, 10).map((transaction: any) => {
+                      // Find the organization name
+                      const org = organizations.find(o => o.id === transaction.organizationId);
+                      return (
+                        <tr key={transaction.id} className="border-b">
+                          <td className="py-3 text-sm">{org?.name || 'Unknown'}</td>
+                          <td className="py-3 text-sm font-medium">
+                            ${transaction.amount?.toFixed(2) || '0.00'}
+                          </td>
+                          <td className="py-3 text-sm">
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {transaction.paymentMethod || 'Unknown'}
+                            </Badge>
+                          </td>
+                          <td className="py-3">
+                            <Badge 
+                              className={`text-xs ${
+                                transaction.status === 'completed' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                  : transaction.status === 'failed'
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                  : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                              }`}
+                            >
+                              {transaction.status === 'completed' ? 'Success' : 
+                               transaction.status === 'failed' ? 'Failed' : 'Pending'}
+                            </Badge>
+                          </td>
+                          <td className="py-3 text-sm text-muted-foreground">
+                            {new Date(transaction.createdAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                
+                {transactions.length > 10 && (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p className="text-sm">Showing 10 of {transactions.length} transactions</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <DollarSign className="w-12 h-12 mx-auto mb-2 text-muted-foreground/30" />
+                <p className="text-sm">No transactions yet</p>
+                <p className="text-xs mt-1">Transactions will appear here when organizations make payments</p>
+              </div>
+            )}
           </Card>
         </TabsContent>
       </Tabs>
