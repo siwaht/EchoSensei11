@@ -9,6 +9,7 @@ import {
   phoneNumbers,
   batchCalls,
   batchCallRecipients,
+  systemTemplates,
   type User,
   type UpsertUser,
   type Organization,
@@ -28,6 +29,8 @@ import {
   type InsertBatchCall,
   type BatchCallRecipient,
   type InsertBatchCallRecipient,
+  type SystemTemplate,
+  type InsertSystemTemplate,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sum, avg, max } from "drizzle-orm";
@@ -123,6 +126,13 @@ export interface IStorage {
   createBatchCall(data: InsertBatchCall): Promise<BatchCall>;
   updateBatchCall(id: string, organizationId: string, data: Partial<BatchCall>): Promise<BatchCall>;
   deleteBatchCall(id: string, organizationId: string): Promise<void>;
+
+  // System template operations (admin only)
+  getSystemTemplates(): Promise<SystemTemplate[]>;
+  getSystemTemplate(id: string): Promise<SystemTemplate | undefined>;
+  createSystemTemplate(template: InsertSystemTemplate): Promise<SystemTemplate>;
+  updateSystemTemplate(id: string, updates: Partial<InsertSystemTemplate>): Promise<SystemTemplate>;
+  deleteSystemTemplate(id: string): Promise<void>;
   
   // Batch call recipient operations
   getBatchCallRecipients(batchCallId: string): Promise<BatchCallRecipient[]>;
@@ -643,6 +653,44 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Batch call recipient not found");
     }
     return updated;
+  }
+
+  // System template operations (admin only)
+  async getSystemTemplates(): Promise<SystemTemplate[]> {
+    return await db
+      .select()
+      .from(systemTemplates)
+      .where(eq(systemTemplates.isActive, true))
+      .orderBy(systemTemplates.order);
+  }
+
+  async getSystemTemplate(id: string): Promise<SystemTemplate | undefined> {
+    const [template] = await db
+      .select()
+      .from(systemTemplates)
+      .where(eq(systemTemplates.id, id));
+    return template;
+  }
+
+  async createSystemTemplate(template: InsertSystemTemplate): Promise<SystemTemplate> {
+    const [created] = await db.insert(systemTemplates).values(template).returning();
+    return created;
+  }
+
+  async updateSystemTemplate(id: string, updates: Partial<InsertSystemTemplate>): Promise<SystemTemplate> {
+    const [updated] = await db
+      .update(systemTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(systemTemplates.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error("System template not found");
+    }
+    return updated;
+  }
+
+  async deleteSystemTemplate(id: string): Promise<void> {
+    await db.delete(systemTemplates).where(eq(systemTemplates.id, id));
   }
 }
 

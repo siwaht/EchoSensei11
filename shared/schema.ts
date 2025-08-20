@@ -111,6 +111,19 @@ export const phoneNumbers = pgTable("phone_numbers", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// System Templates table (managed by admins only)
+export const systemTemplates = pgTable("system_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  content: text("content").notNull(),
+  icon: varchar("icon"), // Icon name from lucide-react
+  color: varchar("color"), // Tailwind color class
+  order: integer("order").default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Agents table
 export const agents = pgTable("agents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -378,6 +391,12 @@ export const insertBatchCallRecipientSchema = createInsertSchema(batchCallRecipi
   updatedAt: true,
 });
 
+export const insertSystemTemplateSchema = createInsertSchema(systemTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Payment relations (defined after billingPackages table)
 export const paymentsRelations = relations(payments, ({ one }) => ({
   organization: one(organizations, {
@@ -443,3 +462,5 @@ export type BatchCall = typeof batchCalls.$inferSelect;
 export type InsertBatchCall = z.infer<typeof insertBatchCallSchema>;
 export type BatchCallRecipient = typeof batchCallRecipients.$inferSelect;
 export type InsertBatchCallRecipient = z.infer<typeof insertBatchCallRecipientSchema>;
+export type SystemTemplate = typeof systemTemplates.$inferSelect;
+export type InsertSystemTemplate = z.infer<typeof insertSystemTemplateSchema>;

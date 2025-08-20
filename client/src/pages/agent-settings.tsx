@@ -88,6 +88,7 @@ export default function AgentSettings() {
   const [newTemplateName, setNewTemplateName] = useState("");
   const [newTemplateContent, setNewTemplateContent] = useState("");
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [systemTemplates, setSystemTemplates] = useState<any[]>([]);
 
   // Fetch agent data
   const { data: agents = [], isLoading: agentsLoading } = useQuery<Agent[]>({
@@ -101,6 +102,14 @@ export default function AgentSettings() {
     queryKey: ["/api/voiceai/voices"],
     enabled: !!agent,
   });
+
+  // Fetch system templates
+  useEffect(() => {
+    fetch("/api/system-templates")
+      .then(res => res.json())
+      .then(data => setSystemTemplates(data))
+      .catch(err => console.error("Failed to fetch system templates:", err));
+  }, []);
 
   // Update settings when agent data is loaded
   useEffect(() => {
@@ -282,180 +291,10 @@ export default function AgentSettings() {
     });
   };
 
+  // Legacy function - replaced by system templates
+  // Kept for any potential backward compatibility
   const insertSnippet = (type: string) => {
-    const snippets: Record<string, string> = {
-      persona: `## Agent Persona
-You are [Name], a [Role/Title] with expertise in [Domain/Field].
-
-### Personality Traits:
-- Professional and friendly
-- Patient and understanding
-- Solution-oriented
-- Empathetic and supportive
-
-### Communication Style:
-- Use clear, concise language
-- Avoid technical jargon unless necessary
-- Be conversational but professional
-- Ask clarifying questions when needed
-
-### Core Values:
-- Customer satisfaction is paramount
-- Accuracy and reliability
-- Continuous improvement
-- Respect and empathy`,
-
-      guardrails: `## Safety & Guardrails
-
-### DO:
-- Always maintain professional boundaries
-- Verify information before providing it
-- Respect user privacy and confidentiality
-- Escalate complex issues appropriately
-- Stay within your knowledge domain
-
-### DON'T:
-- Never provide medical, legal, or financial advice
-- Don't make promises you can't keep
-- Avoid discussing sensitive or controversial topics
-- Don't share personal or confidential information
-- Never use inappropriate language
-
-### Data Protection:
-- Do not store or request sensitive personal data
-- Follow GDPR/privacy compliance guidelines
-- Mask or redact sensitive information in responses`,
-
-      webhook: `## Webhook Integration
-
-When certain events occur, trigger webhooks:
-
-### Order Processing:
-If user wants to place an order:
-1. Collect order details (product, quantity, customer info)
-2. Trigger webhook: POST /api/webhooks/order
-3. Confirm order placement with order ID
-
-### Lead Capture:
-If user shows interest in a product/service:
-1. Collect contact information
-2. Trigger webhook: POST /api/webhooks/lead
-3. Confirm information has been saved
-
-### Support Escalation:
-If issue requires human support:
-1. Collect issue details
-2. Trigger webhook: POST /api/webhooks/escalate
-3. Provide ticket number to user`,
-
-      sheets: `## Google Sheets Integration
-
-You have access to Google Sheets for data management:
-
-### Reading Data:
-- When user asks about inventory: Check "Inventory" sheet
-- For pricing information: Reference "Pricing" sheet
-- For customer data: Access "Customers" sheet
-
-### Writing Data:
-- Log new leads to "Leads" sheet with timestamp
-- Update order status in "Orders" sheet
-- Record customer feedback in "Feedback" sheet
-
-### Data Operations:
-- Always validate data before writing
-- Use proper formatting (dates, currency, etc.)
-- Maintain data consistency across sheets
-- Handle errors gracefully`,
-
-      calendar: `## Google Calendar Integration
-
-You can manage calendar events and schedules:
-
-### Viewing Calendar:
-- Check availability before booking
-- Inform about upcoming appointments
-- Provide schedule summaries
-
-### Creating Events:
-When user wants to schedule:
-1. Check available time slots
-2. Collect event details (title, duration, participants)
-3. Create calendar event
-4. Send confirmation with event details
-
-### Event Management:
-- Update existing appointments
-- Handle rescheduling requests
-- Send reminders for upcoming events
-- Manage recurring events`,
-
-      rag: `## RAG Knowledge Base
-
-You have access to a knowledge base with company information:
-
-### Document Search:
-- Search relevant documents before answering
-- Cite sources when providing information
-- Use knowledge base for:
-  - Product specifications
-  - Company policies
-  - Technical documentation
-  - FAQs and troubleshooting
-
-### Response Strategy:
-1. First check knowledge base for relevant info
-2. Provide accurate, sourced responses
-3. If information not found, acknowledge limitation
-4. Suggest alternative resources if available
-
-### Context Usage:
-- Use retrieved context to enhance responses
-- Maintain consistency with documented information
-- Update responses based on latest documents`,
-
-      tools: `## Complete Tool Integration
-
-You have access to multiple tools and integrations:
-
-### Available Tools:
-1. **Webhooks**: Trigger external actions and workflows
-2. **Google Sheets**: Read/write spreadsheet data
-3. **Google Calendar**: Manage schedules and appointments
-4. **RAG Knowledge Base**: Search company documents
-5. **Data Collection**: Gather and store user information
-
-### Tool Usage Guidelines:
-- Use the appropriate tool for each task
-- Combine tools when necessary for complex workflows
-- Always confirm successful tool execution
-- Handle tool errors gracefully
-- Provide fallback options if tools fail
-
-### Workflow Examples:
-- **Sales Process**: RAG (product info) → Sheets (pricing) → Calendar (demo) → Webhook (CRM)
-- **Support Ticket**: RAG (troubleshooting) → Webhook (ticket) → Sheets (log) → Calendar (follow-up)
-- **Lead Generation**: Data Collection → Sheets (save) → Webhook (notification) → Calendar (sales call)
-
-### Best Practices:
-- Always validate data before using tools
-- Maintain audit trail of tool usage
-- Respect rate limits and quotas
-- Ensure data consistency across tools`
-    };
-
-    const snippet = snippets[type] || '';
-    if (snippet) {
-      const currentPrompt = settings.systemPrompt || '';
-      const newPrompt = currentPrompt ? `${currentPrompt}\n\n${snippet}` : snippet;
-      setSettings({ ...settings, systemPrompt: newPrompt });
-      setHasUnsavedChanges(true);
-      
-      toast({
-        title: "Snippet added",
-        description: `${type.charAt(0).toUpperCase() + type.slice(1)} template has been added to the system prompt`,
-      });
-    }
+    // Not used anymore - system templates are used instead
   };
 
   const addDataField = () => {
@@ -655,77 +494,36 @@ You have access to multiple tools and integrations:
                       <div className="w-full h-px bg-border my-1" />
                     )}
                     
-                    {/* Default Template Buttons */}
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-8 px-3 text-xs gap-1.5 bg-blue-500 hover:bg-blue-600 text-white border-0"
-                      onClick={() => insertSnippet('persona')}
-                      data-testid="button-snippet-persona"
-                    >
-                      <User className="w-3.5 h-3.5" />
-                      Persona
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-8 px-3 text-xs gap-1.5 bg-red-500 hover:bg-red-600 text-white border-0"
-                      onClick={() => insertSnippet('guardrails')}
-                      data-testid="button-snippet-guardrails"
-                    >
-                      <Shield className="w-3.5 h-3.5" />
-                      Guardrails
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-8 px-3 text-xs gap-1.5 bg-purple-500 hover:bg-purple-600 text-white border-0"
-                      onClick={() => insertSnippet('webhook')}
-                      data-testid="button-snippet-webhook"
-                    >
-                      <Webhook className="w-3.5 h-3.5" />
-                      Webhook
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-8 px-3 text-xs gap-1.5 bg-green-500 hover:bg-green-600 text-white border-0"
-                      onClick={() => insertSnippet('sheets')}
-                      data-testid="button-snippet-sheets"
-                    >
-                      <Sheet className="w-3.5 h-3.5" />
-                      Sheets
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-8 px-3 text-xs gap-1.5 bg-indigo-500 hover:bg-indigo-600 text-white border-0"
-                      onClick={() => insertSnippet('calendar')}
-                      data-testid="button-snippet-calendar"
-                    >
-                      <Calendar className="w-3.5 h-3.5" />
-                      Calendar
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-8 px-3 text-xs gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
-                      onClick={() => insertSnippet('rag')}
-                      data-testid="button-snippet-rag"
-                    >
-                      <Database className="w-3.5 h-3.5" />
-                      RAG
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-8 px-3 text-xs gap-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
-                      onClick={() => insertSnippet('tools')}
-                      data-testid="button-snippet-tools"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      All Tools
-                    </Button>
+                    {/* System Template Buttons (Admin-managed) */}
+                    {systemTemplates.map((template) => {
+                      const iconMap: Record<string, any> = {
+                        User, Shield, Webhook, Sheet, Calendar, Database, Sparkles
+                      };
+                      const IconComponent = iconMap[template.icon] || FileText;
+                      
+                      return (
+                        <Button
+                          key={template.id}
+                          type="button"
+                          size="sm"
+                          className={`h-8 px-3 text-xs gap-1.5 text-white border-0 ${template.color || 'bg-gray-500 hover:bg-gray-600'}`}
+                          onClick={() => {
+                            const currentPrompt = settings.systemPrompt || '';
+                            const newPrompt = currentPrompt ? `${currentPrompt}\n\n${template.content}` : template.content;
+                            setSettings({ ...settings, systemPrompt: newPrompt });
+                            setHasUnsavedChanges(true);
+                            toast({
+                              title: "Template inserted",
+                              description: `"${template.name}" has been added to the system prompt`,
+                            });
+                          }}
+                          data-testid={`button-system-template-${template.id}`}
+                        >
+                          <IconComponent className="w-3.5 h-3.5" />
+                          {template.name}
+                        </Button>
+                      );
+                    })}
                   </div>
                   
                   <Textarea

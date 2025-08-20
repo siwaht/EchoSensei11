@@ -312,6 +312,58 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // System templates routes (admin only)
+  app.get('/api/admin/system-templates', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const templates = await storage.getSystemTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching system templates:", error);
+      res.status(500).json({ message: "Failed to fetch system templates" });
+    }
+  });
+
+  app.post('/api/admin/system-templates', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const newTemplate = await storage.createSystemTemplate(req.body);
+      res.json(newTemplate);
+    } catch (error) {
+      console.error("Error creating system template:", error);
+      res.status(500).json({ message: "Failed to create system template" });
+    }
+  });
+
+  app.patch('/api/admin/system-templates/:templateId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const updatedTemplate = await storage.updateSystemTemplate(req.params.templateId, req.body);
+      res.json(updatedTemplate);
+    } catch (error) {
+      console.error("Error updating system template:", error);
+      res.status(500).json({ message: "Failed to update system template" });
+    }
+  });
+
+  app.delete('/api/admin/system-templates/:templateId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      await storage.deleteSystemTemplate(req.params.templateId);
+      res.json({ message: "System template deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting system template:", error);
+      res.status(500).json({ message: "Failed to delete system template" });
+    }
+  });
+
+  // Public route to get active system templates (for all users)
+  app.get('/api/system-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const templates = await storage.getSystemTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching system templates:", error);
+      res.status(500).json({ message: "Failed to fetch system templates" });
+    }
+  });
+
   // Integration routes
   app.post("/api/integrations", isAuthenticated, async (req: any, res) => {
     try {
