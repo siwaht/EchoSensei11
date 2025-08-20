@@ -528,7 +528,10 @@ export default function AgentSettings() {
                         'bg-gray-500 hover:bg-gray-600': 'bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700',
                       };
                       
-                      const buttonColor = colorMap[button.color] || button.color || 'bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700';
+                      // Special case: RAG button should always be yellow
+                      const buttonColor = button.name === 'RAG' 
+                        ? 'bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700'
+                        : (colorMap[button.color] || button.color || 'bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700');
                       
                       return (
                         <Button
