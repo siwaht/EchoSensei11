@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { insertIntegrationSchema, insertAgentSchema, insertCallLogSchema, insertPhoneNumberSchema } from "@shared/schema";
+import { insertIntegrationSchema, insertAgentSchema, insertCallLogSchema, insertPhoneNumberSchema, insertBatchCallSchema, insertBatchCallRecipientSchema } from "@shared/schema";
 import { z } from "zod";
 import crypto from "crypto";
 import type { RequestHandler } from "express";
@@ -1707,6 +1707,175 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ 
         message: error.message || "Failed to start session"
       });
+    }
+  });
+
+  // Batch calling routes
+  app.get("/api/batch-calls", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = req.user.organizationId;
+      const batchCalls = await storage.getBatchCalls(organizationId);
+      res.json(batchCalls);
+    } catch (error: any) {
+      console.error("Error fetching batch calls:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch batch calls" });
+    }
+  });
+
+  app.post("/api/batch-calls", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = req.user.organizationId;
+      const userId = req.user.id;
+      
+      const batchCallData = insertBatchCallSchema.parse({
+        ...req.body,
+        organizationId,
+        userId,
+        status: "draft",
+      });
+
+      const batchCall = await storage.createBatchCall(batchCallData);
+      res.json(batchCall);
+    } catch (error: any) {
+      console.error("Error creating batch call:", error);
+      if (error.name === "ZodError") {
+        res.status(400).json({ error: "Invalid batch call data", details: error.errors });
+      } else {
+        res.status(500).json({ error: error.message || "Failed to create batch call" });
+      }
+    }
+  });
+
+  app.get("/api/batch-calls/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = req.user.organizationId;
+      const batchCall = await storage.getBatchCall(req.params.id, organizationId);
+      
+      if (!batchCall) {
+        return res.status(404).json({ error: "Batch call not found" });
+      }
+
+      // Get recipients for this batch call
+      const recipients = await storage.getBatchCallRecipients(req.params.id);
+      
+      res.json({ ...batchCall, recipients });
+    } catch (error: any) {
+      console.error("Error fetching batch call:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch batch call" });
+    }
+  });
+
+  app.post("/api/batch-calls/:id/recipients", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = req.user.organizationId;
+      const batchCall = await storage.getBatchCall(req.params.id, organizationId);
+      
+      if (!batchCall) {
+        return res.status(404).json({ error: "Batch call not found" });
+      }
+
+      // Parse recipients from request body
+      const { recipients } = req.body;
+      if (!Array.isArray(recipients) || recipients.length === 0) {
+        return res.status(400).json({ error: "No recipients provided" });
+      }
+
+      // Create recipient records
+      const recipientData = recipients.map((r: any) => ({
+        batchCallId: req.params.id,
+        phoneNumber: r.phone_number || r.phoneNumber,
+        variables: r,
+      }));
+
+      const createdRecipients = await storage.createBatchCallRecipients(recipientData);
+      
+      // Update batch call with total recipients count
+      await storage.updateBatchCall(req.params.id, organizationId, {
+        totalRecipients: createdRecipients.length,
+      });
+
+      res.json({ message: "Recipients added successfully", count: createdRecipients.length });
+    } catch (error: any) {
+      console.error("Error adding recipients:", error);
+      res.status(500).json({ error: error.message || "Failed to add recipients" });
+    }
+  });
+
+  app.post("/api/batch-calls/:id/submit", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = req.user.organizationId;
+      const batchCall = await storage.getBatchCall(req.params.id, organizationId);
+      
+      if (!batchCall) {
+        return res.status(404).json({ error: "Batch call not found" });
+      }
+
+      // Get the integration
+      const integration = await storage.getIntegration(organizationId, "elevenlabs");
+      if (!integration || integration.status !== "ACTIVE") {
+        return res.status(400).json({ 
+          error: "ElevenLabs integration not configured or active" 
+        });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+
+      // Get recipients
+      const recipients = await storage.getBatchCallRecipients(req.params.id);
+      if (recipients.length === 0) {
+        return res.status(400).json({ error: "No recipients found for this batch call" });
+      }
+
+      // Get agent details
+      const agent = await storage.getAgent(organizationId, batchCall.agentId);
+      if (!agent) {
+        return res.status(400).json({ error: "Agent not found" });
+      }
+
+      // Prepare ElevenLabs batch call payload
+      const payload = {
+        name: batchCall.name,
+        agent_id: agent.elevenLabsAgentId,
+        phone_number_id: batchCall.phoneNumberId,
+        recipients: recipients.map(r => ({
+          phone_number: r.phoneNumber,
+          ...(r.variables && typeof r.variables === 'object' ? r.variables : {}),
+        })),
+      };
+
+      // Submit to ElevenLabs
+      const response = await callElevenLabsAPI(
+        apiKey,
+        "/v1/convai/batch-calling",
+        "POST",
+        payload
+      );
+
+      // Update batch call with ElevenLabs ID and status
+      await storage.updateBatchCall(req.params.id, organizationId, {
+        elevenlabsBatchId: response.batch_id || response.id,
+        status: "pending",
+        startedAt: new Date(),
+      });
+
+      res.json({ 
+        message: "Batch call submitted successfully", 
+        batchId: response.batch_id || response.id 
+      });
+    } catch (error: any) {
+      console.error("Error submitting batch call:", error);
+      res.status(500).json({ error: error.message || "Failed to submit batch call" });
+    }
+  });
+
+  app.delete("/api/batch-calls/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = req.user.organizationId;
+      await storage.deleteBatchCall(req.params.id, organizationId);
+      res.json({ message: "Batch call deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting batch call:", error);
+      res.status(500).json({ error: error.message || "Failed to delete batch call" });
     }
   });
 

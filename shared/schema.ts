@@ -204,6 +204,7 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   callLogs: many(callLogs),
   payments: many(payments),
   phoneNumbers: many(phoneNumbers),
+  batchCalls: many(batchCalls),
 }));
 
 export const usersRelations = relations(users, ({ one }) => ({
@@ -238,15 +239,6 @@ export const callLogsRelations = relations(callLogs, ({ one }) => ({
     references: [agents.id],
   }),
 }));
-
-export const phoneNumbersRelations = relations(phoneNumbers, ({ one }) => ({
-  organization: one(organizations, {
-    fields: [phoneNumbers.organizationId],
-    references: [organizations.id],
-  }),
-}));
-
-
 
 // Zod schemas
 export const upsertUserSchema = createInsertSchema(users).omit({
@@ -289,6 +281,45 @@ export const insertPhoneNumberSchema = createInsertSchema(phoneNumbers).omit({
   updatedAt: true,
 });
 
+// Batch Calls table for outbound calling
+export const batchCalls = pgTable("batch_calls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  name: varchar("name").notNull(),
+  agentId: varchar("agent_id").notNull(),
+  phoneNumberId: varchar("phone_number_id"),
+  elevenlabsBatchId: varchar("elevenlabs_batch_id"),
+  status: varchar("status").notNull().default("draft"), // draft, pending, in_progress, completed, failed, cancelled
+  totalRecipients: integer("total_recipients").default(0),
+  completedCalls: integer("completed_calls").default(0),
+  failedCalls: integer("failed_calls").default(0),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 4 }),
+  actualCost: decimal("actual_cost", { precision: 10, scale: 4 }),
+  metadata: jsonb("metadata"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Batch Call Recipients table
+export const batchCallRecipients = pgTable("batch_call_recipients", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchCallId: varchar("batch_call_id").notNull(),
+  phoneNumber: varchar("phone_number").notNull(),
+  status: varchar("status").notNull().default("pending"), // pending, calling, completed, failed, no_answer, busy
+  variables: jsonb("variables"), // Dynamic variables for personalization
+  callDuration: integer("call_duration"), // in seconds
+  callCost: decimal("call_cost", { precision: 10, scale: 4 }),
+  errorMessage: text("error_message"),
+  conversationId: varchar("conversation_id"),
+  calledAt: timestamp("called_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Billing Packages table
 export const billingPackages = pgTable("billing_packages", {
   id: varchar("id").primaryKey(),
@@ -314,6 +345,18 @@ export const insertBillingPackageSchema = createInsertSchema(billingPackages).om
   updatedAt: true,
 });
 
+export const insertBatchCallSchema = createInsertSchema(batchCalls).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBatchCallRecipientSchema = createInsertSchema(batchCallRecipients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Payment relations (defined after billingPackages table)
 export const paymentsRelations = relations(payments, ({ one }) => ({
   organization: one(organizations, {
@@ -328,6 +371,34 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
 
 export const billingPackagesRelations = relations(billingPackages, ({ many }) => ({
   payments: many(payments),
+}));
+
+// Batch call relations (must be after table definitions)
+export const batchCallsRelations = relations(batchCalls, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [batchCalls.organizationId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [batchCalls.userId],
+    references: [users.id],
+  }),
+  agent: one(agents, {
+    fields: [batchCalls.agentId],
+    references: [agents.id],
+  }),
+  phoneNumber: one(phoneNumbers, {
+    fields: [batchCalls.phoneNumberId],
+    references: [phoneNumbers.id],
+  }),
+  recipients: many(batchCallRecipients),
+}));
+
+export const batchCallRecipientsRelations = relations(batchCallRecipients, ({ one }) => ({
+  batchCall: one(batchCalls, {
+    fields: [batchCallRecipients.batchCallId],
+    references: [batchCalls.id],
+  }),
 }));
 
 // Types
@@ -347,3 +418,7 @@ export type PhoneNumber = typeof phoneNumbers.$inferSelect;
 export type InsertPhoneNumber = z.infer<typeof insertPhoneNumberSchema>;
 export type BillingPackage = typeof billingPackages.$inferSelect;
 export type InsertBillingPackage = z.infer<typeof insertBillingPackageSchema>;
+export type BatchCall = typeof batchCalls.$inferSelect;
+export type InsertBatchCall = z.infer<typeof insertBatchCallSchema>;
+export type BatchCallRecipient = typeof batchCallRecipients.$inferSelect;
+export type InsertBatchCallRecipient = z.infer<typeof insertBatchCallRecipientSchema>;

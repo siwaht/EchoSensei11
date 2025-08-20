@@ -7,6 +7,8 @@ import {
   billingPackages,
   payments,
   phoneNumbers,
+  batchCalls,
+  batchCallRecipients,
   type User,
   type UpsertUser,
   type Organization,
@@ -22,6 +24,10 @@ import {
   type InsertPayment,
   type PhoneNumber,
   type InsertPhoneNumber,
+  type BatchCall,
+  type InsertBatchCall,
+  type BatchCallRecipient,
+  type InsertBatchCallRecipient,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sum, avg, max } from "drizzle-orm";
@@ -110,6 +116,18 @@ export interface IStorage {
   getAllPayments(): Promise<Payment[]>;
   createPayment(data: InsertPayment): Promise<Payment>;
   updatePayment(id: string, data: Partial<Payment>): Promise<Payment>;
+
+  // Batch call operations
+  getBatchCalls(organizationId: string): Promise<BatchCall[]>;
+  getBatchCall(id: string, organizationId: string): Promise<BatchCall | undefined>;
+  createBatchCall(data: InsertBatchCall): Promise<BatchCall>;
+  updateBatchCall(id: string, organizationId: string, data: Partial<BatchCall>): Promise<BatchCall>;
+  deleteBatchCall(id: string, organizationId: string): Promise<void>;
+  
+  // Batch call recipient operations
+  getBatchCallRecipients(batchCallId: string): Promise<BatchCallRecipient[]>;
+  createBatchCallRecipients(recipients: InsertBatchCallRecipient[]): Promise<BatchCallRecipient[]>;
+  updateBatchCallRecipient(id: string, data: Partial<BatchCallRecipient>): Promise<BatchCallRecipient>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -559,6 +577,72 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(phoneNumbers)
       .where(and(eq(phoneNumbers.id, id), eq(phoneNumbers.organizationId, organizationId)));
+  }
+
+  // Batch call operations
+  async getBatchCalls(organizationId: string): Promise<BatchCall[]> {
+    return await db
+      .select()
+      .from(batchCalls)
+      .where(eq(batchCalls.organizationId, organizationId))
+      .orderBy(desc(batchCalls.createdAt));
+  }
+
+  async getBatchCall(id: string, organizationId: string): Promise<BatchCall | undefined> {
+    const [batchCall] = await db
+      .select()
+      .from(batchCalls)
+      .where(and(eq(batchCalls.id, id), eq(batchCalls.organizationId, organizationId)));
+    return batchCall;
+  }
+
+  async createBatchCall(data: InsertBatchCall): Promise<BatchCall> {
+    const [batchCall] = await db.insert(batchCalls).values(data).returning();
+    return batchCall;
+  }
+
+  async updateBatchCall(id: string, organizationId: string, data: Partial<BatchCall>): Promise<BatchCall> {
+    const [updated] = await db
+      .update(batchCalls)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(batchCalls.id, id), eq(batchCalls.organizationId, organizationId)))
+      .returning();
+    if (!updated) {
+      throw new Error("Batch call not found");
+    }
+    return updated;
+  }
+
+  async deleteBatchCall(id: string, organizationId: string): Promise<void> {
+    await db
+      .delete(batchCalls)
+      .where(and(eq(batchCalls.id, id), eq(batchCalls.organizationId, organizationId)));
+  }
+
+  // Batch call recipient operations
+  async getBatchCallRecipients(batchCallId: string): Promise<BatchCallRecipient[]> {
+    return await db
+      .select()
+      .from(batchCallRecipients)
+      .where(eq(batchCallRecipients.batchCallId, batchCallId))
+      .orderBy(batchCallRecipients.createdAt);
+  }
+
+  async createBatchCallRecipients(recipients: InsertBatchCallRecipient[]): Promise<BatchCallRecipient[]> {
+    const created = await db.insert(batchCallRecipients).values(recipients).returning();
+    return created;
+  }
+
+  async updateBatchCallRecipient(id: string, data: Partial<BatchCallRecipient>): Promise<BatchCallRecipient> {
+    const [updated] = await db
+      .update(batchCallRecipients)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(batchCallRecipients.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error("Batch call recipient not found");
+    }
+    return updated;
   }
 }
 

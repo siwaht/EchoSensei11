@@ -17,7 +17,8 @@ import {
   LogOut,
   Shield,
   FlaskConical,
-  Phone
+  Phone,
+  PhoneOutgoing
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ const navigation = [
   { name: "Agents", href: "/agents", icon: Bot },
   { name: "Voices", href: "/voices", icon: Mic },
   { name: "Phone Numbers", href: "/phone-numbers", icon: Phone },
+  { name: "Outbound Calling", href: "/outbound-calling", icon: PhoneOutgoing },
   { name: "Playground", href: "/playground", icon: FlaskConical },
   { name: "Call History", href: "/history", icon: History },
   { name: "Integrations", href: "/integrations", icon: Plug },
@@ -64,6 +66,9 @@ export default function AppShell({ children }: AppShellProps) {
     
     // Check for phone numbers route
     if (location === "/phone-numbers") return "Phone Numbers";
+    
+    // Check for outbound calling route
+    if (location === "/outbound-calling") return "Outbound Calling";
     
     // Check for agent settings route
     if (location.startsWith("/agents/") && location.includes("/settings")) return "Agent Settings";
