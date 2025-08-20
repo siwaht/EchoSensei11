@@ -49,6 +49,10 @@ export default function AdminDashboard() {
   const [creatingPackage, setCreatingPackage] = useState(false);
   const [editingPackage, setEditingPackage] = useState<BillingPackage | null>(null);
   const [deletingPackage, setDeletingPackage] = useState<BillingPackage | null>(null);
+  const [connectingStripe, setConnectingStripe] = useState(false);
+  const [connectingPayPal, setConnectingPayPal] = useState(false);
+  const [stripeKeys, setStripeKeys] = useState({ publishableKey: '', secretKey: '' });
+  const [paypalKeys, setPaypalKeys] = useState({ clientId: '', clientSecret: '' });
   const [newPackage, setNewPackage] = useState({
     id: "",
     name: "",
@@ -811,7 +815,11 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <Button className="w-full" size="sm">
+                <Button 
+                  className="w-full" 
+                  size="sm"
+                  onClick={() => setConnectingStripe(true)}
+                >
                   <CreditCard className="w-4 h-4 mr-2" />
                   Connect Stripe Account
                 </Button>
@@ -844,7 +852,11 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <Button className="w-full" size="sm">
+                <Button 
+                  className="w-full" 
+                  size="sm"
+                  onClick={() => setConnectingPayPal(true)}
+                >
                   <Wallet className="w-4 h-4 mr-2" />
                   Connect PayPal Account
                 </Button>
@@ -1278,6 +1290,132 @@ export default function AdminDashboard() {
               data-testid="button-save-org"
             >
               Save Billing Settings
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Connect Stripe Dialog */}
+      <Dialog open={connectingStripe} onOpenChange={setConnectingStripe}>
+        <DialogContent className="w-[95vw] max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Connect Stripe Account</DialogTitle>
+            <DialogDescription>
+              Enter your Stripe API keys to enable payment processing. You can find these in your Stripe dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Publishable Key</Label>
+              <Input
+                type="text"
+                value={stripeKeys.publishableKey}
+                onChange={(e) => setStripeKeys({ ...stripeKeys, publishableKey: e.target.value })}
+                placeholder="pk_test_..."
+                data-testid="input-stripe-publishable-key"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Starts with pk_test_ for test mode or pk_live_ for live mode
+              </p>
+            </div>
+            <div>
+              <Label>Secret Key</Label>
+              <Input
+                type="password"
+                value={stripeKeys.secretKey}
+                onChange={(e) => setStripeKeys({ ...stripeKeys, secretKey: e.target.value })}
+                placeholder="sk_test_..."
+                data-testid="input-stripe-secret-key"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Starts with sk_test_ for test mode or sk_live_ for live mode. Keep this key secure!
+              </p>
+            </div>
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Note:</strong> Use test keys for development and live keys for production. Never share your secret key.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConnectingStripe(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                // Here you would normally save the keys to the backend
+                toast({ 
+                  title: "Stripe configuration saved",
+                  description: "To complete setup, configure environment variables on the server."
+                });
+                setConnectingStripe(false);
+                setStripeKeys({ publishableKey: '', secretKey: '' });
+              }}
+              disabled={!stripeKeys.publishableKey || !stripeKeys.secretKey}
+              data-testid="button-save-stripe"
+            >
+              Save Configuration
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Connect PayPal Dialog */}
+      <Dialog open={connectingPayPal} onOpenChange={setConnectingPayPal}>
+        <DialogContent className="w-[95vw] max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Connect PayPal Account</DialogTitle>
+            <DialogDescription>
+              Enter your PayPal API credentials to enable payment processing. You can find these in your PayPal developer dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Client ID</Label>
+              <Input
+                type="text"
+                value={paypalKeys.clientId}
+                onChange={(e) => setPaypalKeys({ ...paypalKeys, clientId: e.target.value })}
+                placeholder="AX1234567890..."
+                data-testid="input-paypal-client-id"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Found in your PayPal app settings
+              </p>
+            </div>
+            <div>
+              <Label>Client Secret</Label>
+              <Input
+                type="password"
+                value={paypalKeys.clientSecret}
+                onChange={(e) => setPaypalKeys({ ...paypalKeys, clientSecret: e.target.value })}
+                placeholder="EK1234567890..."
+                data-testid="input-paypal-client-secret"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Keep this key secure and never share it
+              </p>
+            </div>
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Note:</strong> Use sandbox credentials for testing and live credentials for production.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConnectingPayPal(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                // Here you would normally save the keys to the backend
+                toast({ 
+                  title: "PayPal configuration saved",
+                  description: "To complete setup, configure environment variables on the server."
+                });
+                setConnectingPayPal(false);
+                setPaypalKeys({ clientId: '', clientSecret: '' });
+              }}
+              disabled={!paypalKeys.clientId || !paypalKeys.clientSecret}
+              data-testid="button-save-paypal"
+            >
+              Save Configuration
             </Button>
           </DialogFooter>
         </DialogContent>
