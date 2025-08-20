@@ -446,6 +446,38 @@ export default function AgentSettings() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Voice Selection */}
+                <div>
+                  <Label className="text-sm mb-2">Voice</Label>
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                    <div>
+                      <p className="font-medium text-sm">
+                        {settings.voiceId ? 
+                          (voices.find(v => v.voice_id === settings.voiceId)?.name || "Voice selected") : 
+                          "No voice selected"
+                        }
+                      </p>
+                      {settings.voiceId && voices.find(v => v.voice_id === settings.voiceId) && (
+                        <p className="text-xs text-gray-500">
+                          {voices.find(v => v.voice_id === settings.voiceId)?.labels?.accent || "Conversational"}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      onClick={() => setLocation("/voices")}
+                      variant="outline"
+                      size="sm"
+                      data-testid="button-change-voice"
+                    >
+                      <Volume2 className="w-4 h-4 mr-2" />
+                      Select Voice
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Choose a voice from the Voice Library
+                  </p>
+                </div>
               </div>
             </Card>
           </TabsContent>

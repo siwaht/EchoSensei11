@@ -1,15 +1,17 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Plus, MoreVertical, Play, TrendingUp } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Search, Filter, Play, UserCheck, Settings } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Agent } from "@shared/schema";
 
 interface Voice {
   voice_id: string;
@@ -26,15 +28,47 @@ interface Voice {
 
 export default function Voices() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [activeTab, setActiveTab] = useState("my-voices");
   const [showFilters, setShowFilters] = useState(false);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const [showAgentDialog, setShowAgentDialog] = useState(false);
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 
   // Fetch voices from API
   const { data: voices = [], isLoading } = useQuery<Voice[]>({
     queryKey: ["/api/voiceai/voices"],
+  });
+
+  // Fetch agents
+  const { data: agents = [] } = useQuery<Agent[]>({
+    queryKey: ["/api/agents"],
+  });
+
+  // Update agent mutation
+  const updateAgent = useMutation({
+    mutationFn: async ({ agentId, voiceId }: { agentId: string; voiceId: string }) => {
+      return await apiRequest("PATCH", `/api/agents/${agentId}`, { voiceId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
+      setShowAgentDialog(false);
+      setSelectedVoiceId(null);
+      setSelectedAgentId(null);
+      toast({
+        title: "Voice assigned",
+        description: "The voice has been assigned to your agent.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Assignment failed",
+        description: error.message || "Failed to assign voice to agent",
+        variant: "destructive",
+      });
+    },
   });
 
   // Filter voices based on search and category
@@ -156,66 +190,44 @@ export default function Voices() {
     );
   }
 
+  const selectedVoice = voices.find(v => v.voice_id === selectedVoiceId);
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
-            My Voices
+            Voice Library
           </h2>
-          <Button data-testid="button-create-voice" className="gap-2">
-            <Plus className="w-4 h-4" />
-            Create or Clone a Voice
-          </Button>
         </div>
-
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-[400px] grid-cols-3">
-            <TabsTrigger value="explore" data-testid="tab-explore">Explore</TabsTrigger>
-            <TabsTrigger value="my-voices" data-testid="tab-my-voices">My Voices</TabsTrigger>
-            <TabsTrigger value="default-voices" data-testid="tab-default">Default Voices</TabsTrigger>
-          </TabsList>
-        </Tabs>
 
         {/* Search and Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              placeholder="Search library voices..."
+              placeholder="Search voices..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
               data-testid="input-search-voices"
             />
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="gap-2"
-              data-testid="button-toggle-filters"
-            >
-              <TrendingUp className="w-4 h-4" />
-              Trending
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="gap-2"
-              data-testid="button-filters"
-            >
-              <Filter className="w-4 h-4" />
-              Filters
-              {selectedCategory !== "all" && (
-                <Badge variant="secondary" className="ml-1">
-                  1
-                </Badge>
-              )}
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className="gap-2"
+            data-testid="button-filters"
+          >
+            <Filter className="w-4 h-4" />
+            Filters
+            {selectedCategory !== "all" && (
+              <Badge variant="secondary" className="ml-1">
+                1
+              </Badge>
+            )}
+          </Button>
         </div>
 
         {/* Category Filter */}
@@ -253,16 +265,13 @@ export default function Voices() {
       {/* Results Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">
-          Results
+          Available Voices
           {filteredVoices.length > 0 && (
             <span className="ml-2 text-sm text-gray-500">
               ({filteredVoices.length} {filteredVoices.length === 1 ? "voice" : "voices"})
             </span>
           )}
         </h3>
-        {activeTab === "my-voices" && filteredVoices.length === 0 && (
-          <Badge variant="secondary">New</Badge>
-        )}
       </div>
 
       {/* Voice Cards */}
@@ -275,7 +284,7 @@ export default function Voices() {
             <p className="text-gray-500 dark:text-gray-400">
               {searchQuery || selectedCategory !== "all"
                 ? "Try adjusting your filters or search query"
-                : "Start by creating or cloning a voice"}
+                : "No voices available"}
             </p>
           </div>
         </Card>
@@ -284,7 +293,7 @@ export default function Voices() {
           {filteredVoices.map((voice) => (
             <Card
               key={voice.voice_id}
-              className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+              className="p-4 hover:shadow-md transition-shadow"
               data-testid={`card-voice-${voice.voice_id}`}
             >
               <div className="flex items-start gap-4">
@@ -306,27 +315,29 @@ export default function Voices() {
                         {voice.description || "Professional voice perfect for conversational AI"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handlePlayVoice(voice.voice_id, voice.preview_url)}
                         data-testid={`button-play-${voice.voice_id}`}
+                        title="Play preview"
                       >
                         <Play className={`w-4 h-4 ${playingVoiceId === voice.voice_id ? "text-primary" : ""}`} />
                       </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" data-testid={`button-menu-${voice.voice_id}`}>
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Use in Agent</DropdownMenuItem>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Clone Voice</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedVoiceId(voice.voice_id);
+                          setShowAgentDialog(true);
+                        }}
+                        className="gap-1"
+                        data-testid={`button-use-voice-${voice.voice_id}`}
+                      >
+                        <UserCheck className="w-3 h-3" />
+                        Use Voice
+                      </Button>
                     </div>
                   </div>
 
@@ -349,12 +360,6 @@ export default function Voices() {
                     <span className="text-sm text-gray-500">
                       {voice.category || "Conversational"}
                     </span>
-
-                    {/* Stats */}
-                    <div className="flex items-center gap-4 ml-auto text-sm text-gray-500">
-                      <span>2y</span>
-                      <span>7.4K</span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -372,6 +377,88 @@ export default function Voices() {
           ))}
         </div>
       )}
+
+      {/* Agent Selection Dialog */}
+      <Dialog open={showAgentDialog} onOpenChange={setShowAgentDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Select Agent for Voice</DialogTitle>
+            <DialogDescription>
+              Choose which agent should use "{selectedVoice?.name}"
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {agents.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No agents found. Create an agent first.</p>
+                <Button
+                  className="mt-4"
+                  onClick={() => setLocation("/agents")}
+                  data-testid="button-go-to-agents"
+                >
+                  Go to Agents
+                </Button>
+              </div>
+            ) : (
+              agents.map((agent) => (
+                <Card
+                  key={agent.id}
+                  className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                    selectedAgentId === agent.id ? "ring-2 ring-primary" : ""
+                  }`}
+                  onClick={() => setSelectedAgentId(agent.id)}
+                  data-testid={`card-agent-${agent.id}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">{agent.name}</h4>
+                      <p className="text-sm text-gray-500">
+                        {agent.voiceId ? `Current voice: ${voices.find(v => v.voice_id === agent.voiceId)?.name || agent.voiceId}` : "No voice assigned"}
+                      </p>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLocation(`/agents/${agent.id}/settings`);
+                      }}
+                      data-testid={`button-agent-settings-${agent.id}`}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAgentDialog(false);
+                setSelectedAgentId(null);
+              }}
+              data-testid="button-cancel-assignment"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedAgentId && selectedVoiceId) {
+                  updateAgent.mutate({ agentId: selectedAgentId, voiceId: selectedVoiceId });
+                }
+              }}
+              disabled={!selectedAgentId || updateAgent.isPending}
+              data-testid="button-confirm-assignment"
+            >
+              {updateAgent.isPending ? "Assigning..." : "Assign Voice"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
