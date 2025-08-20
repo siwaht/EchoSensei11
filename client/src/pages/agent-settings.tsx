@@ -288,265 +288,277 @@ export default function AgentSettings() {
   }
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-6xl">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => setLocation("/agents")}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">{agent.name} Settings</h1>
-            <p className="text-sm text-muted-foreground">Configure your agent's behavior and capabilities</p>
+    <div className="min-h-screen bg-background">
+      {/* Mobile Header */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setLocation("/agents")}
+                data-testid="button-back"
+                className="h-8 w-8"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+              <div className="flex-1">
+                <h1 className="text-lg font-semibold">Agent Settings</h1>
+              </div>
+            </div>
+            <Button 
+              onClick={handleSave}
+              disabled={!hasUnsavedChanges || updateAgentMutation.isPending}
+              size="sm"
+              data-testid="button-save"
+              className="h-8"
+            >
+              {updateAgentMutation.isPending ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                  <span className="hidden sm:inline">Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-3 h-3 sm:mr-2" />
+                  <span className="hidden sm:inline">Save Changes</span>
+                </>
+              )}
+            </Button>
           </div>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+      </div>
+
+      <div className="container mx-auto px-4 py-4 max-w-6xl">
+        {/* Agent Name and Test Button */}
+        <div className="mb-4">
+          <h2 className="text-xl font-bold mb-2">{agent.name}</h2>
+          <p className="text-sm text-muted-foreground mb-3">Configure your agent's behavior and capabilities</p>
           <Button 
             variant="outline" 
             onClick={() => setLocation('/playground')}
-            className="flex-1 sm:flex-initial"
+            className="w-full sm:w-auto"
+            size="sm"
             data-testid="button-test"
           >
             <Play className="w-4 h-4 mr-2" />
             Test Agent
           </Button>
-          <Button 
-            onClick={handleSave}
-            disabled={!hasUnsavedChanges || updateAgentMutation.isPending}
-            className="flex-1 sm:flex-initial"
-            data-testid="button-save"
-          >
-            {updateAgentMutation.isPending ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Save Changes
-              </>
-            )}
-          </Button>
         </div>
-      </div>
 
-      {hasUnsavedChanges && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            You have unsaved changes. Click "Save Changes" to apply them.
-          </p>
-        </div>
-      )}
+        {hasUnsavedChanges && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
+            <p className="text-xs sm:text-sm text-yellow-800 dark:text-yellow-200">
+              You have unsaved changes. Click "Save" to apply them.
+            </p>
+          </div>
+        )}
 
-      {/* Settings Tabs */}
-      <Tabs defaultValue="conversation" className="space-y-4">
-        <TabsList className="grid grid-cols-3 lg:grid-cols-5 w-full">
-          <TabsTrigger value="conversation" className="gap-1 text-xs sm:text-sm">
-            <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Conversation</span>
-            <span className="sm:hidden">Chat</span>
-          </TabsTrigger>
-          <TabsTrigger value="voice" className="gap-1 text-xs sm:text-sm">
-            <Volume2 className="w-3 h-3 sm:w-4 sm:h-4" />
-            Voice
-          </TabsTrigger>
-          <TabsTrigger value="llm" className="gap-1 text-xs sm:text-sm">
-            <Brain className="w-3 h-3 sm:w-4 sm:h-4" />
-            LLM
-          </TabsTrigger>
-          <TabsTrigger value="tools" className="gap-1 text-xs sm:text-sm">
-            <Wrench className="w-3 h-3 sm:w-4 sm:h-4" />
-            Tools
-          </TabsTrigger>
-          <TabsTrigger value="advanced" className="gap-1 text-xs sm:text-sm">
-            <Settings2 className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Advanced</span>
-            <span className="sm:hidden">More</span>
-          </TabsTrigger>
-        </TabsList>
+        {/* Settings Tabs */}
+        <Tabs defaultValue="conversation" className="space-y-4">
+          <TabsList className="grid grid-cols-5 w-full p-1">
+            <TabsTrigger value="conversation" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
+              <MessageSquare className="w-4 h-4" />
+              <span className="text-[10px] sm:text-sm">Chat</span>
+            </TabsTrigger>
+            <TabsTrigger value="voice" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
+              <Volume2 className="w-4 h-4" />
+              <span className="text-[10px] sm:text-sm">Voice</span>
+            </TabsTrigger>
+            <TabsTrigger value="llm" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
+              <Brain className="w-4 h-4" />
+              <span className="text-[10px] sm:text-sm">LLM</span>
+            </TabsTrigger>
+            <TabsTrigger value="tools" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
+              <Wrench className="w-4 h-4" />
+              <span className="text-[10px] sm:text-sm">Tools</span>
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
+              <Settings2 className="w-4 h-4" />
+              <span className="text-[10px] sm:text-sm">More</span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Conversation Tab */}
-        <TabsContent value="conversation" className="space-y-4">
-          <Card className="p-4 sm:p-6">
-            <h3 className="text-lg font-semibold mb-4">Conversation Settings</h3>
-            <div className="space-y-4">
-              {/* First Message */}
-              <div>
-                <Label htmlFor="first-message">First Message</Label>
-                <Textarea
-                  id="first-message"
-                  placeholder="e.g., Hello! How can I help you today?"
-                  value={settings.firstMessage}
-                  onChange={(e) => {
-                    setSettings({ ...settings, firstMessage: e.target.value });
-                    setHasUnsavedChanges(true);
-                  }}
-                  className="min-h-[80px]"
-                  data-testid="textarea-first-message"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  The initial message your agent will say when starting a conversation
-                </p>
-              </div>
-
-              {/* System Prompt */}
-              <div>
-                <Label htmlFor="system-prompt">System Prompt</Label>
-                <Textarea
-                  id="system-prompt"
-                  placeholder="Define your agent's personality, knowledge, and behavior..."
-                  value={settings.systemPrompt}
-                  onChange={(e) => {
-                    setSettings({ ...settings, systemPrompt: e.target.value });
-                    setHasUnsavedChanges(true);
-                  }}
-                  className="min-h-[120px]"
-                  data-testid="textarea-system-prompt"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Instructions that define how your agent should behave and respond
-                </p>
-              </div>
-
-              {/* Language */}
-              <div>
-                <Label htmlFor="language">Language</Label>
-                <Select
-                  value={settings.language}
-                  onValueChange={(value) => {
-                    setSettings({ ...settings, language: value });
-                    setHasUnsavedChanges(true);
-                  }}
-                >
-                  <SelectTrigger id="language" data-testid="select-language">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Spanish</SelectItem>
-                    <SelectItem value="fr">French</SelectItem>
-                    <SelectItem value="de">German</SelectItem>
-                    <SelectItem value="it">Italian</SelectItem>
-                    <SelectItem value="pt">Portuguese</SelectItem>
-                    <SelectItem value="pl">Polish</SelectItem>
-                    <SelectItem value="ja">Japanese</SelectItem>
-                    <SelectItem value="zh">Chinese</SelectItem>
-                    <SelectItem value="ko">Korean</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
-
-        {/* Voice Tab */}
-        <TabsContent value="voice" className="space-y-4">
-          <Card className="p-4 sm:p-6">
-            <h3 className="text-lg font-semibold mb-4">Voice Settings</h3>
-            
-            {/* Voice Selection */}
-            <div className="mb-6">
-              <Label className="mb-2">Select Voice</Label>
-              <div className="flex gap-2 mb-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input
-                    placeholder="Search voices..."
-                    value={voiceSearch}
-                    onChange={(e) => setVoiceSearch(e.target.value)}
-                    className="pl-9"
-                    data-testid="input-voice-search"
+          {/* Conversation Tab */}
+          <TabsContent value="conversation" className="space-y-4 mt-4">
+            <Card className="p-4">
+              <h3 className="text-base font-semibold mb-4">Conversation Settings</h3>
+              <div className="space-y-4">
+                {/* First Message */}
+                <div>
+                  <Label htmlFor="first-message" className="text-sm">First Message</Label>
+                  <Textarea
+                    id="first-message"
+                    placeholder="e.g., Hello! How can I help you today?"
+                    value={settings.firstMessage}
+                    onChange={(e) => {
+                      setSettings({ ...settings, firstMessage: e.target.value });
+                      setHasUnsavedChanges(true);
+                    }}
+                    className="min-h-[80px] text-sm"
+                    data-testid="textarea-first-message"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    The initial message your agent will say when starting a conversation
+                  </p>
+                </div>
+
+                {/* System Prompt */}
+                <div>
+                  <Label htmlFor="system-prompt" className="text-sm">System Prompt</Label>
+                  <Textarea
+                    id="system-prompt"
+                    placeholder="Define your agent's personality, knowledge, and behavior..."
+                    value={settings.systemPrompt}
+                    onChange={(e) => {
+                      setSettings({ ...settings, systemPrompt: e.target.value });
+                      setHasUnsavedChanges(true);
+                    }}
+                    className="min-h-[100px] text-sm"
+                    data-testid="textarea-system-prompt"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Instructions that define how your agent should behave and respond
+                  </p>
+                </div>
+
+                {/* Language */}
+                <div>
+                  <Label htmlFor="language" className="text-sm">Language</Label>
+                  <Select
+                    value={settings.language}
+                    onValueChange={(value) => {
+                      setSettings({ ...settings, language: value });
+                      setHasUnsavedChanges(true);
+                    }}
+                  >
+                    <SelectTrigger id="language" data-testid="select-language">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="es">Spanish</SelectItem>
+                      <SelectItem value="fr">French</SelectItem>
+                      <SelectItem value="de">German</SelectItem>
+                      <SelectItem value="it">Italian</SelectItem>
+                      <SelectItem value="pt">Portuguese</SelectItem>
+                      <SelectItem value="pl">Polish</SelectItem>
+                      <SelectItem value="ja">Japanese</SelectItem>
+                      <SelectItem value="zh">Chinese</SelectItem>
+                      <SelectItem value="ko">Korean</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
+            </Card>
+          </TabsContent>
+
+          {/* Voice Tab */}
+          <TabsContent value="voice" className="space-y-4 mt-4">
+            <Card className="p-4">
+              <h3 className="text-base font-semibold mb-4">Voice Settings</h3>
               
-              {voicesLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-2 text-sm text-muted-foreground">Loading voices...</p>
+              {/* Voice Selection */}
+              <div className="mb-6">
+                <Label className="text-sm mb-2">Select Voice</Label>
+                <div className="flex gap-2 mb-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                      placeholder="Search voices..."
+                      value={voiceSearch}
+                      onChange={(e) => setVoiceSearch(e.target.value)}
+                      className="pl-9 text-sm"
+                      data-testid="input-voice-search"
+                    />
+                  </div>
                 </div>
-              ) : (
-                <div className="grid gap-2 max-h-64 overflow-y-auto">
-                  {filteredVoices.map((voice) => (
-                    <div
-                      key={voice.voice_id}
-                      className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
-                        settings.voiceId === voice.voice_id 
-                          ? 'border-primary bg-primary/5' 
-                          : 'border-border hover:bg-muted/50'
-                      }`}
-                      onClick={() => {
-                        setSettings({ ...settings, voiceId: voice.voice_id });
-                        setHasUnsavedChanges(true);
-                      }}
-                      data-testid={`voice-option-${voice.voice_id}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-                          {settings.voiceId === voice.voice_id ? (
-                            <Check className="w-4 h-4 text-primary" />
-                          ) : (
-                            <Mic className="w-4 h-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{voice.name}</p>
-                          <div className="flex gap-2 mt-0.5">
-                            {voice.labels?.accent && (
-                              <span className="text-xs text-muted-foreground">{voice.labels.accent}</span>
-                            )}
-                            {voice.labels?.gender && (
-                              <span className="text-xs text-muted-foreground">{voice.labels.gender}</span>
+                
+                {voicesLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="mt-2 text-sm text-muted-foreground">Loading voices...</p>
+                  </div>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto border rounded-lg">
+                    {filteredVoices.map((voice) => (
+                      <div
+                        key={voice.voice_id}
+                        className={`p-3 border-b last:border-b-0 cursor-pointer transition-colors ${
+                          settings.voiceId === voice.voice_id ? 'bg-primary/10' : 'hover:bg-muted/50'
+                        }`}
+                        onClick={() => {
+                          setSettings({ ...settings, voiceId: voice.voice_id });
+                          setHasUnsavedChanges(true);
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{voice.name}</span>
+                              {settings.voiceId === voice.voice_id && (
+                                <Check className="w-4 h-4 text-primary" />
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {voice.labels?.accent && (
+                                <span className="text-xs px-2 py-0.5 bg-muted rounded-full">
+                                  {voice.labels.accent}
+                                </span>
+                              )}
+                              {voice.labels?.gender && (
+                                <span className="text-xs px-2 py-0.5 bg-muted rounded-full">
+                                  {voice.labels.gender}
+                                </span>
+                              )}
+                              {voice.labels?.age && (
+                                <span className="text-xs px-2 py-0.5 bg-muted rounded-full">
+                                  {voice.labels.age}
+                                </span>
+                              )}
+                            </div>
+                            {voice.labels?.description && (
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                                {voice.labels.description}
+                              </p>
                             )}
                           </div>
+                          {voice.preview_url && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playVoicePreview(voice.voice_id, voice.preview_url!);
+                              }}
+                              data-testid={`button-preview-${voice.voice_id}`}
+                            >
+                              {playingVoiceId === voice.voice_id ? (
+                                <X className="w-4 h-4" />
+                              ) : (
+                                <Volume2 className="w-4 h-4" />
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </div>
-                      {voice.preview_url && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            playVoicePreview(voice.voice_id, voice.preview_url!);
-                          }}
-                          data-testid={`play-preview-${voice.voice_id}`}
-                        >
-                          {playingVoiceId === voice.voice_id ? (
-                            <Volume2 className="w-4 h-4 animate-pulse" />
-                          ) : (
-                            <Play className="w-4 h-4" />
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-            {/* Voice Settings */}
-            {settings.voiceId && (
-              <div className="space-y-4 pt-4 border-t">
-                <h4 className="font-medium">Voice Fine-tuning</h4>
-                
-                {/* Stability */}
+              {/* Voice Fine-tuning */}
+              <div className="space-y-4">
                 <div>
-                  <div className="flex justify-between mb-2">
-                    <Label>Stability</Label>
-                    <span className="text-sm text-muted-foreground">
-                      {Math.round(settings.stability * 100)}%
-                    </span>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm">Stability</Label>
+                    <span className="text-sm text-muted-foreground">{settings.stability.toFixed(2)}</span>
                   </div>
                   <Slider
                     value={[settings.stability]}
-                    onValueChange={([value]) => {
-                      setSettings({ ...settings, stability: value });
+                    onValueChange={(value) => {
+                      setSettings({ ...settings, stability: value[0] });
                       setHasUnsavedChanges(true);
                     }}
                     max={1}
@@ -554,20 +566,20 @@ export default function AgentSettings() {
                     className="w-full"
                     data-testid="slider-stability"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Controls voice consistency. Lower values = more variation
+                  </p>
                 </div>
 
-                {/* Similarity Boost */}
                 <div>
-                  <div className="flex justify-between mb-2">
-                    <Label>Similarity Boost</Label>
-                    <span className="text-sm text-muted-foreground">
-                      {Math.round(settings.similarityBoost * 100)}%
-                    </span>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm">Similarity Boost</Label>
+                    <span className="text-sm text-muted-foreground">{settings.similarityBoost.toFixed(2)}</span>
                   </div>
                   <Slider
                     value={[settings.similarityBoost]}
-                    onValueChange={([value]) => {
-                      setSettings({ ...settings, similarityBoost: value });
+                    onValueChange={(value) => {
+                      setSettings({ ...settings, similarityBoost: value[0] });
                       setHasUnsavedChanges(true);
                     }}
                     max={1}
@@ -575,12 +587,38 @@ export default function AgentSettings() {
                     className="w-full"
                     data-testid="slider-similarity"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enhances voice similarity. Higher values = closer to original voice
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm">Style Exaggeration</Label>
+                    <span className="text-sm text-muted-foreground">{settings.style.toFixed(2)}</span>
+                  </div>
+                  <Slider
+                    value={[settings.style]}
+                    onValueChange={(value) => {
+                      setSettings({ ...settings, style: value[0] });
+                      setHasUnsavedChanges(true);
+                    }}
+                    max={1}
+                    step={0.01}
+                    className="w-full"
+                    data-testid="slider-style"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Amplifies the style of the original voice
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="speaker-boost">Speaker Boost</Label>
+                  <div>
+                    <Label className="text-sm">Speaker Boost</Label>
+                    <p className="text-xs text-muted-foreground">Enhance voice clarity</p>
+                  </div>
                   <Switch
-                    id="speaker-boost"
                     checked={settings.useSpeakerBoost}
                     onCheckedChange={(checked) => {
                       setSettings({ ...settings, useSpeakerBoost: checked });
@@ -590,231 +628,209 @@ export default function AgentSettings() {
                   />
                 </div>
               </div>
-            )}
-          </Card>
-        </TabsContent>
+            </Card>
+          </TabsContent>
 
-        {/* LLM Tab */}
-        <TabsContent value="llm" className="space-y-4">
-          <Card className="p-4 sm:p-6">
-            <h3 className="text-lg font-semibold mb-4">Language Model Settings</h3>
-            <div className="space-y-4">
-              {/* Model Selection */}
-              <div>
-                <Label htmlFor="model">Model</Label>
-                <Select
-                  value={settings.model}
-                  onValueChange={(value) => {
-                    setSettings({ ...settings, model: value });
-                    setHasUnsavedChanges(true);
-                  }}
-                >
-                  <SelectTrigger id="model" data-testid="select-model">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gpt-4">GPT-4</SelectItem>
-                    <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-                    <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                    <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
-                    <SelectItem value="claude-3-sonnet">Claude 3 Sonnet</SelectItem>
-                    <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Temperature */}
-              <div>
-                <div className="flex justify-between mb-2">
-                  <Label>Temperature</Label>
-                  <span className="text-sm text-muted-foreground">
-                    {settings.temperature.toFixed(2)}
-                  </span>
-                </div>
-                <Slider
-                  value={[settings.temperature]}
-                  onValueChange={([value]) => {
-                    setSettings({ ...settings, temperature: value });
-                    setHasUnsavedChanges(true);
-                  }}
-                  max={2}
-                  step={0.1}
-                  className="w-full"
-                  data-testid="slider-temperature"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Lower values make responses more focused and deterministic
-                </p>
-              </div>
-
-              {/* Max Tokens */}
-              <div>
-                <Label htmlFor="max-tokens">Max Tokens</Label>
-                <Input
-                  id="max-tokens"
-                  type="number"
-                  value={settings.maxTokens}
-                  onChange={(e) => {
-                    setSettings({ ...settings, maxTokens: parseInt(e.target.value) || 150 });
-                    setHasUnsavedChanges(true);
-                  }}
-                  min={1}
-                  max={4000}
-                  data-testid="input-max-tokens"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Maximum length of each response
-                </p>
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
-
-        {/* Tools Tab */}
-        <TabsContent value="tools" className="space-y-4">
-          <Card className="p-4 sm:p-6">
-            <h3 className="text-lg font-semibold mb-4">Tools & Webhooks</h3>
-            <div className="space-y-4">
-              {/* Webhooks */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <Label>Webhook Tools</Label>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={addWebhook}
-                    className="gap-1"
+          {/* LLM Tab */}
+          <TabsContent value="llm" className="space-y-4 mt-4">
+            <Card className="p-4">
+              <h3 className="text-base font-semibold mb-4">LLM Settings</h3>
+              <div className="space-y-4">
+                {/* Model Selection */}
+                <div>
+                  <Label htmlFor="model" className="text-sm">Model</Label>
+                  <Select
+                    value={settings.model}
+                    onValueChange={(value) => {
+                      setSettings({ ...settings, model: value });
+                      setHasUnsavedChanges(true);
+                    }}
                   >
-                    <Plus className="w-3 h-3" />
-                    Add Webhook
-                  </Button>
+                    <SelectTrigger id="model" data-testid="select-model">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gpt-4">GPT-4</SelectItem>
+                      <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                      <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                      <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
+                      <SelectItem value="claude-3-sonnet">Claude 3 Sonnet</SelectItem>
+                      <SelectItem value="claude-3-haiku">Claude 3 Haiku</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                {settings.webhooks.length === 0 ? (
-                  <div className="text-center py-8 border-2 border-dashed rounded-lg">
-                    <Wrench className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      No webhooks configured
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Add webhooks to connect your agent to external APIs
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {settings.webhooks.map((webhook) => (
-                      <Card key={webhook.id} className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex gap-2">
-                            <Input
-                              placeholder="Webhook name"
-                              value={webhook.name}
-                              onChange={(e) => {
-                                const updatedWebhooks = settings.webhooks.map(w => 
-                                  w.id === webhook.id ? { ...w, name: e.target.value } : w
-                                );
-                                setSettings({ ...settings, webhooks: updatedWebhooks });
-                                setHasUnsavedChanges(true);
-                              }}
-                              className="flex-1"
-                            />
-                            <Select
-                              value={webhook.method}
-                              onValueChange={(value) => {
-                                const updatedWebhooks = settings.webhooks.map(w => 
-                                  w.id === webhook.id ? { ...w, method: value } : w
-                                );
-                                setSettings({ ...settings, webhooks: updatedWebhooks });
-                                setHasUnsavedChanges(true);
-                              }}
-                            >
-                              <SelectTrigger className="w-24">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="GET">GET</SelectItem>
-                                <SelectItem value="POST">POST</SelectItem>
-                                <SelectItem value="PUT">PUT</SelectItem>
-                                <SelectItem value="DELETE">DELETE</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => {
-                                setSettings({
-                                  ...settings,
-                                  webhooks: settings.webhooks.filter(w => w.id !== webhook.id),
-                                });
-                                setHasUnsavedChanges(true);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                          <Input
-                            placeholder="https://api.example.com/webhook"
-                            value={webhook.url}
-                            onChange={(e) => {
-                              const updatedWebhooks = settings.webhooks.map(w => 
-                                w.id === webhook.id ? { ...w, url: e.target.value } : w
-                              );
-                              setSettings({ ...settings, webhooks: updatedWebhooks });
-                              setHasUnsavedChanges(true);
-                            }}
-                          />
-                          <Textarea
-                            placeholder="Description (optional)"
-                            value={webhook.description}
-                            onChange={(e) => {
-                              const updatedWebhooks = settings.webhooks.map(w => 
-                                w.id === webhook.id ? { ...w, description: e.target.value } : w
-                              );
-                              setSettings({ ...settings, webhooks: updatedWebhooks });
-                              setHasUnsavedChanges(true);
-                            }}
-                            className="min-h-[60px]"
-                          />
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
 
-        {/* Advanced Tab */}
-        <TabsContent value="advanced" className="space-y-4">
-          <Card className="p-4 sm:p-6">
-            <h3 className="text-lg font-semibold mb-4">Advanced Settings</h3>
-            <div className="space-y-6">
-              {/* Dynamic Variables */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => toggleSection('variables')}
-                  className="flex items-center gap-2 w-full text-left"
-                >
-                  {expandedSections.variables ? (
-                    <ChevronDown className="w-4 h-4" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4" />
-                  )}
-                  <Label className="cursor-pointer">Dynamic Variables</Label>
-                </button>
-                {expandedSections.variables && (
-                  <div className="mt-3 space-y-3 pl-6">
-                    <p className="text-xs text-muted-foreground">
-                      Variables that can be passed at runtime via URL parameters
-                    </p>
-                    <div className="space-y-2">
+                {/* Temperature */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm">Temperature</Label>
+                    <span className="text-sm text-muted-foreground">{settings.temperature.toFixed(2)}</span>
+                  </div>
+                  <Slider
+                    value={[settings.temperature]}
+                    onValueChange={(value) => {
+                      setSettings({ ...settings, temperature: value[0] });
+                      setHasUnsavedChanges(true);
+                    }}
+                    max={2}
+                    step={0.01}
+                    className="w-full"
+                    data-testid="slider-temperature"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Controls randomness. 0 = deterministic, 2 = very creative
+                  </p>
+                </div>
+
+                {/* Max Tokens */}
+                <div>
+                  <Label htmlFor="max-tokens" className="text-sm">Max Tokens</Label>
+                  <Input
+                    id="max-tokens"
+                    type="number"
+                    value={settings.maxTokens}
+                    onChange={(e) => {
+                      setSettings({ ...settings, maxTokens: parseInt(e.target.value) || 150 });
+                      setHasUnsavedChanges(true);
+                    }}
+                    min={1}
+                    max={4000}
+                    className="text-sm"
+                    data-testid="input-max-tokens"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Maximum response length in tokens
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* Tools Tab */}
+          <TabsContent value="tools" className="space-y-4 mt-4">
+            <Card className="p-4">
+              <h3 className="text-base font-semibold mb-4">Tools & Webhooks</h3>
+              
+              {/* Webhooks */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm mb-2">Webhooks</Label>
+                  <div className="space-y-3">
+                    {settings.webhooks.map((webhook, index) => (
+                      <div key={webhook.id} className="p-3 border rounded-lg space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <Input
+                            placeholder="Webhook name"
+                            value={webhook.name}
+                            onChange={(e) => {
+                              const updated = [...settings.webhooks];
+                              updated[index].name = e.target.value;
+                              setSettings({ ...settings, webhooks: updated });
+                              setHasUnsavedChanges(true);
+                            }}
+                            className="text-sm"
+                          />
+                          <Select
+                            value={webhook.method}
+                            onValueChange={(value) => {
+                              const updated = [...settings.webhooks];
+                              updated[index].method = value;
+                              setSettings({ ...settings, webhooks: updated });
+                              setHasUnsavedChanges(true);
+                            }}
+                          >
+                            <SelectTrigger className="text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="GET">GET</SelectItem>
+                              <SelectItem value="POST">POST</SelectItem>
+                              <SelectItem value="PUT">PUT</SelectItem>
+                              <SelectItem value="PATCH">PATCH</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Input
+                          placeholder="https://api.example.com/webhook"
+                          value={webhook.url}
+                          onChange={(e) => {
+                            const updated = [...settings.webhooks];
+                            updated[index].url = e.target.value;
+                            setSettings({ ...settings, webhooks: updated });
+                            setHasUnsavedChanges(true);
+                          }}
+                          className="text-sm"
+                        />
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Description (optional)"
+                            value={webhook.description || ""}
+                            onChange={(e) => {
+                              const updated = [...settings.webhooks];
+                              updated[index].description = e.target.value;
+                              setSettings({ ...settings, webhooks: updated });
+                              setHasUnsavedChanges(true);
+                            }}
+                            className="flex-1 text-sm"
+                          />
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              setSettings({
+                                ...settings,
+                                webhooks: settings.webhooks.filter((_, i) => i !== index),
+                              });
+                              setHasUnsavedChanges(true);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={addWebhook}
+                      className="gap-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Add Webhook
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* Advanced Tab */}
+          <TabsContent value="advanced" className="space-y-4 mt-4">
+            <Card className="p-4">
+              <h3 className="text-base font-semibold mb-4">Advanced Settings</h3>
+              
+              <div className="space-y-4">
+                {/* Dynamic Variables */}
+                <div>
+                  <button
+                    onClick={() => toggleSection('variables')}
+                    className="flex items-center justify-between w-full py-2 text-left hover:bg-muted/50 rounded-lg px-2 transition-colors"
+                  >
+                    <span className="text-sm font-medium">Dynamic Variables</span>
+                    {expandedSections.variables ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </button>
+                  
+                  {expandedSections.variables && (
+                    <div className="mt-3 space-y-3 pl-2">
                       {Object.entries(settings.dynamicVariables).map(([key, value]) => (
                         <div key={key} className="flex gap-2">
                           <Input
-                            placeholder="Variable name"
                             value={key}
                             onChange={(e) => {
                               const newVars = { ...settings.dynamicVariables };
@@ -823,10 +839,10 @@ export default function AgentSettings() {
                               setSettings({ ...settings, dynamicVariables: newVars });
                               setHasUnsavedChanges(true);
                             }}
-                            className="flex-1"
+                            placeholder="Variable name"
+                            className="w-1/3 text-sm"
                           />
                           <Input
-                            placeholder="Default value"
                             value={value}
                             onChange={(e) => {
                               setSettings({
@@ -835,7 +851,8 @@ export default function AgentSettings() {
                               });
                               setHasUnsavedChanges(true);
                             }}
-                            className="flex-1"
+                            placeholder="Variable value"
+                            className="flex-1 text-sm"
                           />
                           <Button
                             type="button"
@@ -863,182 +880,197 @@ export default function AgentSettings() {
                         Add Variable
                       </Button>
                     </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Evaluation Criteria */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => toggleSection('evaluation')}
-                  className="flex items-center gap-2 w-full text-left"
-                >
-                  {expandedSections.evaluation ? (
-                    <ChevronDown className="w-4 h-4" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4" />
                   )}
-                  <Label className="cursor-pointer">Evaluation Criteria</Label>
-                </button>
-                {expandedSections.evaluation && (
-                  <div className="mt-3 space-y-3 pl-6">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        Define metrics to evaluate agent performance
-                      </p>
-                      <Switch
-                        checked={settings.evaluationEnabled}
-                        onCheckedChange={(checked) => {
-                          setSettings({ ...settings, evaluationEnabled: checked });
-                          setHasUnsavedChanges(true);
-                        }}
-                      />
-                    </div>
-                    {settings.evaluationEnabled && (
-                      <div className="space-y-2">
-                        {settings.evaluationCriteria.map((criterion, index) => (
-                          <div key={index} className="flex gap-2">
-                            <Input
-                              value={criterion}
-                              onChange={(e) => {
-                                const newCriteria = [...settings.evaluationCriteria];
-                                newCriteria[index] = e.target.value;
-                                setSettings({ ...settings, evaluationCriteria: newCriteria });
-                                setHasUnsavedChanges(true);
-                              }}
-                              placeholder="e.g., Response accuracy"
-                              className="flex-1"
-                            />
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => {
-                                setSettings({
-                                  ...settings,
-                                  evaluationCriteria: settings.evaluationCriteria.filter((_, i) => i !== index),
-                                });
-                                setHasUnsavedChanges(true);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={addEvaluationCriterion}
-                          className="gap-1"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Add Criterion
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                </div>
 
-              {/* Data Collection */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => toggleSection('collection')}
-                  className="flex items-center gap-2 w-full text-left"
-                >
-                  {expandedSections.collection ? (
-                    <ChevronDown className="w-4 h-4" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4" />
-                  )}
-                  <Label className="cursor-pointer">Data Collection</Label>
-                </button>
-                {expandedSections.collection && (
-                  <div className="mt-3 space-y-3 pl-6">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        Collect structured data during conversations
-                      </p>
-                      <Switch
-                        checked={settings.dataCollectionEnabled}
-                        onCheckedChange={(checked) => {
-                          setSettings({ ...settings, dataCollectionEnabled: checked });
-                          setHasUnsavedChanges(true);
-                        }}
-                      />
-                    </div>
-                    {settings.dataCollectionEnabled && (
-                      <div className="space-y-2">
-                        {settings.dataCollectionFields.map((field, index) => (
-                          <div key={index} className="flex gap-2">
-                            <Input
-                              value={field.name}
-                              onChange={(e) => {
-                                const newFields = [...settings.dataCollectionFields];
-                                newFields[index] = { ...field, name: e.target.value };
-                                setSettings({ ...settings, dataCollectionFields: newFields });
-                                setHasUnsavedChanges(true);
-                              }}
-                              placeholder="Field name"
-                              className="flex-1"
-                            />
-                            <Select
-                              value={field.type}
-                              onValueChange={(value) => {
-                                const newFields = [...settings.dataCollectionFields];
-                                newFields[index] = { ...field, type: value };
-                                setSettings({ ...settings, dataCollectionFields: newFields });
-                                setHasUnsavedChanges(true);
-                              }}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="string">String</SelectItem>
-                                <SelectItem value="number">Number</SelectItem>
-                                <SelectItem value="boolean">Boolean</SelectItem>
-                                <SelectItem value="array">Array</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => {
-                                setSettings({
-                                  ...settings,
-                                  dataCollectionFields: settings.dataCollectionFields.filter((_, i) => i !== index),
-                                });
-                                setHasUnsavedChanges(true);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={addDataField}
-                          className="gap-1"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Add Field
-                        </Button>
-                      </div>
+                {/* Evaluation Criteria */}
+                <div>
+                  <button
+                    onClick={() => toggleSection('evaluation')}
+                    className="flex items-center justify-between w-full py-2 text-left hover:bg-muted/50 rounded-lg px-2 transition-colors"
+                  >
+                    <span className="text-sm font-medium">Evaluation Criteria</span>
+                    {expandedSections.evaluation ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
                     )}
-                  </div>
-                )}
+                  </button>
+                  
+                  {expandedSections.evaluation && (
+                    <div className="mt-3 space-y-3 pl-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm">Enable Evaluation</Label>
+                        <Switch
+                          checked={settings.evaluationEnabled}
+                          onCheckedChange={(checked) => {
+                            setSettings({ ...settings, evaluationEnabled: checked });
+                            setHasUnsavedChanges(true);
+                          }}
+                        />
+                      </div>
+                      
+                      {settings.evaluationEnabled && (
+                        <div className="space-y-2">
+                          {settings.evaluationCriteria.map((criterion, index) => (
+                            <div key={index} className="flex gap-2">
+                              <Input
+                                value={criterion}
+                                onChange={(e) => {
+                                  const updated = [...settings.evaluationCriteria];
+                                  updated[index] = e.target.value;
+                                  setSettings({ ...settings, evaluationCriteria: updated });
+                                  setHasUnsavedChanges(true);
+                                }}
+                                placeholder="Enter evaluation criterion"
+                                className="text-sm"
+                              />
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => {
+                                  setSettings({
+                                    ...settings,
+                                    evaluationCriteria: settings.evaluationCriteria.filter((_, i) => i !== index),
+                                  });
+                                  setHasUnsavedChanges(true);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={addEvaluationCriterion}
+                            className="gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Add Criterion
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Data Collection */}
+                <div>
+                  <button
+                    onClick={() => toggleSection('collection')}
+                    className="flex items-center justify-between w-full py-2 text-left hover:bg-muted/50 rounded-lg px-2 transition-colors"
+                  >
+                    <span className="text-sm font-medium">Data Collection</span>
+                    {expandedSections.collection ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </button>
+                  
+                  {expandedSections.collection && (
+                    <div className="mt-3 space-y-3 pl-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm">Enable Data Collection</Label>
+                        <Switch
+                          checked={settings.dataCollectionEnabled}
+                          onCheckedChange={(checked) => {
+                            setSettings({ ...settings, dataCollectionEnabled: checked });
+                            setHasUnsavedChanges(true);
+                          }}
+                        />
+                      </div>
+                      
+                      {settings.dataCollectionEnabled && (
+                        <div className="space-y-3">
+                          {settings.dataCollectionFields.map((field, index) => (
+                            <div key={index} className="p-3 border rounded-lg space-y-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <Input
+                                  value={field.name}
+                                  onChange={(e) => {
+                                    const updated = [...settings.dataCollectionFields];
+                                    updated[index].name = e.target.value;
+                                    setSettings({ ...settings, dataCollectionFields: updated });
+                                    setHasUnsavedChanges(true);
+                                  }}
+                                  placeholder="Field name"
+                                  className="text-sm"
+                                />
+                                <Select
+                                  value={field.type}
+                                  onValueChange={(value) => {
+                                    const updated = [...settings.dataCollectionFields];
+                                    updated[index].type = value;
+                                    setSettings({ ...settings, dataCollectionFields: updated });
+                                    setHasUnsavedChanges(true);
+                                  }}
+                                >
+                                  <SelectTrigger className="text-sm">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="string">String</SelectItem>
+                                    <SelectItem value="number">Number</SelectItem>
+                                    <SelectItem value="boolean">Boolean</SelectItem>
+                                    <SelectItem value="date">Date</SelectItem>
+                                    <SelectItem value="email">Email</SelectItem>
+                                    <SelectItem value="phone">Phone</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex gap-2">
+                                <Input
+                                  value={field.description || ""}
+                                  onChange={(e) => {
+                                    const updated = [...settings.dataCollectionFields];
+                                    updated[index].description = e.target.value;
+                                    setSettings({ ...settings, dataCollectionFields: updated });
+                                    setHasUnsavedChanges(true);
+                                  }}
+                                  placeholder="Description (optional)"
+                                  className="flex-1 text-sm"
+                                />
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setSettings({
+                                      ...settings,
+                                      dataCollectionFields: settings.dataCollectionFields.filter((_, i) => i !== index),
+                                    });
+                                    setHasUnsavedChanges(true);
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={addDataField}
+                            className="gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Add Field
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
