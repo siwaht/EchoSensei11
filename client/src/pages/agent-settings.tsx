@@ -702,6 +702,202 @@ export default function AgentSettings() {
             </Card>
           </TabsContent>
 
+          {/* Templates Tab */}
+          <TabsContent value="templates" className="space-y-4 mt-4">
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold">Prompt Templates</h3>
+                <Button
+                  onClick={() => {
+                    setNewTemplateName("");
+                    setNewTemplateContent("");
+                    setEditingTemplateId("new");
+                  }}
+                  size="sm"
+                  className="gap-1"
+                  data-testid="button-add-template"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Template
+                </Button>
+              </div>
+              
+              <div className="space-y-3">
+                {/* Template List */}
+                {settings.promptTemplates.length === 0 && editingTemplateId !== "new" ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No templates created yet</p>
+                    <p className="text-xs mt-1">Create your first template to quickly insert common prompts</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {settings.promptTemplates.map((template) => (
+                      <div key={template.id} className="border rounded-lg p-3">
+                        {editingTemplateId === template.id ? (
+                          <div className="space-y-3">
+                            <Input
+                              value={template.name}
+                              onChange={(e) => {
+                                const updatedTemplates = settings.promptTemplates.map(t =>
+                                  t.id === template.id ? { ...t, name: e.target.value } : t
+                                );
+                                setSettings({ ...settings, promptTemplates: updatedTemplates });
+                                setHasUnsavedChanges(true);
+                              }}
+                              placeholder="Template name"
+                              className="text-sm"
+                            />
+                            <Textarea
+                              value={template.content}
+                              onChange={(e) => {
+                                const updatedTemplates = settings.promptTemplates.map(t =>
+                                  t.id === template.id ? { ...t, content: e.target.value } : t
+                                );
+                                setSettings({ ...settings, promptTemplates: updatedTemplates });
+                                setHasUnsavedChanges(true);
+                              }}
+                              placeholder="Template content"
+                              className="min-h-[100px] text-sm font-mono"
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => setEditingTemplateId(null)}
+                                size="sm"
+                                variant="outline"
+                              >
+                                <Check className="w-4 h-4 mr-1" />
+                                Done
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  const updatedTemplates = settings.promptTemplates.filter(t => t.id !== template.id);
+                                  setSettings({ ...settings, promptTemplates: updatedTemplates });
+                                  setHasUnsavedChanges(true);
+                                  setEditingTemplateId(null);
+                                }}
+                                size="sm"
+                                variant="destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-1" />
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm mb-1">{template.name}</h4>
+                              <p className="text-xs text-muted-foreground line-clamp-2">{template.content}</p>
+                            </div>
+                            <div className="flex gap-1 ml-3">
+                              <Button
+                                onClick={() => {
+                                  const currentPrompt = settings.systemPrompt || '';
+                                  const newPrompt = currentPrompt ? `${currentPrompt}\n\n${template.content}` : template.content;
+                                  setSettings({ ...settings, systemPrompt: newPrompt });
+                                  setHasUnsavedChanges(true);
+                                  toast({
+                                    title: "Template applied",
+                                    description: `"${template.name}" has been added to the system prompt`,
+                                  });
+                                }}
+                                size="sm"
+                                variant="outline"
+                                className="h-8"
+                              >
+                                <Zap className="w-3 h-3 mr-1" />
+                                Use
+                              </Button>
+                              <Button
+                                onClick={() => setEditingTemplateId(template.id)}
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* New Template Form */}
+                {editingTemplateId === "new" && (
+                  <div className="border-2 border-dashed rounded-lg p-4 space-y-3">
+                    <div>
+                      <Label className="text-sm">Template Name</Label>
+                      <Input
+                        value={newTemplateName}
+                        onChange={(e) => setNewTemplateName(e.target.value)}
+                        placeholder="e.g., Customer Service Greeting"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Template Content</Label>
+                      <Textarea
+                        value={newTemplateContent}
+                        onChange={(e) => setNewTemplateContent(e.target.value)}
+                        placeholder="Enter the prompt text that will be inserted when using this template..."
+                        className="min-h-[150px] text-sm font-mono"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          if (newTemplateName && newTemplateContent) {
+                            const newTemplate = {
+                              id: Date.now().toString(),
+                              name: newTemplateName,
+                              content: newTemplateContent
+                            };
+                            setSettings({
+                              ...settings,
+                              promptTemplates: [...settings.promptTemplates, newTemplate]
+                            });
+                            setHasUnsavedChanges(true);
+                            setNewTemplateName("");
+                            setNewTemplateContent("");
+                            setEditingTemplateId(null);
+                            toast({
+                              title: "Template created",
+                              description: `"${newTemplateName}" has been added to your templates`,
+                            });
+                          } else {
+                            toast({
+                              title: "Error",
+                              description: "Please enter both name and content for the template",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        size="sm"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Create Template
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setEditingTemplateId(null);
+                          setNewTemplateName("");
+                          setNewTemplateContent("");
+                        }}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="voice" className="space-y-4 mt-4">
             <Card className="p-4">
               <h3 className="text-base font-semibold mb-4">Voice Settings</h3>
