@@ -80,10 +80,10 @@ export default function AdminQuickActions() {
   // Create button mutation
   const createButtonMutation = useMutation({
     mutationFn: (data: Partial<QuickActionButton>) =>
-      apiRequest("/api/admin/quick-action-buttons", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+      apiRequest("/api/admin/quick-action-buttons", 
+        "POST",
+        data
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/quick-action-buttons"] });
       toast({
@@ -112,10 +112,10 @@ export default function AdminQuickActions() {
   // Update button mutation
   const updateButtonMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<QuickActionButton> }) =>
-      apiRequest(`/api/admin/quick-action-buttons/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      }),
+      apiRequest(`/api/admin/quick-action-buttons/${id}`,
+        "PATCH",
+        data
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/quick-action-buttons"] });
       toast({
@@ -136,9 +136,9 @@ export default function AdminQuickActions() {
   // Delete button mutation
   const deleteButtonMutation = useMutation({
     mutationFn: (id: string) =>
-      apiRequest(`/api/admin/quick-action-buttons/${id}`, {
-        method: "DELETE",
-      }),
+      apiRequest(`/api/admin/quick-action-buttons/${id}`,
+        "DELETE"
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/quick-action-buttons"] });
       toast({
