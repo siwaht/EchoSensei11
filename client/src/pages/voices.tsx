@@ -660,9 +660,17 @@ export default function Voices() {
                       .catch((error) => {
                         console.error("Voice preview error:", error);
                         setPlayingVoiceId(null);
+                        
+                        // Check if it's a voice access error
+                        const isAccessError = error.message?.includes('not in your ElevenLabs account') || 
+                                            error.message?.includes('Voice Library') ||
+                                            error.message?.includes('Add to My Voices');
+                        
                         toast({
-                          title: "Voice preview failed",
-                          description: error.message || "This voice may not be in your ElevenLabs account. Add it from the Voice Library first.",
+                          title: isAccessError ? "Voice Not in Your Account" : "Voice preview failed",
+                          description: isAccessError 
+                            ? "To use this voice: 1) Open elevenlabs.io/app/voice-library 2) Find this voice 3) Click 'Add to My Voices' 4) Try again"
+                            : (error.message || "Failed to generate voice preview"),
                           variant: "destructive",
                         });
                       });
@@ -693,12 +701,14 @@ export default function Voices() {
               <div className="flex gap-2">
                 <ExternalLink className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                 <div className="text-sm text-blue-800 dark:text-blue-200">
-                  <p className="font-medium">Important: Voice Access Requirements</p>
+                  <p className="font-medium">Important: Voice Library Access</p>
                   <div className="text-xs mt-1 space-y-1">
-                    <p>• Voice Library voices must be added to your account first</p>
-                    <p>• Go to ElevenLabs Voice Library → Click "Add to VoiceLab" on the voice</p>
-                    <p>• Custom/cloned voices appear automatically after creation</p>
-                    <p>• Only voices in "My Voices" section are accessible via API</p>
+                    <p className="font-semibold">To use a Voice Library voice:</p>
+                    <p>1. Go to <a href="https://elevenlabs.io/app/voice-library" target="_blank" rel="noopener noreferrer" className="underline">elevenlabs.io/app/voice-library</a></p>
+                    <p>2. Find the voice you want to use</p>
+                    <p>3. Click "Add to My Voices" button on the voice</p>
+                    <p>4. The voice will then appear in your available voices and work here</p>
+                    <p className="mt-2 text-orange-600 dark:text-orange-400">⚠️ Voice Library voices CANNOT be used until added to your account</p>
                   </div>
                 </div>
               </div>
@@ -744,7 +754,7 @@ export default function Voices() {
                   toast({
                     title: isNotFound ? "Voice not found" : "Error fetching voice",
                     description: isNotFound 
-                      ? `Voice ID "${customVoiceId.trim()}" was not found. This voice may need to be added to your ElevenLabs account first. Go to the Voice Library and click "Add to VoiceLab" for this voice.`
+                      ? `Voice ID "${customVoiceId.trim()}" was not found. This voice may need to be added to your ElevenLabs account first. Go to elevenlabs.io/app/voice-library and click "Add to My Voices" for this voice.`
                       : (error.message || "Failed to fetch voice from ElevenLabs"),
                     variant: "destructive",
                   });

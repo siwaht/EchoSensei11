@@ -713,6 +713,25 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
+      // First, check if the voice is in the user's available voices
+      const voicesResponse = await fetch("https://api.elevenlabs.io/v1/voices", {
+        headers: {
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (voicesResponse.ok) {
+        const voicesData = await voicesResponse.json();
+        const voiceIds = voicesData.voices?.map((v: any) => v.voice_id) || [];
+        
+        if (!voiceIds.includes(voiceId)) {
+          return res.status(400).json({ 
+            error: "This voice is not in your ElevenLabs account. To use Voice Library voices, you must first add them to 'My Voices' in your ElevenLabs account at elevenlabs.io/app/voice-library" 
+          });
+        }
+      }
+
       // Generate audio preview using ElevenLabs text-to-speech
       const audioResponse = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
@@ -743,12 +762,18 @@ export function registerRoutes(app: Express): Server {
           const errorData = JSON.parse(errorText);
           if (errorData.detail?.message) {
             errorMessage = errorData.detail.message;
-          } else if (errorData.detail?.status === 'voice_not_found') {
-            errorMessage = "This voice is not accessible. It may need to be added to your ElevenLabs account first.";
+          } else if (errorData.detail?.status === 'voice_not_found' || errorText.includes('voice_not_found')) {
+            errorMessage = "Voice not found in your account. To use Voice Library voices: 1) Go to elevenlabs.io/app/voice-library 2) Find the voice 3) Click 'Add to My Voices' 4) Then try again";
+          } else if (errorData.detail?.status === 'voice_not_available_for_tier') {
+            errorMessage = "This voice requires a higher subscription tier to use.";
           }
         } catch (e) {
-          // If error text is not JSON, use it as is
-          errorMessage = errorText || "Failed to generate voice preview";
+          // Check for common error patterns in text
+          if (errorText.includes('voice_not_found') || errorText.includes('not found')) {
+            errorMessage = "Voice not accessible. Add it to 'My Voices' at elevenlabs.io/app/voice-library first.";
+          } else {
+            errorMessage = errorText || "Failed to generate voice preview";
+          }
         }
         
         return res.status(audioResponse.status).json({ 
