@@ -195,12 +195,12 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tabs for different admin sections */}
-      <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1">
-          <TabsTrigger value="users">Users</TabsTrigger>
+      <Tabs defaultValue="users" className="w-full mt-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1 mb-6">
+          <TabsTrigger value="users">User Management</TabsTrigger>
+          <TabsTrigger value="billing">Billing & Packages</TabsTrigger>
           <TabsTrigger value="organizations">Organizations</TabsTrigger>
-          <TabsTrigger value="billing">Billing</TabsTrigger>
-          <TabsTrigger value="quick-actions">
+          <TabsTrigger value="quick-actions" className="flex items-center justify-center">
             <Sparkles className="w-4 h-4 mr-1" />
             Quick Actions
           </TabsTrigger>
