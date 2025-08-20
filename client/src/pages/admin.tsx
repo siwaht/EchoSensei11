@@ -12,8 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, Building2, DollarSign, Edit, Trash2, Plus, Shield } from "lucide-react";
+import { Users, Building2, DollarSign, Edit, Trash2, Plus, Shield, Phone, Sparkles } from "lucide-react";
 import type { User, Organization, BillingPackage } from "@shared/schema";
+import AdminQuickActions from "./admin-quick-actions";
 
 interface BillingData {
   totalUsers: number;
@@ -195,10 +196,14 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="organizations">Organizations</TabsTrigger>
           <TabsTrigger value="billing">Billing Overview</TabsTrigger>
+          <TabsTrigger value="quick-actions">
+            <Sparkles className="w-4 h-4 mr-1" />
+            Quick Actions
+          </TabsTrigger>
         </TabsList>
 
         {/* Users Tab */}
@@ -468,6 +473,11 @@ export default function AdminDashboard() {
               </div>
             </div>
           </Card>
+        </TabsContent>
+
+        {/* Quick Actions Tab */}
+        <TabsContent value="quick-actions" className="space-y-4">
+          <AdminQuickActions />
         </TabsContent>
       </Tabs>
 

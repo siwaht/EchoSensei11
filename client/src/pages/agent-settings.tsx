@@ -105,6 +105,7 @@ export default function AgentSettings() {
   const [newTemplateContent, setNewTemplateContent] = useState("");
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [systemTemplates, setSystemTemplates] = useState<any[]>([]);
+  const [quickActionButtons, setQuickActionButtons] = useState<any[]>([]);
 
   // Fetch agent data
   const { data: agents = [], isLoading: agentsLoading } = useQuery<Agent[]>({
@@ -125,6 +126,14 @@ export default function AgentSettings() {
       .then(res => res.json())
       .then(data => setSystemTemplates(data))
       .catch(err => console.error("Failed to fetch system templates:", err));
+  }, []);
+
+  // Fetch quick action buttons
+  useEffect(() => {
+    fetch("/api/quick-action-buttons")
+      .then(res => res.json())
+      .then(data => setQuickActionButtons(data.filter((b: any) => b.isActive)))
+      .catch(err => console.error("Failed to fetch quick action buttons:", err));
   }, []);
 
   // Update settings when agent data is loaded
@@ -499,6 +508,46 @@ export default function AgentSettings() {
                   
                   {/* Quick Action Buttons - Default Templates */}
                   <div className="flex flex-wrap gap-1.5 mb-2">
+                    {/* Quick Action Buttons (System and User) */}
+                    {quickActionButtons.map((button) => {
+                      const iconMap: Record<string, any> = {
+                        User, Shield, Webhook, Sheet, Calendar, Database, 
+                        FileText, Sparkles, Zap, Globe, Brain, Wrench
+                      };
+                      const IconComponent = iconMap[button.icon] || Sparkles;
+                      
+                      return (
+                        <Button
+                          key={button.id}
+                          type="button"
+                          size="sm"
+                          className={`h-8 px-3 text-xs gap-1.5 text-white border-0 ${button.color}`}
+                          onClick={() => {
+                            const currentPrompt = settings.systemPrompt || '';
+                            const newPrompt = currentPrompt ? `${currentPrompt}\n\n${button.prompt}` : button.prompt;
+                            setSettings({ ...settings, systemPrompt: newPrompt });
+                            setHasUnsavedChanges(true);
+                            toast({
+                              title: "Quick action applied",
+                              description: `"${button.name}" has been added to the system prompt`,
+                            });
+                          }}
+                          data-testid={`button-quick-action-${button.id}`}
+                        >
+                          <IconComponent className="w-3.5 h-3.5" />
+                          {button.name}
+                          {button.isSystem && (
+                            <Shield className="w-3 h-3 ml-0.5 opacity-60" />
+                          )}
+                        </Button>
+                      );
+                    })}
+                    
+                    {/* Divider if there are quick action buttons */}
+                    {quickActionButtons.length > 0 && (settings.promptTemplates.length > 0 || systemTemplates.length > 0) && (
+                      <div className="w-full h-px bg-border my-1" />
+                    )}
+                    
                     {/* Custom Template Buttons */}
                     {settings.promptTemplates.map((template) => (
                       <Button
@@ -524,7 +573,7 @@ export default function AgentSettings() {
                     ))}
                     
                     {/* Divider if there are custom templates */}
-                    {settings.promptTemplates.length > 0 && (
+                    {settings.promptTemplates.length > 0 && systemTemplates.length > 0 && (
                       <div className="w-full h-px bg-border my-1" />
                     )}
                     

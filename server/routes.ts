@@ -364,6 +364,161 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Quick Action Buttons routes - Admin (for system buttons)
+  app.get('/api/admin/quick-action-buttons', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const buttons = await storage.getQuickActionButtons();
+      res.json(buttons);
+    } catch (error) {
+      console.error("Error fetching quick action buttons:", error);
+      res.status(500).json({ message: "Failed to fetch quick action buttons" });
+    }
+  });
+
+  app.post('/api/admin/quick-action-buttons', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const buttonData = {
+        ...req.body,
+        isSystem: true,
+        createdBy: req.user.id
+      };
+      const newButton = await storage.createQuickActionButton(buttonData);
+      res.json(newButton);
+    } catch (error) {
+      console.error("Error creating quick action button:", error);
+      res.status(500).json({ message: "Failed to create quick action button" });
+    }
+  });
+
+  app.patch('/api/admin/quick-action-buttons/:buttonId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const button = await storage.getQuickActionButton(req.params.buttonId);
+      if (!button) {
+        return res.status(404).json({ message: "Quick action button not found" });
+      }
+      
+      // Only allow admins to update system buttons
+      if (!button.isSystem) {
+        return res.status(403).json({ message: "Cannot modify user buttons through admin API" });
+      }
+      
+      const updatedButton = await storage.updateQuickActionButton(req.params.buttonId, req.body);
+      res.json(updatedButton);
+    } catch (error) {
+      console.error("Error updating quick action button:", error);
+      res.status(500).json({ message: "Failed to update quick action button" });
+    }
+  });
+
+  app.delete('/api/admin/quick-action-buttons/:buttonId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const button = await storage.getQuickActionButton(req.params.buttonId);
+      if (!button) {
+        return res.status(404).json({ message: "Quick action button not found" });
+      }
+      
+      // Only allow admins to delete system buttons
+      if (!button.isSystem) {
+        return res.status(403).json({ message: "Cannot delete user buttons through admin API" });
+      }
+      
+      await storage.deleteQuickActionButton(req.params.buttonId);
+      res.json({ message: "Quick action button deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting quick action button:", error);
+      res.status(500).json({ message: "Failed to delete quick action button" });
+    }
+  });
+
+  // Quick Action Buttons routes - Users (for their own buttons)
+  app.get('/api/quick-action-buttons', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Get both system buttons and user's organization buttons
+      const buttons = await storage.getQuickActionButtons(user.organizationId);
+      res.json(buttons);
+    } catch (error) {
+      console.error("Error fetching quick action buttons:", error);
+      res.status(500).json({ message: "Failed to fetch quick action buttons" });
+    }
+  });
+
+  app.post('/api/quick-action-buttons', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const buttonData = {
+        ...req.body,
+        isSystem: false,
+        createdBy: req.user.id,
+        organizationId: user.organizationId
+      };
+      
+      const newButton = await storage.createQuickActionButton(buttonData);
+      res.json(newButton);
+    } catch (error) {
+      console.error("Error creating quick action button:", error);
+      res.status(500).json({ message: "Failed to create quick action button" });
+    }
+  });
+
+  app.patch('/api/quick-action-buttons/:buttonId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const button = await storage.getQuickActionButton(req.params.buttonId);
+      if (!button) {
+        return res.status(404).json({ message: "Quick action button not found" });
+      }
+      
+      // Users can only update their own organization's buttons (not system buttons)
+      if (button.isSystem || button.organizationId !== user.organizationId) {
+        return res.status(403).json({ message: "You don't have permission to modify this button" });
+      }
+      
+      const updatedButton = await storage.updateQuickActionButton(req.params.buttonId, req.body);
+      res.json(updatedButton);
+    } catch (error) {
+      console.error("Error updating quick action button:", error);
+      res.status(500).json({ message: "Failed to update quick action button" });
+    }
+  });
+
+  app.delete('/api/quick-action-buttons/:buttonId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const button = await storage.getQuickActionButton(req.params.buttonId);
+      if (!button) {
+        return res.status(404).json({ message: "Quick action button not found" });
+      }
+      
+      // Users can only delete their own organization's buttons (not system buttons)
+      if (button.isSystem || button.organizationId !== user.organizationId) {
+        return res.status(403).json({ message: "You don't have permission to delete this button" });
+      }
+      
+      await storage.deleteQuickActionButton(req.params.buttonId);
+      res.json({ message: "Quick action button deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting quick action button:", error);
+      res.status(500).json({ message: "Failed to delete quick action button" });
+    }
+  });
+
   // Integration routes
   app.post("/api/integrations", isAuthenticated, async (req: any, res) => {
     try {

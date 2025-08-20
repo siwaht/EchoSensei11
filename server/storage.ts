@@ -10,6 +10,7 @@ import {
   batchCalls,
   batchCallRecipients,
   systemTemplates,
+  quickActionButtons,
   type User,
   type UpsertUser,
   type Organization,
@@ -31,9 +32,11 @@ import {
   type InsertBatchCallRecipient,
   type SystemTemplate,
   type InsertSystemTemplate,
+  type QuickActionButton,
+  type InsertQuickActionButton,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count, sum, avg, max } from "drizzle-orm";
+import { eq, and, desc, count, sum, avg, max, or } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -133,6 +136,13 @@ export interface IStorage {
   createSystemTemplate(template: InsertSystemTemplate): Promise<SystemTemplate>;
   updateSystemTemplate(id: string, updates: Partial<InsertSystemTemplate>): Promise<SystemTemplate>;
   deleteSystemTemplate(id: string): Promise<void>;
+  
+  // Quick Action Button operations
+  getQuickActionButtons(organizationId?: string): Promise<QuickActionButton[]>;
+  getQuickActionButton(id: string): Promise<QuickActionButton | undefined>;
+  createQuickActionButton(button: InsertQuickActionButton): Promise<QuickActionButton>;
+  updateQuickActionButton(id: string, updates: Partial<InsertQuickActionButton>): Promise<QuickActionButton>;
+  deleteQuickActionButton(id: string): Promise<void>;
   
   // Batch call recipient operations
   getBatchCallRecipients(batchCallId: string): Promise<BatchCallRecipient[]>;
@@ -691,6 +701,67 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSystemTemplate(id: string): Promise<void> {
     await db.delete(systemTemplates).where(eq(systemTemplates.id, id));
+  }
+
+  // Quick Action Button operations
+  async getQuickActionButtons(organizationId?: string): Promise<QuickActionButton[]> {
+    if (organizationId) {
+      // Get system buttons and user's organization buttons
+      return await db
+        .select()
+        .from(quickActionButtons)
+        .where(
+          and(
+            eq(quickActionButtons.isActive, true),
+            or(
+              eq(quickActionButtons.isSystem, true),
+              eq(quickActionButtons.organizationId, organizationId)
+            )
+          )
+        )
+        .orderBy(quickActionButtons.order);
+    } else {
+      // Get only system buttons
+      return await db
+        .select()
+        .from(quickActionButtons)
+        .where(
+          and(
+            eq(quickActionButtons.isActive, true),
+            eq(quickActionButtons.isSystem, true)
+          )
+        )
+        .orderBy(quickActionButtons.order);
+    }
+  }
+
+  async getQuickActionButton(id: string): Promise<QuickActionButton | undefined> {
+    const [button] = await db
+      .select()
+      .from(quickActionButtons)
+      .where(eq(quickActionButtons.id, id));
+    return button;
+  }
+
+  async createQuickActionButton(button: InsertQuickActionButton): Promise<QuickActionButton> {
+    const [created] = await db.insert(quickActionButtons).values(button).returning();
+    return created;
+  }
+
+  async updateQuickActionButton(id: string, updates: Partial<InsertQuickActionButton>): Promise<QuickActionButton> {
+    const [updated] = await db
+      .update(quickActionButtons)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(quickActionButtons.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error("Quick action button not found");
+    }
+    return updated;
+  }
+
+  async deleteQuickActionButton(id: string): Promise<void> {
+    await db.delete(quickActionButtons).where(eq(quickActionButtons.id, id));
   }
 }
 

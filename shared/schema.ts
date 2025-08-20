@@ -124,6 +124,23 @@ export const systemTemplates = pgTable("system_templates", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Quick Action Buttons table (system buttons managed by admins, user buttons by users)
+export const quickActionButtons = pgTable("quick_action_buttons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  prompt: text("prompt").notNull(),
+  icon: varchar("icon").default("Sparkles"), // Icon name from lucide-react
+  color: varchar("color").default("bg-blue-500 hover:bg-blue-600"), // Tailwind color classes
+  category: varchar("category"), // To group related buttons
+  order: integer("order").default(0),
+  isSystem: boolean("is_system").notNull().default(false), // System buttons managed by admin only
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: varchar("created_by"), // User who created the button
+  organizationId: varchar("organization_id"), // For user-created buttons
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Agents table
 export const agents = pgTable("agents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -433,6 +450,12 @@ export const insertSystemTemplateSchema = createInsertSchema(systemTemplates).om
   updatedAt: true,
 });
 
+export const insertQuickActionButtonSchema = createInsertSchema(quickActionButtons).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Payment relations (defined after billingPackages table)
 export const paymentsRelations = relations(payments, ({ one }) => ({
   organization: one(organizations, {
@@ -500,3 +523,5 @@ export type BatchCallRecipient = typeof batchCallRecipients.$inferSelect;
 export type InsertBatchCallRecipient = z.infer<typeof insertBatchCallRecipientSchema>;
 export type SystemTemplate = typeof systemTemplates.$inferSelect;
 export type InsertSystemTemplate = z.infer<typeof insertSystemTemplateSchema>;
+export type QuickActionButton = typeof quickActionButtons.$inferSelect;
+export type InsertQuickActionButton = z.infer<typeof insertQuickActionButtonSchema>;
