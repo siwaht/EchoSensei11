@@ -7,6 +7,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import type { RequestHandler } from "express";
 import { seedAdminUser } from "./seedAdmin";
+import multer from "multer";
 
 // Authentication middleware
 const isAuthenticated: RequestHandler = (req, res, next) => {
@@ -1973,6 +1974,170 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching all payments:", error);
       res.status(500).json({ error: "Failed to fetch payments" });
+    }
+  });
+
+  // Vector Database Document Routes
+  const upload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 10 * 1024 * 1024 // 10MB limit
+    }
+  });
+
+  // Initialize vector database endpoint
+  app.post("/api/vector-db/initialize", isAuthenticated, async (req: any, res) => {
+    try {
+      const { apiKey } = req.body;
+      const { getVectorDatabaseService } = await import('./vectorDatabase');
+      const vectorDb = getVectorDatabaseService();
+      
+      await vectorDb.initialize(apiKey);
+      
+      res.json({ message: "Vector database initialized successfully" });
+    } catch (error: any) {
+      console.error("Error initializing vector database:", error);
+      res.status(500).json({ error: error.message || "Failed to initialize vector database" });
+    }
+  });
+
+  // Upload documents endpoint
+  app.post("/api/documents/upload", isAuthenticated, upload.array('files', 10), async (req: any, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      const { agentId } = req.body;
+      
+      if (!files || files.length === 0) {
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+
+      const { getDocumentProcessor } = await import('./documentProcessor');
+      const { getVectorDatabaseService } = await import('./vectorDatabase');
+      
+      const processor = getDocumentProcessor();
+      const vectorDb = getVectorDatabaseService();
+
+      const results = [];
+      
+      for (const file of files) {
+        // Check if file type is supported
+        if (!processor.isFileTypeSupported(file.originalname)) {
+          results.push({
+            fileName: file.originalname,
+            success: false,
+            error: `File type not supported. Supported types: ${processor.getSupportedFileTypes().join(', ')}`
+          });
+          continue;
+        }
+
+        try {
+          // Process the document
+          const processed = await processor.processBuffer(file.buffer, file.originalname);
+          
+          // Add chunks to vector database
+          const documents = processed.chunks.map((chunk, index) => ({
+            content: chunk,
+            metadata: {
+              source: file.originalname,
+              fileType: processed.metadata.fileType,
+              pageNumber: index + 1,
+              agentId
+            }
+          }));
+
+          const ids = await vectorDb.addDocuments(documents);
+          
+          results.push({
+            fileName: file.originalname,
+            success: true,
+            metadata: processed.metadata,
+            chunksCreated: ids.length
+          });
+        } catch (error: any) {
+          results.push({
+            fileName: file.originalname,
+            success: false,
+            error: error.message
+          });
+        }
+      }
+
+      res.json({ results });
+    } catch (error: any) {
+      console.error("Error uploading documents:", error);
+      res.status(500).json({ error: error.message || "Failed to upload documents" });
+    }
+  });
+
+  // Search documents endpoint
+  app.post("/api/documents/search", isAuthenticated, async (req: any, res) => {
+    try {
+      const { query, agentId, limit = 5 } = req.body;
+      
+      if (!query) {
+        return res.status(400).json({ error: "Query is required" });
+      }
+
+      const { getVectorDatabaseService } = await import('./vectorDatabase');
+      const vectorDb = getVectorDatabaseService();
+      
+      const results = await vectorDb.searchDocuments(query, limit, agentId);
+      
+      res.json({ results });
+    } catch (error: any) {
+      console.error("Error searching documents:", error);
+      res.status(500).json({ error: error.message || "Failed to search documents" });
+    }
+  });
+
+  // Get document statistics endpoint
+  app.get("/api/documents/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const { agentId } = req.query;
+      
+      const { getVectorDatabaseService } = await import('./vectorDatabase');
+      const vectorDb = getVectorDatabaseService();
+      
+      const stats = await vectorDb.getDocumentStats(agentId as string);
+      
+      res.json(stats);
+    } catch (error: any) {
+      console.error("Error getting document stats:", error);
+      res.status(500).json({ error: error.message || "Failed to get document statistics" });
+    }
+  });
+
+  // Delete documents by source endpoint
+  app.delete("/api/documents/source/:source", isAuthenticated, async (req: any, res) => {
+    try {
+      const { source } = req.params;
+      
+      const { getVectorDatabaseService } = await import('./vectorDatabase');
+      const vectorDb = getVectorDatabaseService();
+      
+      await vectorDb.deleteDocumentsBySource(source);
+      
+      res.json({ message: `Documents from source '${source}' deleted successfully` });
+    } catch (error: any) {
+      console.error("Error deleting documents:", error);
+      res.status(500).json({ error: error.message || "Failed to delete documents" });
+    }
+  });
+
+  // Delete documents by agent endpoint
+  app.delete("/api/documents/agent/:agentId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { agentId } = req.params;
+      
+      const { getVectorDatabaseService } = await import('./vectorDatabase');
+      const vectorDb = getVectorDatabaseService();
+      
+      await vectorDb.deleteDocumentsByAgent(agentId);
+      
+      res.json({ message: `Documents for agent '${agentId}' deleted successfully` });
+    } catch (error: any) {
+      console.error("Error deleting documents:", error);
+      res.status(500).json({ error: error.message || "Failed to delete documents" });
     }
   });
 

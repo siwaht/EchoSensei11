@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -79,8 +79,10 @@ interface RAGToolConfig {
 
 export default function Tools() {
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     webhooks: true,
     integrations: false,
@@ -111,7 +113,7 @@ export default function Tools() {
       enabled: false,
       name: 'Knowledge Base RAG',
       description: '',
-      vectorDatabase: 'pinecone' as 'pinecone' | 'weaviate' | 'chroma' | 'qdrant',
+      vectorDatabase: 'lancedb' as 'pinecone' | 'weaviate' | 'chroma' | 'qdrant' | 'lancedb',
       embeddingModel: 'openai' as 'openai' | 'cohere' | 'huggingface',
       apiKey: '',
       indexName: '',
@@ -282,6 +284,109 @@ export default function Tools() {
       webhooks: toolsConfig.webhooks.filter((_, i) => i !== index),
     });
     setHasUnsavedChanges(true);
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    if (!selectedAgentId) {
+      toast({
+        title: "No agent selected",
+        description: "Please select an agent before uploading documents",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploading(true);
+    
+    try {
+      // Initialize the vector database if needed
+      await fetch('/api/vector-db/initialize', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          apiKey: toolsConfig.ragTool.apiKey || undefined 
+        }),
+      });
+
+      // Prepare FormData for file upload
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+      }
+      formData.append('agentId', selectedAgentId);
+
+      // Upload the files
+      const response = await fetch('/api/documents/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload documents');
+      }
+
+      const data = await response.json();
+      
+      // Count successful uploads
+      const successCount = data.results.filter((r: any) => r.success).length;
+      const failedCount = data.results.filter((r: any) => !r.success).length;
+      
+      if (successCount > 0) {
+        // Update knowledge bases list
+        const newKnowledgeBase = {
+          id: `kb_${Date.now()}`,
+          name: `Upload ${new Date().toLocaleString()}`,
+          description: `${successCount} document${successCount > 1 ? 's' : ''} uploaded`,
+          documentCount: successCount,
+          lastUpdated: new Date().toISOString(),
+        };
+        
+        setToolsConfig({
+          ...toolsConfig,
+          ragTool: {
+            ...toolsConfig.ragTool,
+            knowledgeBases: [...(toolsConfig.ragTool.knowledgeBases || []), newKnowledgeBase],
+          },
+        });
+        setHasUnsavedChanges(true);
+        
+        toast({
+          title: "Documents uploaded successfully",
+          description: `${successCount} document${successCount > 1 ? 's' : ''} processed and indexed${failedCount > 0 ? `. ${failedCount} failed.` : ''}`,
+        });
+      } else {
+        throw new Error('All document uploads failed');
+      }
+      
+      // Display individual errors if any
+      data.results.filter((r: any) => !r.success).forEach((r: any) => {
+        toast({
+          title: `Failed to process ${r.fileName}`,
+          description: r.error,
+          variant: "destructive"
+        });
+      });
+      
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload documents",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   if (agentsLoading) {
@@ -865,123 +970,42 @@ export default function Tools() {
                       <Database className="w-4 h-4" />
                       Vector Database Configuration
                     </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="vector-db" className="text-sm">Vector Database</Label>
-                        <Select
-                          value={toolsConfig.ragTool.vectorDatabase}
-                          onValueChange={(value: 'pinecone' | 'weaviate' | 'chroma' | 'qdrant') => {
-                            setToolsConfig({
-                              ...toolsConfig,
-                              ragTool: {
-                                ...toolsConfig.ragTool,
-                                vectorDatabase: value,
-                              },
-                            });
-                            setHasUnsavedChanges(true);
-                          }}
-                        >
-                          <SelectTrigger className="text-sm mt-1" data-testid="select-vector-db">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pinecone">Pinecone</SelectItem>
-                            <SelectItem value="weaviate">Weaviate</SelectItem>
-                            <SelectItem value="chroma">Chroma</SelectItem>
-                            <SelectItem value="qdrant">Qdrant</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="embedding-model" className="text-sm">Embedding Model</Label>
-                        <Select
-                          value={toolsConfig.ragTool.embeddingModel}
-                          onValueChange={(value: 'openai' | 'cohere' | 'huggingface') => {
-                            setToolsConfig({
-                              ...toolsConfig,
-                              ragTool: {
-                                ...toolsConfig.ragTool,
-                                embeddingModel: value,
-                              },
-                            });
-                            setHasUnsavedChanges(true);
-                          }}
-                        >
-                          <SelectTrigger className="text-sm mt-1" data-testid="select-embedding-model">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="openai">OpenAI (text-embedding-ada-002)</SelectItem>
-                            <SelectItem value="cohere">Cohere (embed-english-v3.0)</SelectItem>
-                            <SelectItem value="huggingface">HuggingFace (all-MiniLM-L6-v2)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="rag-api-key" className="text-sm">API Key</Label>
-                        <Input
-                          id="rag-api-key"
-                          type="password"
-                          placeholder="Enter your vector database API key"
-                          value={toolsConfig.ragTool.apiKey || ""}
-                          onChange={(e) => {
-                            setToolsConfig({
-                              ...toolsConfig,
-                              ragTool: {
-                                ...toolsConfig.ragTool,
-                                apiKey: e.target.value,
-                              },
-                            });
-                            setHasUnsavedChanges(true);
-                          }}
-                          className="text-sm mt-1"
-                          data-testid="input-rag-api-key"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="index-name" className="text-sm">Index/Collection Name</Label>
-                        <Input
-                          id="index-name"
-                          placeholder="e.g., product-docs-index"
-                          value={toolsConfig.ragTool.indexName || ""}
-                          onChange={(e) => {
-                            setToolsConfig({
-                              ...toolsConfig,
-                              ragTool: {
-                                ...toolsConfig.ragTool,
-                                indexName: e.target.value,
-                              },
-                            });
-                            setHasUnsavedChanges(true);
-                          }}
-                          className="text-sm mt-1"
-                          data-testid="input-index-name"
-                        />
+                    
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <div className="flex gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5" />
+                        <div className="text-sm text-green-800 dark:text-green-200">
+                          <p className="font-medium">Open Source LanceDB (Free)</p>
+                          <p className="text-xs mt-1">No external services required - runs locally on your server</p>
+                        </div>
                       </div>
                     </div>
 
                     <div>
-                      <Label htmlFor="namespace" className="text-sm">Namespace (Optional)</Label>
+                      <Label htmlFor="openai-api-key" className="text-sm">
+                        OpenAI API Key (Optional - for better embeddings)
+                      </Label>
                       <Input
-                        id="namespace"
-                        placeholder="e.g., default"
-                        value={toolsConfig.ragTool.namespace || ""}
+                        id="openai-api-key"
+                        type="password"
+                        placeholder="sk-... (Leave empty to use free local embeddings)"
+                        value={toolsConfig.ragTool.apiKey || ""}
                         onChange={(e) => {
                           setToolsConfig({
                             ...toolsConfig,
                             ragTool: {
                               ...toolsConfig.ragTool,
-                              namespace: e.target.value,
+                              apiKey: e.target.value,
                             },
                           });
                           setHasUnsavedChanges(true);
                         }}
                         className="text-sm mt-1"
-                        data-testid="input-namespace"
+                        data-testid="input-openai-api-key"
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        If provided, OpenAI embeddings will be used for better search accuracy
+                      </p>
                     </div>
                   </div>
 
@@ -1140,17 +1164,43 @@ export default function Tools() {
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium flex items-center gap-2">
                         <FileText className="w-4 h-4" />
-                        Knowledge Bases
+                        Knowledge Base Documents
                       </h4>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1"
-                        data-testid="button-add-knowledge-base"
-                      >
-                        <Upload className="w-3 h-3" />
-                        Upload Documents
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileUpload}
+                          multiple
+                          accept=".txt,.pdf,.docx,.doc,.md,.csv,.json"
+                          className="hidden"
+                          data-testid="input-file-upload"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                          data-testid="button-upload-documents"
+                        >
+                          {uploading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-3 h-3" />
+                              Upload Documents
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground">
+                      Supported formats: Text (.txt), PDF (.pdf), Word (.docx, .doc), Markdown (.md), CSV (.csv), JSON (.json)
                     </div>
                     
                     {toolsConfig.ragTool.knowledgeBases?.length === 0 ? (
@@ -1189,13 +1239,13 @@ export default function Tools() {
                     <div className="flex gap-2">
                       <Brain className="w-4 h-4 text-purple-600 dark:text-purple-400 mt-0.5" />
                       <div className="text-sm text-purple-800 dark:text-purple-200">
-                        <p className="font-medium">RAG Setup Guide</p>
+                        <p className="font-medium">Quick Start Guide</p>
                         <ol className="text-xs mt-1 space-y-1 list-decimal list-inside">
-                          <li>Choose your vector database provider and get an API key</li>
-                          <li>Create an index/collection in your vector database</li>
-                          <li>Select an embedding model that matches your use case</li>
-                          <li>Upload documents to build your knowledge base</li>
+                          <li>Upload your documents (PDFs, Word docs, text files, etc.)</li>
+                          <li>Documents are automatically processed and indexed</li>
+                          <li>Optionally add an OpenAI API key for better search accuracy</li>
                           <li>Configure retrieval settings for optimal performance</li>
+                          <li>Your agent can now answer questions using the knowledge base</li>
                         </ol>
                       </div>
                     </div>
