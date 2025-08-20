@@ -15,7 +15,8 @@ import {
   Plus, Trash2, Save, Globe, Webhook, Code, Wrench, 
   ChevronDown, ChevronRight, Settings2, Zap, Hammer,
   Sheet, Calendar, CheckCircle, XCircle, Database,
-  Brain, FileText, Upload, Search
+  Brain, FileText, Upload, Search, Phone, Languages,
+  SkipForward, UserPlus, Voicemail, Hash
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -98,6 +99,15 @@ export default function Tools() {
 
   // Tool configurations state
   const [toolsConfig, setToolsConfig] = useState({
+    systemTools: {
+      endCall: { enabled: true, description: 'Allows agent to end the call' },
+      detectLanguage: { enabled: true, description: 'Automatically detect and switch languages', supportedLanguages: [] },
+      skipTurn: { enabled: true, description: 'Skip agent turn when user needs a moment' },
+      transferToAgent: { enabled: false, description: 'Transfer to another AI agent', targetAgentId: '' },
+      transferToNumber: { enabled: false, description: 'Transfer to human operator', phoneNumbers: [] },
+      playKeypadTone: { enabled: false, description: 'Play keypad touch tones' },
+      voicemailDetection: { enabled: false, description: 'Detect voicemail systems', leaveMessage: false, messageContent: '' },
+    },
     webhooks: [] as WebhookConfig[],
     integrations: [] as ToolConfig[],
     customTools: [] as ToolConfig[],
@@ -130,14 +140,24 @@ export default function Tools() {
   // Load agent's tools configuration when agent is selected
   useEffect(() => {
     if (selectedAgent) {
-      const googleSheetsIntegration = selectedAgent.tools?.integrations?.find(i => i.type === 'google-sheets');
-      const googleCalendarIntegration = selectedAgent.tools?.integrations?.find(i => i.type === 'google-calendar');
-      const ragToolConfig = selectedAgent.tools?.customTools?.find(t => t.type === 'rag');
+      const tools = selectedAgent.tools as any || {};
+      const googleSheetsIntegration = tools.integrations?.find((i: any) => i.type === 'google-sheets');
+      const googleCalendarIntegration = tools.integrations?.find((i: any) => i.type === 'google-calendar');
+      const ragToolConfig = tools.customTools?.find((t: any) => t.type === 'rag');
       
       setToolsConfig({
-        webhooks: selectedAgent.tools?.webhooks || [],
-        integrations: selectedAgent.tools?.integrations || [],
-        customTools: selectedAgent.tools?.customTools || [],
+        systemTools: tools.systemTools || {
+          endCall: { enabled: true, description: 'Allows agent to end the call' },
+          detectLanguage: { enabled: true, description: 'Automatically detect and switch languages', supportedLanguages: [] },
+          skipTurn: { enabled: true, description: 'Skip agent turn when user needs a moment' },
+          transferToAgent: { enabled: false, description: 'Transfer to another AI agent', targetAgentId: '' },
+          transferToNumber: { enabled: false, description: 'Transfer to human operator', phoneNumbers: [] },
+          playKeypadTone: { enabled: false, description: 'Play keypad touch tones' },
+          voicemailDetection: { enabled: false, description: 'Detect voicemail systems', leaveMessage: false, messageContent: '' },
+        },
+        webhooks: tools.webhooks || [],
+        integrations: tools.integrations || [],
+        customTools: tools.customTools || [],
         googleSheets: {
           enabled: googleSheetsIntegration?.enabled || false,
           config: googleSheetsIntegration?.configuration || {},
@@ -150,7 +170,7 @@ export default function Tools() {
           enabled: false,
           name: 'Knowledge Base RAG',
           description: '',
-          vectorDatabase: 'pinecone',
+          vectorDatabase: 'lancedb',
           embeddingModel: 'openai',
           apiKey: '',
           indexName: '',
@@ -242,11 +262,12 @@ export default function Tools() {
 
     updateAgentMutation.mutate({
       tools: {
+        systemTools: toolsConfig.systemTools,
         webhooks: toolsConfig.webhooks,
-        integrations: filteredIntegrations,
-        customTools: customTools,
+        integrations: filteredIntegrations as any,
+        customTools: customTools as any,
         toolIds: [], // Maintain backward compatibility
-      },
+      } as any,
     });
   };
 
@@ -469,8 +490,12 @@ export default function Tools() {
           </div>
         </Card>
       ) : (
-        <Tabs defaultValue="webhooks" className="space-y-4">
-          <TabsList className="grid grid-cols-3 w-full sm:w-auto">
+        <Tabs defaultValue="system" className="space-y-4">
+          <TabsList className="grid grid-cols-4 w-full sm:w-auto">
+            <TabsTrigger value="system" className="gap-2">
+              <Settings2 className="w-4 h-4" />
+              <span className="hidden sm:inline">System</span>
+            </TabsTrigger>
             <TabsTrigger value="webhooks" className="gap-2">
               <Webhook className="w-4 h-4" />
               <span className="hidden sm:inline">Webhooks</span>
@@ -484,6 +509,223 @@ export default function Tools() {
               <span className="hidden sm:inline">Custom</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* System Tools Tab */}
+          <TabsContent value="system" className="space-y-4">
+            <Card className="p-4 sm:p-6">
+              <div className="mb-4">
+                <h3 className="text-base sm:text-lg font-semibold">ElevenLabs System Tools</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                  Configure built-in conversational AI tools that control agent behavior
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {/* End Call Tool */}
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Phone className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">End call</p>
+                      <p className="text-sm text-muted-foreground">
+                        Gives agent the ability to end the call with the user
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={toolsConfig.systemTools.endCall.enabled}
+                    onCheckedChange={(checked) => {
+                      setToolsConfig({
+                        ...toolsConfig,
+                        systemTools: {
+                          ...toolsConfig.systemTools,
+                          endCall: { ...toolsConfig.systemTools.endCall, enabled: checked },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-end-call"
+                  />
+                </div>
+
+                {/* Detect Language Tool */}
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/10 rounded-lg">
+                      <Languages className="w-5 h-5 text-blue-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">Detect language</p>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically detects and switches to the user's language
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={toolsConfig.systemTools.detectLanguage.enabled}
+                    onCheckedChange={(checked) => {
+                      setToolsConfig({
+                        ...toolsConfig,
+                        systemTools: {
+                          ...toolsConfig.systemTools,
+                          detectLanguage: { ...toolsConfig.systemTools.detectLanguage, enabled: checked },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-detect-language"
+                  />
+                </div>
+
+                {/* Skip Turn Tool */}
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-500/10 rounded-lg">
+                      <SkipForward className="w-5 h-5 text-green-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">Skip turn</p>
+                      <p className="text-sm text-muted-foreground">
+                        Agent will skip its turn if user explicitly indicates they need a moment
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={toolsConfig.systemTools.skipTurn.enabled}
+                    onCheckedChange={(checked) => {
+                      setToolsConfig({
+                        ...toolsConfig,
+                        systemTools: {
+                          ...toolsConfig.systemTools,
+                          skipTurn: { ...toolsConfig.systemTools.skipTurn, enabled: checked },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-skip-turn"
+                  />
+                </div>
+
+                {/* Transfer to Agent Tool */}
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-500/10 rounded-lg">
+                      <UserPlus className="w-5 h-5 text-purple-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">Transfer to agent</p>
+                      <p className="text-sm text-muted-foreground">
+                        Gives agent the ability to transfer the call to another AI agent
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={toolsConfig.systemTools.transferToAgent.enabled}
+                    onCheckedChange={(checked) => {
+                      setToolsConfig({
+                        ...toolsConfig,
+                        systemTools: {
+                          ...toolsConfig.systemTools,
+                          transferToAgent: { ...toolsConfig.systemTools.transferToAgent, enabled: checked },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-transfer-agent"
+                  />
+                </div>
+
+                {/* Transfer to Number Tool */}
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-500/10 rounded-lg">
+                      <Phone className="w-5 h-5 text-orange-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">Transfer to number</p>
+                      <p className="text-sm text-muted-foreground">
+                        Gives agent the ability to transfer the call to a human
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={toolsConfig.systemTools.transferToNumber.enabled}
+                    onCheckedChange={(checked) => {
+                      setToolsConfig({
+                        ...toolsConfig,
+                        systemTools: {
+                          ...toolsConfig.systemTools,
+                          transferToNumber: { ...toolsConfig.systemTools.transferToNumber, enabled: checked },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-transfer-number"
+                  />
+                </div>
+
+                {/* Play Keypad Touch Tone Tool */}
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-500/10 rounded-lg">
+                      <Hash className="w-5 h-5 text-indigo-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">Play keypad touch tone</p>
+                      <p className="text-sm text-muted-foreground">
+                        Gives agent the ability to play keypad touch tones during a phone call
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={toolsConfig.systemTools.playKeypadTone.enabled}
+                    onCheckedChange={(checked) => {
+                      setToolsConfig({
+                        ...toolsConfig,
+                        systemTools: {
+                          ...toolsConfig.systemTools,
+                          playKeypadTone: { ...toolsConfig.systemTools.playKeypadTone, enabled: checked },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-keypad-tone"
+                  />
+                </div>
+
+                {/* Voicemail Detection Tool */}
+                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-500/10 rounded-lg">
+                      <Voicemail className="w-5 h-5 text-red-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">Voicemail detection</p>
+                      <p className="text-sm text-muted-foreground">
+                        Allows agent to detect voicemail systems and optionally leave a message
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={toolsConfig.systemTools.voicemailDetection.enabled}
+                    onCheckedChange={(checked) => {
+                      setToolsConfig({
+                        ...toolsConfig,
+                        systemTools: {
+                          ...toolsConfig.systemTools,
+                          voicemailDetection: { ...toolsConfig.systemTools.voicemailDetection, enabled: checked },
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-tool-voicemail"
+                  />
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
 
           {/* Webhooks Tab */}
           <TabsContent value="webhooks" className="space-y-4">
