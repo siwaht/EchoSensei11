@@ -69,6 +69,12 @@ export const organizations = pgTable("organizations", {
 // Integration status enum
 export const integrationStatusEnum = pgEnum("integration_status", ["ACTIVE", "INACTIVE", "ERROR"]);
 
+// Phone number provider enum
+export const phoneProviderEnum = pgEnum("phone_provider", ["twilio", "sip_trunk"]);
+
+// Phone number status enum  
+export const phoneStatusEnum = pgEnum("phone_status", ["active", "inactive", "pending"]);
+
 // Integrations table for storing API keys
 export const integrations = pgTable("integrations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -83,6 +89,27 @@ export const integrations = pgTable("integrations", {
   // Unique constraint on organizationId and provider for upsert operations
   uniqueOrgProvider: unique("unique_org_provider").on(table.organizationId, table.provider),
 }));
+
+// Phone numbers table
+export const phoneNumbers = pgTable("phone_numbers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull(),
+  label: varchar("label").notNull(),
+  phoneNumber: varchar("phone_number").notNull(),
+  countryCode: varchar("country_code").notNull().default("+1"),
+  provider: phoneProviderEnum("provider").notNull(),
+  twilioAccountSid: varchar("twilio_account_sid"),
+  twilioAuthToken: varchar("twilio_auth_token"), // encrypted
+  sipTrunkUri: varchar("sip_trunk_uri"),
+  sipUsername: varchar("sip_username"),
+  sipPassword: varchar("sip_password"), // encrypted
+  elevenLabsPhoneId: varchar("eleven_labs_phone_id"),
+  status: phoneStatusEnum("status").notNull().default("pending"),
+  lastSynced: timestamp("last_synced"),
+  metadata: json("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
 // Agents table
 export const agents = pgTable("agents", {
@@ -176,6 +203,7 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   agents: many(agents),
   callLogs: many(callLogs),
   payments: many(payments),
+  phoneNumbers: many(phoneNumbers),
 }));
 
 export const usersRelations = relations(users, ({ one }) => ({
@@ -208,6 +236,13 @@ export const callLogsRelations = relations(callLogs, ({ one }) => ({
   agent: one(agents, {
     fields: [callLogs.agentId],
     references: [agents.id],
+  }),
+}));
+
+export const phoneNumbersRelations = relations(phoneNumbers, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [phoneNumbers.organizationId],
+    references: [organizations.id],
   }),
 }));
 
@@ -246,6 +281,12 @@ export const insertCallLogSchema = createInsertSchema(callLogs).omit({
 export const insertPaymentSchema = createInsertSchema(payments).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertPhoneNumberSchema = createInsertSchema(phoneNumbers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Billing Packages table
@@ -302,5 +343,7 @@ export type CallLog = typeof callLogs.$inferSelect;
 export type InsertCallLog = z.infer<typeof insertCallLogSchema>;
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type PhoneNumber = typeof phoneNumbers.$inferSelect;
+export type InsertPhoneNumber = z.infer<typeof insertPhoneNumberSchema>;
 export type BillingPackage = typeof billingPackages.$inferSelect;
 export type InsertBillingPackage = z.infer<typeof insertBillingPackageSchema>;

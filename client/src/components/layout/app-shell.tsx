@@ -16,13 +16,15 @@ import {
   Sun,
   LogOut,
   Shield,
-  FlaskConical
+  FlaskConical,
+  Phone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Agents", href: "/agents", icon: Bot },
+  { name: "Phone Numbers", href: "/phone-numbers", icon: Phone },
   { name: "Playground", href: "/playground", icon: FlaskConical },
   { name: "Call History", href: "/history", icon: History },
   { name: "Integrations", href: "/integrations", icon: Plug },
@@ -55,6 +57,9 @@ export default function AppShell({ children }: AppShellProps) {
     
     // Check for checkout route
     if (location === "/checkout") return "Checkout";
+    
+    // Check for phone numbers route
+    if (location === "/phone-numbers") return "Phone Numbers";
     
     // Check for agent settings route
     if (location.startsWith("/agents/") && location.includes("/settings")) return "Agent Settings";

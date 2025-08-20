@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { insertIntegrationSchema, insertAgentSchema, insertCallLogSchema } from "@shared/schema";
+import { insertIntegrationSchema, insertAgentSchema, insertCallLogSchema, insertPhoneNumberSchema } from "@shared/schema";
 import { z } from "zod";
 import crypto from "crypto";
 import type { RequestHandler } from "express";
@@ -707,6 +707,167 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching voices:", error);
       res.status(500).json({ message: "Failed to fetch voices" });
+    }
+  });
+
+  // Phone number routes
+  app.get("/api/phone-numbers", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const phoneNumbers = await storage.getPhoneNumbers(user.organizationId);
+      res.json(phoneNumbers);
+    } catch (error) {
+      console.error("Error fetching phone numbers:", error);
+      res.status(500).json({ message: "Failed to fetch phone numbers" });
+    }
+  });
+
+  app.post("/api/phone-numbers", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const validation = insertPhoneNumberSchema.safeParse({
+        ...req.body,
+        organizationId: user.organizationId,
+      });
+
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid phone number data", errors: validation.error.errors });
+      }
+
+      // Encrypt sensitive data if provided
+      const phoneNumberData = { ...validation.data };
+      if (phoneNumberData.twilioAuthToken) {
+        phoneNumberData.twilioAuthToken = encryptApiKey(phoneNumberData.twilioAuthToken);
+      }
+      if (phoneNumberData.sipPassword) {
+        phoneNumberData.sipPassword = encryptApiKey(phoneNumberData.sipPassword);
+      }
+
+      // Sync with ElevenLabs if integration exists
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (integration && integration.apiKey) {
+        try {
+          const decryptedKey = decryptApiKey(integration.apiKey);
+          
+          // Create phone number in ElevenLabs
+          const elevenLabsPayload: any = {
+            label: phoneNumberData.label,
+            phone_number: phoneNumberData.phoneNumber,
+            country_code: phoneNumberData.countryCode,
+          };
+
+          if (phoneNumberData.provider === "twilio" && phoneNumberData.twilioAccountSid) {
+            elevenLabsPayload.provider = "twilio";
+            elevenLabsPayload.twilio_account_sid = phoneNumberData.twilioAccountSid;
+          } else if (phoneNumberData.provider === "sip_trunk") {
+            elevenLabsPayload.provider = "sip";
+            if (phoneNumberData.sipTrunkUri) {
+              elevenLabsPayload.sip_uri = phoneNumberData.sipTrunkUri;
+            }
+          }
+
+          const response = await callElevenLabsAPI(
+            decryptedKey,
+            "/v1/convai/phone-numbers",
+            "POST",
+            elevenLabsPayload
+          );
+
+          if (response.phone_id) {
+            phoneNumberData.elevenLabsPhoneId = response.phone_id;
+            phoneNumberData.status = "active";
+            phoneNumberData.lastSynced = new Date();
+          }
+        } catch (elevenLabsError) {
+          console.error("Error syncing phone number with ElevenLabs:", elevenLabsError);
+          // Continue with local creation even if sync fails
+        }
+      }
+
+      const phoneNumber = await storage.createPhoneNumber(phoneNumberData);
+      res.json(phoneNumber);
+    } catch (error) {
+      console.error("Error creating phone number:", error);
+      res.status(500).json({ message: "Failed to create phone number" });
+    }
+  });
+
+  app.patch("/api/phone-numbers/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { id } = req.params;
+      const updates = req.body;
+
+      // Encrypt sensitive data if provided
+      if (updates.twilioAuthToken) {
+        updates.twilioAuthToken = encryptApiKey(updates.twilioAuthToken);
+      }
+      if (updates.sipPassword) {
+        updates.sipPassword = encryptApiKey(updates.sipPassword);
+      }
+
+      const phoneNumber = await storage.updatePhoneNumber(id, user.organizationId, updates);
+      res.json(phoneNumber);
+    } catch (error) {
+      console.error("Error updating phone number:", error);
+      res.status(500).json({ message: "Failed to update phone number" });
+    }
+  });
+
+  app.delete("/api/phone-numbers/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { id } = req.params;
+      
+      // Get phone number to check if it has ElevenLabs ID
+      const phoneNumber = await storage.getPhoneNumber(id, user.organizationId);
+      if (!phoneNumber) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+
+      // Delete from ElevenLabs if synced
+      if (phoneNumber.elevenLabsPhoneId) {
+        const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+        if (integration && integration.apiKey) {
+          try {
+            const decryptedKey = decryptApiKey(integration.apiKey);
+            await callElevenLabsAPI(
+              decryptedKey,
+              `/v1/convai/phone-numbers/${phoneNumber.elevenLabsPhoneId}`,
+              "DELETE"
+            );
+          } catch (elevenLabsError) {
+            console.error("Error deleting phone number from ElevenLabs:", elevenLabsError);
+            // Continue with local deletion even if ElevenLabs deletion fails
+          }
+        }
+      }
+
+      await storage.deletePhoneNumber(id, user.organizationId);
+      res.json({ message: "Phone number deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting phone number:", error);
+      res.status(500).json({ message: "Failed to delete phone number" });
     }
   });
 

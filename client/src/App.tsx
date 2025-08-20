@@ -17,6 +17,7 @@ import Settings from "@/pages/settings";
 import Admin from "@/pages/admin-new";
 import Checkout from "@/pages/checkout";
 import Playground from "@/pages/playground";
+import PhoneNumbers from "@/pages/phone-numbers";
 import AppShell from "@/components/layout/app-shell";
 
 function Router() {
@@ -37,6 +38,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/agents" component={Agents} />
         <Route path="/agents/:agentId/settings" component={AgentSettings} />
+        <Route path="/phone-numbers" component={PhoneNumbers} />
         <Route path="/playground" component={Playground} />
         <Route path="/history" component={History} />
         <Route path="/integrations" component={Integrations} />

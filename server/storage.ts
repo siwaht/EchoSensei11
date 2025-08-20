@@ -6,6 +6,7 @@ import {
   callLogs,
   billingPackages,
   payments,
+  phoneNumbers,
   type User,
   type UpsertUser,
   type Organization,
@@ -19,6 +20,8 @@ import {
   type BillingPackage,
   type Payment,
   type InsertPayment,
+  type PhoneNumber,
+  type InsertPhoneNumber,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sum, avg, max } from "drizzle-orm";
@@ -52,6 +55,13 @@ export interface IStorage {
   getCallLog(id: string, organizationId: string): Promise<CallLog | undefined>;
   getCallLogByElevenLabsId(elevenLabsCallId: string, organizationId: string): Promise<CallLog | undefined>;
   createCallLog(callLog: InsertCallLog & { createdAt?: Date }): Promise<CallLog>;
+
+  // Phone number operations
+  getPhoneNumbers(organizationId: string): Promise<PhoneNumber[]>;
+  getPhoneNumber(id: string, organizationId: string): Promise<PhoneNumber | undefined>;
+  createPhoneNumber(phoneNumber: InsertPhoneNumber): Promise<PhoneNumber>;
+  updatePhoneNumber(id: string, organizationId: string, updates: Partial<InsertPhoneNumber>): Promise<PhoneNumber>;
+  deletePhoneNumber(id: string, organizationId: string): Promise<void>;
 
   // Analytics operations
   getOrganizationStats(organizationId: string): Promise<{
@@ -509,6 +519,46 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Payment not found");
     }
     return updated;
+  }
+
+  // Phone number operations
+  async getPhoneNumbers(organizationId: string): Promise<PhoneNumber[]> {
+    return await db
+      .select()
+      .from(phoneNumbers)
+      .where(eq(phoneNumbers.organizationId, organizationId))
+      .orderBy(desc(phoneNumbers.createdAt));
+  }
+
+  async getPhoneNumber(id: string, organizationId: string): Promise<PhoneNumber | undefined> {
+    const [phoneNumber] = await db
+      .select()
+      .from(phoneNumbers)
+      .where(and(eq(phoneNumbers.id, id), eq(phoneNumbers.organizationId, organizationId)));
+    return phoneNumber;
+  }
+
+  async createPhoneNumber(phoneNumber: InsertPhoneNumber): Promise<PhoneNumber> {
+    const [newPhoneNumber] = await db.insert(phoneNumbers).values(phoneNumber).returning();
+    return newPhoneNumber;
+  }
+
+  async updatePhoneNumber(id: string, organizationId: string, updates: Partial<InsertPhoneNumber>): Promise<PhoneNumber> {
+    const [updated] = await db
+      .update(phoneNumbers)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(phoneNumbers.id, id), eq(phoneNumbers.organizationId, organizationId)))
+      .returning();
+    if (!updated) {
+      throw new Error("Phone number not found");
+    }
+    return updated;
+  }
+
+  async deletePhoneNumber(id: string, organizationId: string): Promise<void> {
+    await db
+      .delete(phoneNumbers)
+      .where(and(eq(phoneNumbers.id, id), eq(phoneNumbers.organizationId, organizationId)));
   }
 }
 

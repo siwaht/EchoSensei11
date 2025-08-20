@@ -1,0 +1,475 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Phone, Plus, ChevronDown, Trash2, Edit, Globe, Server } from "lucide-react";
+import type { PhoneNumber, InsertPhoneNumber } from "@shared/schema";
+
+const countryCodes = [
+  { code: "+1", country: "US/Canada", flag: "🇺🇸" },
+  { code: "+44", country: "UK", flag: "🇬🇧" },
+  { code: "+61", country: "Australia", flag: "🇦🇺" },
+  { code: "+49", country: "Germany", flag: "🇩🇪" },
+  { code: "+33", country: "France", flag: "🇫🇷" },
+  { code: "+34", country: "Spain", flag: "🇪🇸" },
+  { code: "+39", country: "Italy", flag: "🇮🇹" },
+  { code: "+81", country: "Japan", flag: "🇯🇵" },
+  { code: "+86", country: "China", flag: "🇨🇳" },
+  { code: "+91", country: "India", flag: "🇮🇳" },
+];
+
+export default function PhoneNumbers() {
+  const { toast } = useToast();
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importProvider, setImportProvider] = useState<"twilio" | "sip_trunk" | null>(null);
+  const [phoneToDelete, setPhoneToDelete] = useState<PhoneNumber | null>(null);
+  const [formData, setFormData] = useState<Partial<InsertPhoneNumber>>({
+    label: "",
+    phoneNumber: "",
+    countryCode: "+1",
+    provider: "twilio",
+    twilioAccountSid: "",
+    sipTrunkUri: "",
+    sipUsername: "",
+    sipPassword: "",
+  });
+
+  // Fetch phone numbers
+  const { data: phoneNumbers = [], isLoading } = useQuery<PhoneNumber[]>({
+    queryKey: ["/api/phone-numbers"],
+  });
+
+  // Create phone number mutation
+  const createPhoneNumber = useMutation({
+    mutationFn: async (data: Partial<InsertPhoneNumber>) => {
+      return await apiRequest("POST", "/api/phone-numbers", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/phone-numbers"] });
+      setShowImportModal(false);
+      setImportProvider(null);
+      setFormData({
+        label: "",
+        phoneNumber: "",
+        countryCode: "+1",
+        provider: "twilio",
+        twilioAccountSid: "",
+        sipTrunkUri: "",
+        sipUsername: "",
+        sipPassword: "",
+      });
+      toast({
+        title: "Phone number imported",
+        description: "Your phone number has been successfully imported.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Import failed",
+        description: error.message || "Failed to import phone number",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete phone number mutation
+  const deletePhoneNumber = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/phone-numbers/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/phone-numbers"] });
+      setPhoneToDelete(null);
+      toast({
+        title: "Phone number deleted",
+        description: "The phone number has been removed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Delete failed",
+        description: error.message || "Failed to delete phone number",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleImport = () => {
+    if (!importProvider) return;
+
+    const dataToSubmit: Partial<InsertPhoneNumber> = {
+      label: formData.label,
+      phoneNumber: formData.phoneNumber,
+      countryCode: formData.countryCode,
+      provider: importProvider,
+    };
+
+    if (importProvider === "twilio") {
+      dataToSubmit.twilioAccountSid = formData.twilioAccountSid;
+      dataToSubmit.twilioAuthToken = formData.twilioAuthToken;
+    } else if (importProvider === "sip_trunk") {
+      dataToSubmit.sipTrunkUri = formData.sipTrunkUri;
+      dataToSubmit.sipUsername = formData.sipUsername;
+      dataToSubmit.sipPassword = formData.sipPassword;
+    }
+
+    createPhoneNumber.mutate(dataToSubmit);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+          <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
+            Phone numbers
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400" data-testid="text-page-description">
+            Import and manage your phone numbers
+          </p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button data-testid="button-import-number">
+              <Plus className="w-4 h-4 mr-2" />
+              Import number
+              <ChevronDown className="w-4 h-4 ml-2" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => {
+                setImportProvider("twilio");
+                setShowImportModal(true);
+              }}
+              data-testid="menu-import-twilio"
+            >
+              <Globe className="w-4 h-4 mr-2" />
+              From Twilio
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setImportProvider("sip_trunk");
+                setShowImportModal(true);
+              }}
+              data-testid="menu-import-sip"
+            >
+              <Server className="w-4 h-4 mr-2" />
+              From SIP Trunk
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {phoneNumbers.length === 0 ? (
+        <Card className="p-12">
+          <div className="text-center">
+            <Phone className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-lg font-medium mb-2" data-testid="text-no-numbers">
+              No phone numbers
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              You don't have any phone numbers yet.
+            </p>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button data-testid="button-import-first">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Import number
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setImportProvider("twilio");
+                    setShowImportModal(true);
+                  }}
+                >
+                  <Globe className="w-4 h-4 mr-2" />
+                  From Twilio
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setImportProvider("sip_trunk");
+                    setShowImportModal(true);
+                  }}
+                >
+                  <Server className="w-4 h-4 mr-2" />
+                  From SIP Trunk
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {phoneNumbers.map((phone) => (
+            <Card key={phone.id} className="p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <Phone className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium" data-testid={`text-phone-label-${phone.id}`}>
+                      {phone.label}
+                    </h3>
+                    <p className="text-sm text-gray-500" data-testid={`text-phone-number-${phone.id}`}>
+                      {phone.countryCode} {phone.phoneNumber}
+                    </p>
+                  </div>
+                </div>
+                <Badge variant={phone.status === "active" ? "default" : "secondary"}>
+                  {phone.status}
+                </Badge>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Provider:</span>
+                  <span className="font-medium capitalize">
+                    {phone.provider === "sip_trunk" ? "SIP Trunk" : phone.provider}
+                  </span>
+                </div>
+                {phone.twilioAccountSid && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Twilio SID:</span>
+                    <span className="font-mono text-xs">{phone.twilioAccountSid.slice(0, 10)}...</span>
+                  </div>
+                )}
+                {phone.sipTrunkUri && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">SIP URI:</span>
+                    <span className="font-mono text-xs truncate max-w-[150px]">{phone.sipTrunkUri}</span>
+                  </div>
+                )}
+                {phone.lastSynced && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Last synced:</span>
+                    <span>{new Date(phone.lastSynced).toLocaleDateString()}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 mt-4 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => {
+                    // TODO: Implement edit functionality
+                    toast({
+                      title: "Coming soon",
+                      description: "Edit functionality will be available soon.",
+                    });
+                  }}
+                  data-testid={`button-edit-${phone.id}`}
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPhoneToDelete(phone)}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  data-testid={`button-delete-${phone.id}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Import Modal */}
+      <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              <div className="flex items-center gap-2">
+                <Phone className="w-5 h-5" />
+                Import phone number from {importProvider === "twilio" ? "Twilio" : "SIP Trunk"}
+              </div>
+            </DialogTitle>
+            <DialogDescription>
+              {importProvider === "twilio" 
+                ? "Connect your Twilio phone number to receive calls"
+                : "Connect your SIP trunk to receive calls"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="label">Label</Label>
+              <Input
+                id="label"
+                placeholder="Easy to identify name of the phone number"
+                value={formData.label}
+                onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+                data-testid="input-label"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone number</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={formData.countryCode}
+                  onValueChange={(value) => setFormData({ ...formData, countryCode: value })}
+                >
+                  <SelectTrigger className="w-[120px]" data-testid="select-country-code">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countryCodes.map((country) => (
+                      <SelectItem key={country.code} value={country.code}>
+                        <div className="flex items-center gap-2">
+                          <span>{country.flag}</span>
+                          <span>{country.code}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  id="phone"
+                  placeholder="Enter phone number"
+                  value={formData.phoneNumber}
+                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                  className="flex-1"
+                  data-testid="input-phone-number"
+                />
+              </div>
+            </div>
+
+            {importProvider === "twilio" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="twilioSid">Twilio Account SID</Label>
+                  <Input
+                    id="twilioSid"
+                    placeholder="Twilio Account SID"
+                    value={formData.twilioAccountSid || ""}
+                    onChange={(e) => setFormData({ ...formData, twilioAccountSid: e.target.value })}
+                    data-testid="input-twilio-sid"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="twilioToken">Twilio Auth Token (Optional)</Label>
+                  <Input
+                    id="twilioToken"
+                    type="password"
+                    placeholder="Twilio Auth Token"
+                    value={formData.twilioAuthToken || ""}
+                    onChange={(e) => setFormData({ ...formData, twilioAuthToken: e.target.value })}
+                    data-testid="input-twilio-token"
+                  />
+                </div>
+              </>
+            )}
+
+            {importProvider === "sip_trunk" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="sipUri">SIP Trunk URI</Label>
+                  <Input
+                    id="sipUri"
+                    placeholder="sip.example.com"
+                    value={formData.sipTrunkUri || ""}
+                    onChange={(e) => setFormData({ ...formData, sipTrunkUri: e.target.value })}
+                    data-testid="input-sip-uri"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sipUsername">SIP Username (Optional)</Label>
+                  <Input
+                    id="sipUsername"
+                    placeholder="Username"
+                    value={formData.sipUsername || ""}
+                    onChange={(e) => setFormData({ ...formData, sipUsername: e.target.value })}
+                    data-testid="input-sip-username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sipPassword">SIP Password (Optional)</Label>
+                  <Input
+                    id="sipPassword"
+                    type="password"
+                    placeholder="Password"
+                    value={formData.sipPassword || ""}
+                    onChange={(e) => setFormData({ ...formData, sipPassword: e.target.value })}
+                    data-testid="input-sip-password"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowImportModal(false);
+                setImportProvider(null);
+              }}
+              data-testid="button-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleImport}
+              disabled={!formData.label || !formData.phoneNumber || createPhoneNumber.isPending}
+              data-testid="button-import"
+            >
+              {createPhoneNumber.isPending ? "Importing..." : "Import"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!phoneToDelete} onOpenChange={(open) => !open && setPhoneToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Phone Number</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{phoneToDelete?.label}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => phoneToDelete && deletePhoneNumber.mutate(phoneToDelete.id)}
+              className="bg-red-600 hover:bg-red-700"
+              data-testid="button-confirm-delete"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
