@@ -11,6 +11,16 @@ export default function Billing() {
     queryKey: ["/api/analytics/organization"],
   });
 
+  // Define plan limits based on current plan
+  const planLimits = {
+    calls: 1000,
+    minutes: 5000,
+  };
+
+  // Calculate usage percentages
+  const callsUsagePercent = Math.min(((stats as any)?.totalCalls || 0) / planLimits.calls * 100, 100);
+  const minutesUsagePercent = Math.min(((stats as any)?.totalMinutes || 0) / planLimits.minutes * 100, 100);
+
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 px-4 sm:px-0">
@@ -47,25 +57,31 @@ export default function Billing() {
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600 dark:text-gray-400">Total Calls</span>
                 <span className="font-medium" data-testid="text-current-calls">
-                  {(stats as any)?.totalCalls || 0} / 1000
+                  {(stats as any)?.totalCalls || 0} / {planLimits.calls}
                 </span>
               </div>
               <Progress 
-                value={Math.min(((stats as any)?.totalCalls || 0) / 10, 100)} 
+                value={callsUsagePercent} 
                 className="h-2" 
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                {callsUsagePercent.toFixed(1)}% of monthly limit
+              </p>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600 dark:text-gray-400">Minutes Used</span>
                 <span className="font-medium" data-testid="text-current-minutes">
-                  {(stats as any)?.totalMinutes || 0} / 5000
+                  {Math.round((stats as any)?.totalMinutes || 0)} / {planLimits.minutes}
                 </span>
               </div>
               <Progress 
-                value={Math.min(((stats as any)?.totalMinutes || 0) / 50, 100)} 
+                value={minutesUsagePercent} 
                 className="h-2" 
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                {minutesUsagePercent.toFixed(1)}% of monthly limit
+              </p>
             </div>
           </div>
         </Card>
@@ -79,10 +95,21 @@ export default function Billing() {
             ${(stats as any)?.estimatedCost?.toFixed(2) || '0.00'}
           </div>
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            Based on ElevenLabs pricing
+            Based on actual API usage
           </div>
-          <div className="mt-4 text-sm">
-            <span className="text-green-600" data-testid="text-cost-change">+15%</span> from last month
+          <div className="mt-4 space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-600 dark:text-gray-400">Base Plan</span>
+              <span>$49.00</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-600 dark:text-gray-400">Usage Charges</span>
+              <span>${((stats as any)?.estimatedCost || 0).toFixed(2)}</span>
+            </div>
+            <div className="border-t pt-1 flex justify-between text-sm font-medium">
+              <span>Total</span>
+              <span>${(49 + ((stats as any)?.estimatedCost || 0)).toFixed(2)}</span>
+            </div>
           </div>
         </Card>
 
