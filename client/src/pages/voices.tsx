@@ -239,8 +239,24 @@ export default function Voices() {
       setPlayingVoiceId(voiceId);
       const audio = document.getElementById(`audio-${voiceId}`) as HTMLAudioElement;
       if (audio) {
-        audio.play();
+        audio.play().catch((error) => {
+          console.error("Audio playback error:", error);
+          setPlayingVoiceId(null);
+          toast({
+            title: "Playback failed",
+            description: "Could not play voice preview",
+            variant: "destructive",
+          });
+        });
         audio.onended = () => setPlayingVoiceId(null);
+        audio.onerror = () => {
+          setPlayingVoiceId(null);
+          toast({
+            title: "Audio error",
+            description: "Failed to load voice preview",
+            variant: "destructive",
+          });
+        };
       }
     }
   };
@@ -591,12 +607,36 @@ export default function Voices() {
                     size="sm"
                     onClick={() => {
                       const voiceId = customVoiceData.voice_id;
+                      if (!voiceId) {
+                        toast({
+                          title: "Voice ID missing",
+                          description: "Cannot play preview without a valid voice ID",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
                       setPlayingVoiceId(voiceId);
                       const audio = new Audio(`/api/voiceai/voices/${voiceId}/preview`);
-                      audio.play();
+                      audio.play().catch((error) => {
+                        console.error("Audio playback error:", error);
+                        setPlayingVoiceId(null);
+                        toast({
+                          title: "Playback failed",
+                          description: "Could not play voice preview. The voice may not be accessible.",
+                          variant: "destructive",
+                        });
+                      });
                       audio.onended = () => setPlayingVoiceId(null);
+                      audio.onerror = () => {
+                        setPlayingVoiceId(null);
+                        toast({
+                          title: "Audio error",
+                          description: "Failed to load voice preview",
+                          variant: "destructive",
+                        });
+                      };
                     }}
-                    disabled={playingVoiceId === customVoiceData.voice_id}
+                    disabled={playingVoiceId === customVoiceData.voice_id || !customVoiceData.voice_id}
                     data-testid={`button-play-custom-voice`}
                   >
                     <Play className="w-4 h-4 mr-1" />

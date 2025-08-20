@@ -657,6 +657,13 @@ export function registerRoutes(app: Express): Server {
       const apiKey = decryptApiKey(integration.apiKey);
       const { voiceId } = req.params;
 
+      // Validate voice ID
+      if (!voiceId || voiceId === 'undefined' || voiceId === 'null') {
+        return res.status(400).json({ 
+          error: "Invalid voice ID provided" 
+        });
+      }
+
       // Fetch specific voice from ElevenLabs
       const response = await callElevenLabsAPI(
         apiKey,
@@ -698,6 +705,13 @@ export function registerRoutes(app: Express): Server {
 
       const apiKey = decryptApiKey(integration.apiKey);
       const { voiceId } = req.params;
+
+      // Validate voice ID
+      if (!voiceId || voiceId === 'undefined' || voiceId === 'null') {
+        return res.status(400).json({ 
+          error: "Invalid voice ID provided" 
+        });
+      }
 
       // Generate audio preview using ElevenLabs text-to-speech
       const audioResponse = await fetch(
