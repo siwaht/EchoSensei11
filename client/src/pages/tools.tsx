@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Plus, Trash2, Save, Globe, Webhook, Code, Wrench, 
-  ChevronDown, ChevronRight, Settings2, Zap, Hammer
+  ChevronDown, ChevronRight, Settings2, Zap, Hammer,
+  Sheet, Calendar, CheckCircle, XCircle
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -30,6 +33,23 @@ interface ToolConfig {
   type: string;
   configuration: Record<string, any>;
   enabled: boolean;
+}
+
+interface GoogleSheetsConfig {
+  spreadsheetId?: string;
+  sheetName?: string;
+  apiKey?: string;
+  clientId?: string;
+  clientSecret?: string;
+  operations?: string[]; // read, write, append
+}
+
+interface GoogleCalendarConfig {
+  calendarId?: string;
+  apiKey?: string;
+  clientId?: string;
+  clientSecret?: string;
+  operations?: string[]; // read, create, update, delete
 }
 
 export default function Tools() {
@@ -54,15 +74,34 @@ export default function Tools() {
     webhooks: [] as WebhookConfig[],
     integrations: [] as ToolConfig[],
     customTools: [] as ToolConfig[],
+    googleSheets: {
+      enabled: false,
+      config: {} as GoogleSheetsConfig,
+    },
+    googleCalendar: {
+      enabled: false,
+      config: {} as GoogleCalendarConfig,
+    },
   });
 
   // Load agent's tools configuration when agent is selected
   useEffect(() => {
     if (selectedAgent) {
+      const googleSheetsIntegration = selectedAgent.tools?.integrations?.find(i => i.type === 'google-sheets');
+      const googleCalendarIntegration = selectedAgent.tools?.integrations?.find(i => i.type === 'google-calendar');
+      
       setToolsConfig({
         webhooks: selectedAgent.tools?.webhooks || [],
         integrations: selectedAgent.tools?.integrations || [],
         customTools: selectedAgent.tools?.customTools || [],
+        googleSheets: {
+          enabled: googleSheetsIntegration?.enabled || false,
+          config: googleSheetsIntegration?.configuration || {},
+        },
+        googleCalendar: {
+          enabled: googleCalendarIntegration?.enabled || false,
+          config: googleCalendarIntegration?.configuration || {},
+        },
       });
     }
   }, [selectedAgent]);
@@ -97,10 +136,40 @@ export default function Tools() {
       return;
     }
 
+    // Build integrations array including Google services
+    const integrations = [...toolsConfig.integrations];
+    
+    // Remove existing Google integrations
+    const filteredIntegrations = integrations.filter(
+      i => i.type !== 'google-sheets' && i.type !== 'google-calendar'
+    );
+    
+    // Add Google Sheets if configured
+    if (toolsConfig.googleSheets.enabled) {
+      filteredIntegrations.push({
+        id: 'google-sheets',
+        name: 'Google Sheets',
+        type: 'google-sheets',
+        configuration: toolsConfig.googleSheets.config,
+        enabled: true,
+      });
+    }
+    
+    // Add Google Calendar if configured
+    if (toolsConfig.googleCalendar.enabled) {
+      filteredIntegrations.push({
+        id: 'google-calendar',
+        name: 'Google Calendar',
+        type: 'google-calendar',
+        configuration: toolsConfig.googleCalendar.config,
+        enabled: true,
+      });
+    }
+
     updateAgentMutation.mutate({
       tools: {
         webhooks: toolsConfig.webhooks,
-        integrations: toolsConfig.integrations,
+        integrations: filteredIntegrations,
         customTools: toolsConfig.customTools,
         toolIds: [], // Maintain backward compatibility
       },
@@ -329,24 +398,315 @@ export default function Tools() {
 
           {/* Integrations Tab */}
           <TabsContent value="integrations" className="space-y-4">
-            <Card className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-base sm:text-lg font-semibold">Integrations</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    Connect your agent to external services and APIs
+            <div className="space-y-4">
+              {/* Google Sheets Integration */}
+              <Card className="p-4 sm:p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                      <Sheet className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-semibold">Google Sheets</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                        Read from and write to Google Sheets spreadsheets
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={toolsConfig.googleSheets.enabled}
+                    onCheckedChange={(checked) => {
+                      setToolsConfig({
+                        ...toolsConfig,
+                        googleSheets: {
+                          ...toolsConfig.googleSheets,
+                          enabled: checked,
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-google-sheets"
+                  />
+                </div>
+
+                {toolsConfig.googleSheets.enabled && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="sheets-spreadsheet-id" className="text-sm">Spreadsheet ID</Label>
+                        <Input
+                          id="sheets-spreadsheet-id"
+                          placeholder="e.g., 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                          value={toolsConfig.googleSheets.config.spreadsheetId || ""}
+                          onChange={(e) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              googleSheets: {
+                                ...toolsConfig.googleSheets,
+                                config: {
+                                  ...toolsConfig.googleSheets.config,
+                                  spreadsheetId: e.target.value,
+                                },
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          className="text-sm mt-1"
+                          data-testid="input-sheets-spreadsheet-id"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="sheets-sheet-name" className="text-sm">Sheet Name</Label>
+                        <Input
+                          id="sheets-sheet-name"
+                          placeholder="e.g., Sheet1"
+                          value={toolsConfig.googleSheets.config.sheetName || ""}
+                          onChange={(e) => {
+                            setToolsConfig({
+                              ...toolsConfig,
+                              googleSheets: {
+                                ...toolsConfig.googleSheets,
+                                config: {
+                                  ...toolsConfig.googleSheets.config,
+                                  sheetName: e.target.value,
+                                },
+                              },
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          className="text-sm mt-1"
+                          data-testid="input-sheets-sheet-name"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="sheets-api-key" className="text-sm">Google Cloud API Key</Label>
+                      <Input
+                        id="sheets-api-key"
+                        type="password"
+                        placeholder="Enter your Google Cloud API key"
+                        value={toolsConfig.googleSheets.config.apiKey || ""}
+                        onChange={(e) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            googleSheets: {
+                              ...toolsConfig.googleSheets,
+                              config: {
+                                ...toolsConfig.googleSheets.config,
+                                apiKey: e.target.value,
+                              },
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm mt-1"
+                        data-testid="input-sheets-api-key"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Required for accessing your Google Sheets. Get it from Google Cloud Console.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm">Operations</Label>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {['read', 'write', 'append'].map((operation) => {
+                          const operations = toolsConfig.googleSheets.config.operations || [];
+                          const isSelected = operations.includes(operation);
+                          return (
+                            <Button
+                              key={operation}
+                              variant={isSelected ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => {
+                                const newOperations = isSelected
+                                  ? operations.filter(op => op !== operation)
+                                  : [...operations, operation];
+                                setToolsConfig({
+                                  ...toolsConfig,
+                                  googleSheets: {
+                                    ...toolsConfig.googleSheets,
+                                    config: {
+                                      ...toolsConfig.googleSheets.config,
+                                      operations: newOperations,
+                                    },
+                                  },
+                                });
+                                setHasUnsavedChanges(true);
+                              }}
+                              data-testid={`button-sheets-operation-${operation}`}
+                            >
+                              {isSelected && <CheckCircle className="w-3 h-3 mr-1" />}
+                              {operation.charAt(0).toUpperCase() + operation.slice(1)}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Select which operations the agent can perform on the spreadsheet
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </Card>
+
+              {/* Google Calendar Integration */}
+              <Card className="p-4 sm:p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-semibold">Google Calendar</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                        Manage calendar events and scheduling
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={toolsConfig.googleCalendar.enabled}
+                    onCheckedChange={(checked) => {
+                      setToolsConfig({
+                        ...toolsConfig,
+                        googleCalendar: {
+                          ...toolsConfig.googleCalendar,
+                          enabled: checked,
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-google-calendar"
+                  />
+                </div>
+
+                {toolsConfig.googleCalendar.enabled && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div>
+                      <Label htmlFor="calendar-id" className="text-sm">Calendar ID</Label>
+                      <Input
+                        id="calendar-id"
+                        placeholder="e.g., primary or calendar-id@group.calendar.google.com"
+                        value={toolsConfig.googleCalendar.config.calendarId || ""}
+                        onChange={(e) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            googleCalendar: {
+                              ...toolsConfig.googleCalendar,
+                              config: {
+                                ...toolsConfig.googleCalendar.config,
+                                calendarId: e.target.value,
+                              },
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm mt-1"
+                        data-testid="input-calendar-id"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Use "primary" for your main calendar or enter a specific calendar ID
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="calendar-api-key" className="text-sm">Google Cloud API Key</Label>
+                      <Input
+                        id="calendar-api-key"
+                        type="password"
+                        placeholder="Enter your Google Cloud API key"
+                        value={toolsConfig.googleCalendar.config.apiKey || ""}
+                        onChange={(e) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            googleCalendar: {
+                              ...toolsConfig.googleCalendar,
+                              config: {
+                                ...toolsConfig.googleCalendar.config,
+                                apiKey: e.target.value,
+                              },
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm mt-1"
+                        data-testid="input-calendar-api-key"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Required for accessing Google Calendar. Get it from Google Cloud Console.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm">Operations</Label>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {['read', 'create', 'update', 'delete'].map((operation) => {
+                          const operations = toolsConfig.googleCalendar.config.operations || [];
+                          const isSelected = operations.includes(operation);
+                          return (
+                            <Button
+                              key={operation}
+                              variant={isSelected ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => {
+                                const newOperations = isSelected
+                                  ? operations.filter(op => op !== operation)
+                                  : [...operations, operation];
+                                setToolsConfig({
+                                  ...toolsConfig,
+                                  googleCalendar: {
+                                    ...toolsConfig.googleCalendar,
+                                    config: {
+                                      ...toolsConfig.googleCalendar.config,
+                                      operations: newOperations,
+                                    },
+                                  },
+                                });
+                                setHasUnsavedChanges(true);
+                              }}
+                              data-testid={`button-calendar-operation-${operation}`}
+                            >
+                              {isSelected && <CheckCircle className="w-3 h-3 mr-1" />}
+                              {operation.charAt(0).toUpperCase() + operation.slice(1)}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Select which operations the agent can perform on the calendar
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <div className="flex gap-2">
+                        <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                        <div className="text-sm text-blue-800 dark:text-blue-200">
+                          <p className="font-medium">Setup Instructions</p>
+                          <ol className="text-xs mt-1 space-y-1 list-decimal list-inside">
+                            <li>Enable Google Calendar API in Google Cloud Console</li>
+                            <li>Create an API key with calendar permissions</li>
+                            <li>Share your calendar with the service account (if using service account)</li>
+                            <li>Enter your calendar ID and API credentials above</li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Card>
+
+              {/* Other Integrations Coming Soon */}
+              <Card className="p-4 sm:p-6">
+                <div className="text-center py-8 text-muted-foreground">
+                  <Zap className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <h4 className="text-base font-medium mb-2">More Integrations Coming Soon</h4>
+                  <p className="text-sm">
+                    Slack, Microsoft Teams, Salesforce, HubSpot, and more
                   </p>
                 </div>
-              </div>
-
-              <div className="text-center py-12 text-muted-foreground">
-                <Zap className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <h4 className="text-lg font-medium mb-2">Coming Soon</h4>
-                <p className="text-sm">
-                  Integration with popular services like Slack, Teams, CRM systems, and more
-                </p>
-              </div>
-            </Card>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Custom Tools Tab */}
