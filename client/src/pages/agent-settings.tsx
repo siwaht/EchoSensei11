@@ -16,7 +16,7 @@ import {
   Save, ArrowLeft, Mic, Settings2, MessageSquare, Zap, Search, Play, 
   Volume2, Check, X, RotateCcw, Brain, Plus, Trash2,
   Globe, ChevronDown, ChevronRight, User, Shield, Webhook, Sheet,
-  Calendar, Database, FileText, Sparkles
+  Calendar, Database, FileText, Sparkles, Edit2
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -67,6 +67,9 @@ export default function AgentSettings() {
     // Data collection
     dataCollectionEnabled: false,
     dataCollectionFields: [] as Array<{ name: string; type: string; description?: string }>,
+    
+    // Custom prompt templates
+    promptTemplates: [] as Array<{ id: string; name: string; content: string }>,
   });
 
   const [voiceSearch, setVoiceSearch] = useState("");
@@ -79,7 +82,12 @@ export default function AgentSettings() {
     variables: false,
     evaluation: false,
     collection: false,
+    templates: false,
   });
+  
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateContent, setNewTemplateContent] = useState("");
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
 
   // Fetch agent data
   const { data: agents = [], isLoading: agentsLoading } = useQuery<Agent[]>({
@@ -114,6 +122,7 @@ export default function AgentSettings() {
         evaluationCriteria: agent.evaluationCriteria?.criteria || [],
         dataCollectionEnabled: agent.dataCollection?.enabled || false,
         dataCollectionFields: agent.dataCollection?.fields || [],
+        promptTemplates: (agent as any).promptTemplates || [],
       });
     }
   }, [agent]);
@@ -163,7 +172,8 @@ export default function AgentSettings() {
         enabled: settings.dataCollectionEnabled,
         fields: settings.dataCollectionFields,
       },
-    });
+      promptTemplates: settings.promptTemplates,
+    } as any);
   };
 
   const toggleSection = (section: string) => {
@@ -215,6 +225,61 @@ export default function AgentSettings() {
       evaluationCriteria: [...settings.evaluationCriteria, ""],
     });
     setHasUnsavedChanges(true);
+  };
+
+  const addPromptTemplate = () => {
+    if (!newTemplateName.trim() || !newTemplateContent.trim()) {
+      toast({
+        title: "Template incomplete",
+        description: "Please provide both a name and content for the template",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newTemplate = {
+      id: Date.now().toString(),
+      name: newTemplateName.trim(),
+      content: newTemplateContent.trim(),
+    };
+
+    setSettings({
+      ...settings,
+      promptTemplates: [...settings.promptTemplates, newTemplate],
+    });
+    setHasUnsavedChanges(true);
+    setNewTemplateName("");
+    setNewTemplateContent("");
+    
+    toast({
+      title: "Template added",
+      description: `"${newTemplate.name}" template has been created`,
+    });
+  };
+
+  const updatePromptTemplate = (id: string, name: string, content: string) => {
+    setSettings({
+      ...settings,
+      promptTemplates: settings.promptTemplates.map(t => 
+        t.id === id ? { ...t, name, content } : t
+      ),
+    });
+    setHasUnsavedChanges(true);
+    setEditingTemplateId(null);
+  };
+
+  const deletePromptTemplate = (id: string) => {
+    const template = settings.promptTemplates.find(t => t.id === id);
+    setSettings({
+      ...settings,
+      promptTemplates: settings.promptTemplates.filter(t => t.id !== id),
+    });
+    setHasUnsavedChanges(true);
+    
+    toast({
+      title: "Template deleted",
+      description: `"${template?.name}" template has been removed`,
+    });
   };
 
   const insertSnippet = (type: string) => {
@@ -509,10 +574,14 @@ You have access to multiple tools and integrations:
 
         {/* Settings Tabs */}
         <Tabs defaultValue="conversation" className="space-y-4">
-          <TabsList className="grid grid-cols-3 w-full p-1">
+          <TabsList className="grid grid-cols-4 w-full p-1">
             <TabsTrigger value="conversation" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <MessageSquare className="w-4 h-4" />
               <span className="text-[10px] sm:text-sm">Chat</span>
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
+              <FileText className="w-4 h-4" />
+              <span className="text-[10px] sm:text-sm">Templates</span>
             </TabsTrigger>
             <TabsTrigger value="llm" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <Brain className="w-4 h-4" />
@@ -555,8 +624,39 @@ You have access to multiple tools and integrations:
                     <span className="text-xs text-muted-foreground">Quick Actions</span>
                   </div>
                   
-                  {/* Quick Action Buttons */}
+                  {/* Quick Action Buttons - Default Templates */}
                   <div className="flex flex-wrap gap-1.5 mb-2">
+                    {/* Custom Template Buttons */}
+                    {settings.promptTemplates.map((template) => (
+                      <Button
+                        key={template.id}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => {
+                          const currentPrompt = settings.systemPrompt || '';
+                          const newPrompt = currentPrompt ? `${currentPrompt}\n\n${template.content}` : template.content;
+                          setSettings({ ...settings, systemPrompt: newPrompt });
+                          setHasUnsavedChanges(true);
+                          toast({
+                            title: "Template inserted",
+                            description: `"${template.name}" has been added to the system prompt`,
+                          });
+                        }}
+                        data-testid={`button-custom-template-${template.id}`}
+                      >
+                        <FileText className="w-3 h-3" />
+                        {template.name}
+                      </Button>
+                    ))}
+                    
+                    {/* Divider if there are custom templates */}
+                    {settings.promptTemplates.length > 0 && (
+                      <div className="w-full h-px bg-border my-1" />
+                    )}
+                    
+                    {/* Default Template Buttons */}
                     <Button
                       type="button"
                       size="sm"
@@ -711,6 +811,162 @@ You have access to multiple tools and integrations:
                     Choose a voice from the Voice Library
                   </p>
                 </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* Templates Tab */}
+          <TabsContent value="templates" className="space-y-4 mt-4">
+            <Card className="p-4">
+              <h3 className="text-base font-semibold mb-4">Prompt Templates</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Create custom templates that can be quickly inserted into the system prompt
+              </p>
+              
+              {/* Add New Template Form */}
+              <div className="space-y-4 mb-6">
+                <div>
+                  <Label htmlFor="template-name" className="text-sm">Template Name</Label>
+                  <Input
+                    id="template-name"
+                    placeholder="e.g., Customer Service, Technical Support"
+                    value={newTemplateName}
+                    onChange={(e) => setNewTemplateName(e.target.value)}
+                    className="text-sm"
+                    data-testid="input-template-name"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="template-content" className="text-sm">Template Content</Label>
+                  <Textarea
+                    id="template-content"
+                    placeholder="Enter the template content that will be inserted into the system prompt..."
+                    value={newTemplateContent}
+                    onChange={(e) => setNewTemplateContent(e.target.value)}
+                    className="min-h-[120px] text-sm"
+                    data-testid="textarea-template-content"
+                  />
+                </div>
+                
+                <Button
+                  onClick={addPromptTemplate}
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  data-testid="button-add-template"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Template
+                </Button>
+              </div>
+              
+              {/* Existing Templates */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium">Your Templates</h4>
+                {settings.promptTemplates.length === 0 ? (
+                  <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                    <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      No templates yet. Create your first template above.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {settings.promptTemplates.map((template) => (
+                      <div
+                        key={template.id}
+                        className="border rounded-lg p-3 space-y-2"
+                      >
+                        {editingTemplateId === template.id ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={template.name}
+                              onChange={(e) => {
+                                setSettings({
+                                  ...settings,
+                                  promptTemplates: settings.promptTemplates.map(t =>
+                                    t.id === template.id ? { ...t, name: e.target.value } : t
+                                  ),
+                                });
+                              }}
+                              className="text-sm"
+                              data-testid={`input-edit-template-name-${template.id}`}
+                            />
+                            <Textarea
+                              value={template.content}
+                              onChange={(e) => {
+                                setSettings({
+                                  ...settings,
+                                  promptTemplates: settings.promptTemplates.map(t =>
+                                    t.id === template.id ? { ...t, content: e.target.value } : t
+                                  ),
+                                });
+                              }}
+                              className="min-h-[100px] text-sm"
+                              data-testid={`textarea-edit-template-content-${template.id}`}
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setHasUnsavedChanges(true);
+                                  setEditingTemplateId(null);
+                                  toast({
+                                    title: "Template updated",
+                                    description: `"${template.name}" has been updated`,
+                                  });
+                                }}
+                                data-testid={`button-save-template-${template.id}`}
+                              >
+                                <Check className="w-3 h-3 mr-1" />
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingTemplateId(null)}
+                                data-testid={`button-cancel-edit-template-${template.id}`}
+                              >
+                                <X className="w-3 h-3 mr-1" />
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h5 className="font-medium text-sm mb-1">{template.name}</h5>
+                                <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                                  {template.content.substring(0, 150)}
+                                  {template.content.length > 150 && '...'}
+                                </p>
+                              </div>
+                              <div className="flex gap-1 ml-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingTemplateId(template.id)}
+                                  data-testid={`button-edit-template-${template.id}`}
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => deletePromptTemplate(template.id)}
+                                  data-testid={`button-delete-template-${template.id}`}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </Card>
           </TabsContent>

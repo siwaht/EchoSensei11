@@ -172,6 +172,11 @@ export const agents = pgTable("agents", {
       description?: string;
     }>;
   }>(),
+  promptTemplates: json("prompt_templates").$type<Array<{
+    id: string;
+    name: string;
+    content: string;
+  }>>(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
