@@ -19,6 +19,12 @@ interface Voice {
   description?: string;
   preview_url?: string;
   category?: string;
+  fine_tuning?: {
+    language?: string;
+    is_allowed_to_fine_tune?: boolean;
+  };
+  high_quality_base_model_ids?: string[];
+  samples?: any[];
   settings?: {
     stability: number;
     similarity_boost: number;
@@ -37,6 +43,12 @@ export default function Voices() {
   // Fetch voices from API
   const { data: voices = [], isLoading } = useQuery<Voice[]>({
     queryKey: ["/api/voiceai/voices"],
+    onSuccess: (data) => {
+      // Log first voice to see available metadata
+      if (data && data.length > 0) {
+        console.log("Voice metadata example:", data[0]);
+      }
+    },
   });
 
   // Fetch agents
@@ -82,23 +94,86 @@ export default function Voices() {
     );
   }, [voices, searchQuery]);
 
-  // Get language from labels
-  const getLanguage = (voice: Voice): string => {
-    if (voice.labels?.language) return voice.labels.language;
-    if (voice.labels?.accent) return voice.labels.accent;
-    return "English";
+  // Get all voice metadata
+  const getVoiceMetadata = (voice: Voice) => {
+    const metadata = {
+      language: "English",
+      accent: null as string | null,
+      gender: null as string | null,
+      age: null as string | null,
+      useCase: "Conversational",
+      description: null as string | null,
+    };
+
+    // Extract from labels
+    if (voice.labels) {
+      Object.entries(voice.labels).forEach(([key, value]) => {
+        if (key === "language" || key === "lang") metadata.language = value;
+        if (key === "accent") metadata.accent = value;
+        if (key === "gender") metadata.gender = value;
+        if (key === "age") metadata.age = value;
+        if (key === "use_case" || key === "use case") metadata.useCase = value;
+        if (key === "description" || key === "desc") metadata.description = value;
+      });
+    }
+
+    // Use fine_tuning language if available
+    if (voice.fine_tuning?.language) {
+      metadata.language = voice.fine_tuning.language;
+    }
+
+    // Use category if available
+    if (voice.category) {
+      metadata.useCase = voice.category;
+    }
+
+    return metadata;
   };
 
-  // Get accent/region from labels
-  const getAccent = (voice: Voice): string | null => {
-    if (voice.labels?.accent) {
-      const accent = voice.labels.accent;
-      if (accent.includes("american")) return "American";
-      if (accent.includes("british")) return "British";
-      if (accent.includes("australian")) return "Australian";
-      return accent;
-    }
-    return null;
+  // Format language display
+  const formatLanguage = (language: string): string => {
+    const langMap: Record<string, string> = {
+      "en": "English",
+      "es": "Spanish",
+      "fr": "French",
+      "de": "German",
+      "it": "Italian",
+      "pt": "Portuguese",
+      "pl": "Polish",
+      "ja": "Japanese",
+      "zh": "Chinese",
+      "ko": "Korean",
+      "hi": "Hindi",
+      "ar": "Arabic",
+      "ru": "Russian",
+      "nl": "Dutch",
+      "sv": "Swedish",
+      "no": "Norwegian",
+    };
+    return langMap[language.toLowerCase()] || language;
+  };
+
+  // Get language emoji
+  const getLanguageEmoji = (language: string): string => {
+    const emojiMap: Record<string, string> = {
+      "english": "🇬🇧",
+      "spanish": "🇪🇸",
+      "french": "🇫🇷",
+      "german": "🇩🇪",
+      "italian": "🇮🇹",
+      "portuguese": "🇵🇹",
+      "polish": "🇵🇱",
+      "japanese": "🇯🇵",
+      "chinese": "🇨🇳",
+      "korean": "🇰🇷",
+      "hindi": "🇮🇳",
+      "arabic": "🇸🇦",
+      "russian": "🇷🇺",
+      "dutch": "🇳🇱",
+      "swedish": "🇸🇪",
+      "norwegian": "🇳🇴",
+    };
+    return emojiMap[language.toLowerCase()] || "🌐";
   };
 
   // Get initials for avatar
@@ -264,7 +339,7 @@ export default function Voices() {
                         {voice.name}
                       </h4>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                        {voice.description || "Professional voice perfect for conversational AI"}
+                        {voice.description || getVoiceMetadata(voice).description || voice.labels?.description || "Professional voice perfect for conversational AI"}
                       </p>
                     </div>
                     <div className="flex items-center gap-1">
@@ -293,21 +368,50 @@ export default function Voices() {
                     </div>
                   </div>
 
-                  {/* Tags and Labels */}
-                  <div className="flex items-center gap-4 mt-3">
-                    <div className="flex items-center gap-2">
-                      {/* Language Badges */}
-                      <Badge variant="secondary" className="text-xs">
-                        <span className="mr-1">🌐</span>
-                        {getLanguage(voice)}
+                  {/* Metadata */}
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    {/* Language */}
+                    {voice.labels && Object.entries(voice.labels).map(([key, value]) => {
+                      // Show all labels as badges
+                      if (key && value) {
+                        let displayValue = value;
+                        let variant: "default" | "secondary" | "outline" = "secondary";
+                        
+                        // Format certain labels
+                        if (key === "language" || key === "lang") {
+                          displayValue = `${getLanguageEmoji(value)} ${formatLanguage(value)}`;
+                          variant = "default";
+                        } else if (key === "accent") {
+                          displayValue = value;
+                        } else if (key === "gender") {
+                          displayValue = value.charAt(0).toUpperCase() + value.slice(1);
+                        } else if (key === "use_case" || key === "use case") {
+                          variant = "outline";
+                          displayValue = value;
+                        }
+                        
+                        return (
+                          <Badge key={key} variant={variant} className="text-xs">
+                            {displayValue}
+                          </Badge>
+                        );
+                      }
+                      return null;
+                    })}
+                    
+                    {/* Show category if not in labels */}
+                    {voice.category && !voice.labels?.use_case && !voice.labels?.["use case"] && (
+                      <Badge variant="outline" className="text-xs">
+                        {voice.category}
                       </Badge>
-                      {getAccent(voice) && (
-                        <Badge variant="secondary" className="text-xs">
-                          {getAccent(voice)}
-                        </Badge>
-                      )}
-                    </div>
-
+                    )}
+                    
+                    {/* HD indicator */}
+                    {voice.high_quality_base_model_ids && voice.high_quality_base_model_ids.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        HD
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
