@@ -44,6 +44,7 @@ export default function Voices() {
   const [showCustomVoiceDialog, setShowCustomVoiceDialog] = useState(false);
   const [customVoiceLoading, setCustomVoiceLoading] = useState(false);
   const [customVoiceData, setCustomVoiceData] = useState<Voice | null>(null);
+  const [showAvailableVoices, setShowAvailableVoices] = useState(false);
 
   // Fetch voices from API
   const { data: voicesData, isLoading } = useQuery<Voice[]>({
@@ -544,9 +545,35 @@ export default function Voices() {
                 data-testid="input-custom-voice-id"
               />
               <p className="text-xs text-gray-500">
-                Enter any valid ElevenLabs voice ID. The voice will be fetched directly from ElevenLabs.
+                Enter any valid ElevenLabs voice ID. The voice must be in your ElevenLabs account to be accessible.
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAvailableVoices(!showAvailableVoices)}
+                data-testid="button-toggle-available-voices"
+              >
+                {showAvailableVoices ? "Hide" : "Show"} Available Voice IDs
+              </Button>
             </div>
+
+            {showAvailableVoices && voices.length > 0 && (
+              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto">
+                <p className="text-xs font-medium mb-2">Your Available Voices ({voices.length}):</p>
+                <div className="space-y-1 text-xs">
+                  {voices.map((v: Voice) => (
+                    <div 
+                      key={v.voice_id} 
+                      className="flex items-center justify-between p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
+                      onClick={() => setCustomVoiceId(v.voice_id)}
+                    >
+                      <span>{v.name}</span>
+                      <span className="font-mono text-gray-500">{v.voice_id}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {customVoiceData && (
               <div className="border rounded-lg p-4 space-y-2">
@@ -595,10 +622,13 @@ export default function Voices() {
               <div className="flex gap-2">
                 <ExternalLink className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                 <div className="text-sm text-blue-800 dark:text-blue-200">
-                  <p className="font-medium">Finding Voice IDs</p>
-                  <p className="text-xs mt-1">
-                    You can find voice IDs in your ElevenLabs account under Voice Lab or by browsing the public voice library.
-                  </p>
+                  <p className="font-medium">Important: Voice Access Requirements</p>
+                  <div className="text-xs mt-1 space-y-1">
+                    <p>• Voice Library voices must be added to your account first</p>
+                    <p>• Go to ElevenLabs Voice Library → Click "Add to VoiceLab" on the voice</p>
+                    <p>• Custom/cloned voices appear automatically after creation</p>
+                    <p>• Only voices in "My Voices" section are accessible via API</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -642,7 +672,7 @@ export default function Voices() {
                   toast({
                     title: isNotFound ? "Voice not found" : "Error fetching voice",
                     description: isNotFound 
-                      ? `Voice ID "${customVoiceId.trim()}" was not found. Please check the ID and try again.`
+                      ? `Voice ID "${customVoiceId.trim()}" was not found. This voice may need to be added to your ElevenLabs account first. Go to the Voice Library and click "Add to VoiceLab" for this voice.`
                       : (error.message || "Failed to fetch voice from ElevenLabs"),
                     variant: "destructive",
                   });
