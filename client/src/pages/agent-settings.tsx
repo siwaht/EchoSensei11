@@ -817,6 +817,22 @@ export default function AgentSettings() {
                               >
                                 <Edit2 className="w-3 h-3" />
                               </Button>
+                              <Button
+                                onClick={() => {
+                                  const updatedTemplates = settings.promptTemplates.filter(t => t.id !== template.id);
+                                  setSettings({ ...settings, promptTemplates: updatedTemplates });
+                                  setHasUnsavedChanges(true);
+                                  toast({
+                                    title: "Template deleted",
+                                    description: `"${template.name}" has been removed`,
+                                  });
+                                }}
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
                             </div>
                           </div>
                         )}
