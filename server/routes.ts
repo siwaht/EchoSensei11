@@ -657,13 +657,6 @@ export function registerRoutes(app: Express): Server {
       const apiKey = decryptApiKey(integration.apiKey);
       const { voiceId } = req.params;
 
-      // Validate voice ID
-      if (!voiceId || voiceId === 'undefined' || voiceId === 'null') {
-        return res.status(400).json({ 
-          error: "Invalid voice ID provided" 
-        });
-      }
-
       // Fetch specific voice from ElevenLabs
       const response = await callElevenLabsAPI(
         apiKey,
@@ -674,10 +667,7 @@ export function registerRoutes(app: Express): Server {
       res.json(response);
     } catch (error: any) {
       console.error("Error fetching voice:", error);
-      // Handle voice not found error (ElevenLabs returns 400 with voice_not_found)
-      if (error.message?.includes('voice_not_found') || error.message?.includes('was not found')) {
-        res.status(404).json({ error: "Voice not found. Please check the voice ID and try again." });
-      } else if (error.response?.status === 404 || error.response?.status === 400) {
+      if (error.response?.status === 404) {
         res.status(404).json({ error: "Voice not found. Please check the voice ID." });
       } else {
         res.status(500).json({ 
@@ -706,32 +696,6 @@ export function registerRoutes(app: Express): Server {
       const apiKey = decryptApiKey(integration.apiKey);
       const { voiceId } = req.params;
 
-      // Validate voice ID
-      if (!voiceId || voiceId === 'undefined' || voiceId === 'null') {
-        return res.status(400).json({ 
-          error: "Invalid voice ID provided" 
-        });
-      }
-
-      // First, check if the voice is in the user's available voices
-      const voicesResponse = await fetch("https://api.elevenlabs.io/v1/voices", {
-        headers: {
-          "xi-api-key": apiKey,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (voicesResponse.ok) {
-        const voicesData = await voicesResponse.json();
-        const voiceIds = voicesData.voices?.map((v: any) => v.voice_id) || [];
-        
-        if (!voiceIds.includes(voiceId)) {
-          return res.status(400).json({ 
-            error: "This voice is not in your ElevenLabs account. To use Voice Library voices, you must first add them to 'My Voices' in your ElevenLabs account at elevenlabs.io/app/voice-library" 
-          });
-        }
-      }
-
       // Generate audio preview using ElevenLabs text-to-speech
       const audioResponse = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
@@ -753,31 +717,10 @@ export function registerRoutes(app: Express): Server {
       );
 
       if (!audioResponse.ok) {
-        const errorText = await audioResponse.text();
-        console.error("ElevenLabs TTS error:", errorText);
-        
-        // Parse error message
-        let errorMessage = "Failed to generate voice preview";
-        try {
-          const errorData = JSON.parse(errorText);
-          if (errorData.detail?.message) {
-            errorMessage = errorData.detail.message;
-          } else if (errorData.detail?.status === 'voice_not_found' || errorText.includes('voice_not_found')) {
-            errorMessage = "Voice not found in your account. To use Voice Library voices: 1) Go to elevenlabs.io/app/voice-library 2) Find the voice 3) Click 'Add to My Voices' 4) Then try again";
-          } else if (errorData.detail?.status === 'voice_not_available_for_tier') {
-            errorMessage = "This voice requires a higher subscription tier to use.";
-          }
-        } catch (e) {
-          // Check for common error patterns in text
-          if (errorText.includes('voice_not_found') || errorText.includes('not found')) {
-            errorMessage = "Voice not accessible. Add it to 'My Voices' at elevenlabs.io/app/voice-library first.";
-          } else {
-            errorMessage = errorText || "Failed to generate voice preview";
-          }
-        }
-        
+        const error = await audioResponse.text();
+        console.error("ElevenLabs TTS error:", error);
         return res.status(audioResponse.status).json({ 
-          error: errorMessage
+          error: "Failed to generate voice preview" 
         });
       }
 
@@ -2083,14 +2026,6 @@ export function registerRoutes(app: Express): Server {
           return recipientData;
         }),
       };
-      
-      // Add global voice override if provided
-      if (batchCall.voiceId) {
-        payload.recipients = payload.recipients.map(r => ({
-          ...r,
-          voice_id: r.voice_id || batchCall.voiceId // Use CSV override if present, otherwise use global
-        }));
-      }
 
       // Submit to ElevenLabs
       const response = await callElevenLabsAPI(

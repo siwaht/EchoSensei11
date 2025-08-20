@@ -289,7 +289,6 @@ export const batchCalls = pgTable("batch_calls", {
   name: varchar("name").notNull(),
   agentId: varchar("agent_id").notNull(),
   phoneNumberId: varchar("phone_number_id"),
-  voiceId: varchar("voice_id"), // Optional voice override for the batch
   elevenlabsBatchId: varchar("elevenlabs_batch_id"),
   status: varchar("status").notNull().default("draft"), // draft, pending, in_progress, completed, failed, cancelled
   totalRecipients: integer("total_recipients").default(0),

@@ -44,7 +44,6 @@ export default function Voices() {
   const [showCustomVoiceDialog, setShowCustomVoiceDialog] = useState(false);
   const [customVoiceLoading, setCustomVoiceLoading] = useState(false);
   const [customVoiceData, setCustomVoiceData] = useState<Voice | null>(null);
-  const [showAvailableVoices, setShowAvailableVoices] = useState(false);
 
   // Fetch voices from API
   const { data: voicesData, isLoading } = useQuery<Voice[]>({
@@ -239,24 +238,8 @@ export default function Voices() {
       setPlayingVoiceId(voiceId);
       const audio = document.getElementById(`audio-${voiceId}`) as HTMLAudioElement;
       if (audio) {
-        audio.play().catch((error) => {
-          console.error("Audio playback error:", error);
-          setPlayingVoiceId(null);
-          toast({
-            title: "Playback failed",
-            description: "Could not play voice preview",
-            variant: "destructive",
-          });
-        });
+        audio.play();
         audio.onended = () => setPlayingVoiceId(null);
-        audio.onerror = () => {
-          setPlayingVoiceId(null);
-          toast({
-            title: "Audio error",
-            description: "Failed to load voice preview",
-            variant: "destructive",
-          });
-        };
       }
     }
   };
@@ -282,13 +265,12 @@ export default function Voices() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
             Voice Library
           </h2>
           <Button
             onClick={() => setShowCustomVoiceDialog(true)}
-            className="w-full sm:w-auto"
             data-testid="button-add-custom-voice"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -297,13 +279,13 @@ export default function Voices() {
         </div>
 
         {/* Search */}
-        <div className="relative w-full max-w-full sm:max-w-lg">
+        <div className="relative flex-1 max-w-lg">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
             placeholder="Search by name, accent, or gender..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 w-full"
+            className="pl-10"
             data-testid="input-search-voices"
           />
           {searchQuery && (
@@ -349,12 +331,12 @@ export default function Voices() {
           {filteredVoices.map((voice: Voice) => (
             <Card
               key={voice.voice_id}
-              className="p-3 sm:p-4 hover:shadow-md transition-shadow"
+              className="p-4 hover:shadow-md transition-shadow"
               data-testid={`card-voice-${voice.voice_id}`}
             >
-              <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+              <div className="flex items-start gap-4">
                 {/* Avatar */}
-                <Avatar className="w-12 h-12 flex-shrink-0">
+                <Avatar className="w-12 h-12">
                   <AvatarFallback className={`${getAvatarColor(voice.voice_id)} text-white`}>
                     {getInitials(voice.name)}
                   </AvatarFallback>
@@ -362,8 +344,8 @@ export default function Voices() {
 
                 {/* Voice Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                    <div className="flex-1">
+                  <div className="flex items-start justify-between">
+                    <div>
                       <h4 className="font-medium text-gray-900 dark:text-white">
                         {voice.name}
                       </h4>
@@ -371,14 +353,13 @@ export default function Voices() {
                         {voice.description || getVoiceMetadata(voice).description || voice.labels?.description || "Professional voice perfect for conversational AI"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                    <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handlePlayVoice(voice.voice_id, voice.preview_url)}
                         data-testid={`button-play-${voice.voice_id}`}
                         title="Play preview"
-                        className="flex-shrink-0"
                       >
                         <Play className={`w-4 h-4 ${playingVoiceId === voice.voice_id ? "text-primary" : ""}`} />
                       </Button>
@@ -389,7 +370,7 @@ export default function Voices() {
                           setSelectedVoiceId(voice.voice_id);
                           setShowAgentDialog(true);
                         }}
-                        className="gap-1 whitespace-nowrap"
+                        className="gap-1"
                         data-testid={`button-use-voice-${voice.voice_id}`}
                       >
                         <UserCheck className="w-3 h-3" />
@@ -399,7 +380,7 @@ export default function Voices() {
                   </div>
 
                   {/* Metadata */}
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-3">
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
                     {/* Language */}
                     {voice.labels && Object.entries(voice.labels).map(([key, value]) => {
                       // Show all labels as badges
@@ -543,14 +524,7 @@ export default function Voices() {
       </Dialog>
 
       {/* Custom Voice ID Dialog */}
-      <Dialog open={showCustomVoiceDialog} onOpenChange={(open) => {
-        setShowCustomVoiceDialog(open);
-        if (!open) {
-          setPlayingVoiceId(null);
-          setCustomVoiceId("");
-          setCustomVoiceData(null);
-        }
-      }}>
+      <Dialog open={showCustomVoiceDialog} onOpenChange={setShowCustomVoiceDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Use Voice by ID</DialogTitle>
@@ -570,35 +544,9 @@ export default function Voices() {
                 data-testid="input-custom-voice-id"
               />
               <p className="text-xs text-gray-500">
-                Enter any valid ElevenLabs voice ID. The voice must be in your ElevenLabs account to be accessible.
+                Enter any valid ElevenLabs voice ID. The voice will be fetched directly from ElevenLabs.
               </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAvailableVoices(!showAvailableVoices)}
-                data-testid="button-toggle-available-voices"
-              >
-                {showAvailableVoices ? "Hide" : "Show"} Available Voice IDs
-              </Button>
             </div>
-
-            {showAvailableVoices && voices.length > 0 && (
-              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto">
-                <p className="text-xs font-medium mb-2">Your Available Voices ({voices.length}):</p>
-                <div className="space-y-1 text-xs">
-                  {voices.map((v: Voice) => (
-                    <div 
-                      key={v.voice_id} 
-                      className="flex items-center justify-between p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
-                      onClick={() => setCustomVoiceId(v.voice_id)}
-                    >
-                      <span>{v.name}</span>
-                      <span className="font-mono text-gray-500">{v.voice_id}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {customVoiceData && (
               <div className="border rounded-lg p-4 space-y-2">
@@ -616,68 +564,12 @@ export default function Voices() {
                     size="sm"
                     onClick={() => {
                       const voiceId = customVoiceData.voice_id;
-                      if (!voiceId) {
-                        toast({
-                          title: "Voice ID missing",
-                          description: "Cannot play preview without a valid voice ID",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
                       setPlayingVoiceId(voiceId);
-                      
-                      // First check if the voice can generate audio
-                      fetch(`/api/voiceai/voices/${voiceId}/preview`, {
-                        method: 'GET',
-                        credentials: 'include',
-                      })
-                      .then(async (response) => {
-                        if (!response.ok) {
-                          const error = await response.json();
-                          throw new Error(error.error || 'Failed to generate preview');
-                        }
-                        return response.blob();
-                      })
-                      .then((audioBlob) => {
-                        const audioUrl = URL.createObjectURL(audioBlob);
-                        const audio = new Audio(audioUrl);
-                        
-                        audio.onended = () => {
-                          setPlayingVoiceId(null);
-                          URL.revokeObjectURL(audioUrl);
-                        };
-                        
-                        audio.onerror = () => {
-                          setPlayingVoiceId(null);
-                          URL.revokeObjectURL(audioUrl);
-                          toast({
-                            title: "Playback error",
-                            description: "Failed to play audio",
-                            variant: "destructive",
-                          });
-                        };
-                        
-                        return audio.play();
-                      })
-                      .catch((error) => {
-                        console.error("Voice preview error:", error);
-                        setPlayingVoiceId(null);
-                        
-                        // Check if it's a voice access error
-                        const isAccessError = error.message?.includes('not in your ElevenLabs account') || 
-                                            error.message?.includes('Voice Library') ||
-                                            error.message?.includes('Add to My Voices');
-                        
-                        toast({
-                          title: isAccessError ? "Voice Not in Your Account" : "Voice preview failed",
-                          description: isAccessError 
-                            ? "To use this voice: 1) Open elevenlabs.io/app/voice-library 2) Find this voice 3) Click 'Add to My Voices' 4) Try again"
-                            : (error.message || "Failed to generate voice preview"),
-                          variant: "destructive",
-                        });
-                      });
+                      const audio = new Audio(`/api/voiceai/voices/${voiceId}/preview`);
+                      audio.play();
+                      audio.onended = () => setPlayingVoiceId(null);
                     }}
-                    disabled={playingVoiceId === customVoiceData.voice_id || !customVoiceData.voice_id}
+                    disabled={playingVoiceId === customVoiceData.voice_id}
                     data-testid={`button-play-custom-voice`}
                   >
                     <Play className="w-4 h-4 mr-1" />
@@ -703,15 +595,10 @@ export default function Voices() {
               <div className="flex gap-2">
                 <ExternalLink className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                 <div className="text-sm text-blue-800 dark:text-blue-200">
-                  <p className="font-medium">Important: Voice Library Access</p>
-                  <div className="text-xs mt-1 space-y-1">
-                    <p className="font-semibold">To use a Voice Library voice:</p>
-                    <p>1. Go to <a href="https://elevenlabs.io/app/voice-library" target="_blank" rel="noopener noreferrer" className="underline">elevenlabs.io/app/voice-library</a></p>
-                    <p>2. Find the voice you want to use</p>
-                    <p>3. Click "Add to My Voices" button on the voice</p>
-                    <p>4. The voice will then appear in your available voices and work here</p>
-                    <p className="mt-2 text-orange-600 dark:text-orange-400">⚠️ Voice Library voices CANNOT be used until added to your account</p>
-                  </div>
+                  <p className="font-medium">Finding Voice IDs</p>
+                  <p className="text-xs mt-1">
+                    You can find voice IDs in your ElevenLabs account under Voice Lab or by browsing the public voice library.
+                  </p>
                 </div>
               </div>
             </div>
@@ -724,7 +611,6 @@ export default function Voices() {
                 setShowCustomVoiceDialog(false);
                 setCustomVoiceId("");
                 setCustomVoiceData(null);
-                setPlayingVoiceId(null);
               }}
               data-testid="button-cancel-custom-voice"
             >
@@ -751,13 +637,9 @@ export default function Voices() {
                     description: `Successfully loaded voice: ${response.name}`,
                   });
                 } catch (error: any) {
-                  // Check if it's a 404 error (voice not found)
-                  const isNotFound = error.message?.includes('not found') || error.status === 404;
                   toast({
-                    title: isNotFound ? "Voice not found" : "Error fetching voice",
-                    description: isNotFound 
-                      ? `Voice ID "${customVoiceId.trim()}" was not found. This voice may need to be added to your ElevenLabs account first. Go to elevenlabs.io/app/voice-library and click "Add to My Voices" for this voice.`
-                      : (error.message || "Failed to fetch voice from ElevenLabs"),
+                    title: "Voice not found",
+                    description: error.message || "Could not find voice with this ID. Please check the ID and try again.",
                     variant: "destructive",
                   });
                 } finally {
