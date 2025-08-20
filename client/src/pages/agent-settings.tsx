@@ -632,8 +632,7 @@ You have access to multiple tools and integrations:
                         key={template.id}
                         type="button"
                         size="sm"
-                        variant="outline"
-                        className="h-7 text-xs gap-1"
+                        className="h-8 px-3 text-xs gap-1.5 bg-cyan-500 hover:bg-cyan-600 text-white border-0"
                         onClick={() => {
                           const currentPrompt = settings.systemPrompt || '';
                           const newPrompt = currentPrompt ? `${currentPrompt}\n\n${template.content}` : template.content;
@@ -646,7 +645,7 @@ You have access to multiple tools and integrations:
                         }}
                         data-testid={`button-custom-template-${template.id}`}
                       >
-                        <FileText className="w-3 h-3" />
+                        <FileText className="w-3.5 h-3.5" />
                         {template.name}
                       </Button>
                     ))}
@@ -660,78 +659,71 @@ You have access to multiple tools and integrations:
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1"
+                      className="h-8 px-3 text-xs gap-1.5 bg-blue-500 hover:bg-blue-600 text-white border-0"
                       onClick={() => insertSnippet('persona')}
                       data-testid="button-snippet-persona"
                     >
-                      <User className="w-3 h-3" />
+                      <User className="w-3.5 h-3.5" />
                       Persona
                     </Button>
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1"
+                      className="h-8 px-3 text-xs gap-1.5 bg-red-500 hover:bg-red-600 text-white border-0"
                       onClick={() => insertSnippet('guardrails')}
                       data-testid="button-snippet-guardrails"
                     >
-                      <Shield className="w-3 h-3" />
+                      <Shield className="w-3.5 h-3.5" />
                       Guardrails
                     </Button>
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1"
+                      className="h-8 px-3 text-xs gap-1.5 bg-purple-500 hover:bg-purple-600 text-white border-0"
                       onClick={() => insertSnippet('webhook')}
                       data-testid="button-snippet-webhook"
                     >
-                      <Webhook className="w-3 h-3" />
+                      <Webhook className="w-3.5 h-3.5" />
                       Webhook
                     </Button>
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1"
+                      className="h-8 px-3 text-xs gap-1.5 bg-green-500 hover:bg-green-600 text-white border-0"
                       onClick={() => insertSnippet('sheets')}
                       data-testid="button-snippet-sheets"
                     >
-                      <Sheet className="w-3 h-3" />
+                      <Sheet className="w-3.5 h-3.5" />
                       Sheets
                     </Button>
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1"
+                      className="h-8 px-3 text-xs gap-1.5 bg-indigo-500 hover:bg-indigo-600 text-white border-0"
                       onClick={() => insertSnippet('calendar')}
                       data-testid="button-snippet-calendar"
                     >
-                      <Calendar className="w-3 h-3" />
+                      <Calendar className="w-3.5 h-3.5" />
                       Calendar
                     </Button>
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1"
+                      className="h-8 px-3 text-xs gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
                       onClick={() => insertSnippet('rag')}
                       data-testid="button-snippet-rag"
                     >
-                      <Database className="w-3 h-3" />
+                      <Database className="w-3.5 h-3.5" />
                       RAG
                     </Button>
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1"
+                      className="h-8 px-3 text-xs gap-1.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
                       onClick={() => insertSnippet('tools')}
                       data-testid="button-snippet-tools"
                     >
-                      <Sparkles className="w-3 h-3" />
+                      <Sparkles className="w-3.5 h-3.5" />
                       All Tools
                     </Button>
                   </div>
