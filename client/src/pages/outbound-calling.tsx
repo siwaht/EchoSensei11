@@ -397,14 +397,11 @@ export default function OutboundCalling() {
 
       {/* Create/Edit Batch Call Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {selectedBatchCall ? "Edit Batch Call" : "Create a batch call"}
+              {selectedBatchCall ? "Edit batch call" : "Create a batch call"}
             </DialogTitle>
-            <DialogDescription>
-              Configure your outbound calling campaign
-            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
@@ -412,7 +409,7 @@ export default function OutboundCalling() {
               <Label htmlFor="name">Batch name</Label>
               <Input
                 id="name"
-                placeholder="Enter batch name"
+                placeholder="Untitled Batch"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 data-testid="input-batch-name"
@@ -470,125 +467,179 @@ export default function OutboundCalling() {
             </div>
 
             <div className="space-y-2">
-              <Label>Recipients</Label>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  data-testid="input-file-upload"
-                />
-                <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                {formData.recipients.length > 0 ? (
-                  <div>
-                    <p className="text-sm font-medium">
-                      {formData.recipients.length} recipients loaded
-                    </p>
+              <div className="flex items-center justify-between">
+                <Label>Recipients</Label>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <span>25.0 MB</span>
+                  <Badge variant="secondary" className="text-xs">CSV</Badge>
+                  <Badge variant="secondary" className="text-xs">XLS</Badge>
+                </div>
+              </div>
+              {formData.recipients.length === 0 ? (
+                <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    data-testid="input-file-upload"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    data-testid="button-upload"
+                  >
+                    Upload
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="border rounded-lg p-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">{formData.recipients.length} recipients</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setFormData({ ...formData, recipients: [] });
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        data-testid="button-clear-recipients"
+                      >
+                        Clear
+                      </Button>
+                    </div>
                     <Button
-                      variant="link"
+                      variant="outline"
                       size="sm"
                       onClick={() => fileInputRef.current?.click()}
+                      className="w-full"
                       data-testid="button-reupload"
                     >
                       Upload different file
                     </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
                   </div>
-                ) : (
-                  <>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                      Upload a CSV to start adding recipients to this batch call
-                    </p>
-                    <div className="flex justify-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fileInputRef.current?.click()}
-                        data-testid="button-upload"
-                      >
-                        Upload
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={downloadTemplate}
-                        data-testid="button-download-template"
-                      >
-                        <Download className="w-4 h-4 mr-1" />
-                        Template
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-              <p className="text-xs text-gray-500">
-                25.0 MB max • CSV, XLS
-              </p>
+                </div>
+              )}
             </div>
 
             {formData.recipients.length > 0 && (
               <div className="space-y-2">
                 <Label>Formatting</Label>
-                <div className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                    The <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1">phone_number</span> column is
-                    required. You can also pass overrides like <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1">language</span>,
-                    <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1">voice_id</span>, <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1">first_message</span>,
-                    and <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1">prompt</span>. Any other columns will be
-                    passed as dynamic variables.
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    The <span className="font-mono text-gray-900 dark:text-gray-100">phone_number</span> column is
+                    required. You can also pass certain <span className="font-mono text-gray-900 dark:text-gray-100">overrides</span>.
+                    Any other columns will be passed as dynamic variables.
                   </p>
-                  <div className="space-y-1 text-xs">
-                    {Object.keys(formData.recipients[0] || {}).map((col) => (
-                      <div key={col} className="flex items-center gap-2">
-                        <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1">{col}</span>
-                        <span className="text-gray-500">→</span>
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {col === "phone_number" ? "Phone Number (required)" : 
-                           col === "language" ? "Language override" :
-                           col === "voice_id" ? "Voice override" :
-                           col === "first_message" ? "First message override" :
-                           col === "prompt" ? "Prompt override" :
-                           "Dynamic variable"}
-                        </span>
-                      </div>
-                    ))}
+                  {/* Preview table */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="h-8">
+                          {Object.keys(formData.recipients[0] || {}).slice(0, 4).map((col) => (
+                            <TableHead key={col} className="text-xs py-1">{col}</TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {formData.recipients.slice(0, 3).map((recipient, idx) => (
+                          <TableRow key={idx} className="h-8">
+                            {Object.keys(recipient).slice(0, 4).map((col) => (
+                              <TableCell key={col} className="text-xs py-1">
+                                {recipient[col] || '-'}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               </div>
             )}
+
+            <div className="pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={downloadTemplate}
+                className="gap-2"
+                data-testid="button-download-template"
+              >
+                <Download className="w-4 h-4" />
+                Template
+              </Button>
+            </div>
           </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowCreateDialog(false);
-                setSelectedBatchCall(null);
-                setFormData({ name: "", agentId: "", phoneNumberId: "", recipients: [] });
-              }}
-              data-testid="button-cancel"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (selectedBatchCall) {
-                  // Update existing batch call
-                  // Not implemented yet
-                } else {
-                  createBatchCall.mutate(formData);
+          <DialogFooter className="flex justify-between">
+            <div className="flex gap-2">
+              {formData.recipients.length > 0 && formData.agentId && formData.phoneNumberId && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedBatchCall({
+                      id: 'temp',
+                      name: formData.name,
+                      agentId: formData.agentId,
+                      phoneNumberId: formData.phoneNumberId,
+                      organizationId: '',
+                      userId: '',
+                      status: 'draft',
+                      totalRecipients: formData.recipients.length,
+                      completedCalls: 0,
+                      failedCalls: 0,
+                      createdAt: new Date(),
+                      updatedAt: new Date(),
+                    } as BatchCall);
+                    setShowTestDialog(true);
+                  }}
+                  data-testid="button-test-call"
+                >
+                  Test call
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCreateDialog(false);
+                  setSelectedBatchCall(null);
+                  setFormData({ name: "", agentId: "", phoneNumberId: "", recipients: [] });
+                }}
+                data-testid="button-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedBatchCall && selectedBatchCall.id !== 'temp') {
+                    // Update existing batch call
+                    // Not implemented yet
+                  } else {
+                    createBatchCall.mutate(formData);
+                  }
+                }}
+                disabled={
+                  !formData.name ||
+                  !formData.agentId ||
+                  createBatchCall.isPending
                 }
-              }}
-              disabled={
-                !formData.name ||
-                !formData.agentId ||
-                createBatchCall.isPending
-              }
-              data-testid="button-save-batch-call"
-            >
-              {createBatchCall.isPending ? "Creating..." : selectedBatchCall ? "Save Changes" : "Create Batch Call"}
-            </Button>
+                data-testid="button-save-batch-call"
+              >
+                {createBatchCall.isPending ? "Submitting..." : "Submit a Batch Call"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
