@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, Building2, DollarSign, Edit, Trash2, Plus, Shield, Phone, Sparkles, Activity, TrendingUp } from "lucide-react";
+import { Users, Building2, DollarSign, Edit, Trash2, Plus, Shield, Phone, Sparkles } from "lucide-react";
 import type { User, Organization, BillingPackage } from "@shared/schema";
 import AdminQuickActions from "./admin-quick-actions";
 
