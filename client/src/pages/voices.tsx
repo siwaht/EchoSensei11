@@ -282,12 +282,13 @@ export default function Voices() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">
             Voice Library
           </h2>
           <Button
             onClick={() => setShowCustomVoiceDialog(true)}
+            className="w-full sm:w-auto"
             data-testid="button-add-custom-voice"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -296,13 +297,13 @@ export default function Voices() {
         </div>
 
         {/* Search */}
-        <div className="relative flex-1 max-w-lg">
+        <div className="relative w-full max-w-full sm:max-w-lg">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
             placeholder="Search by name, accent, or gender..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 w-full"
             data-testid="input-search-voices"
           />
           {searchQuery && (
@@ -348,12 +349,12 @@ export default function Voices() {
           {filteredVoices.map((voice: Voice) => (
             <Card
               key={voice.voice_id}
-              className="p-4 hover:shadow-md transition-shadow"
+              className="p-3 sm:p-4 hover:shadow-md transition-shadow"
               data-testid={`card-voice-${voice.voice_id}`}
             >
-              <div className="flex items-start gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
                 {/* Avatar */}
-                <Avatar className="w-12 h-12">
+                <Avatar className="w-12 h-12 flex-shrink-0">
                   <AvatarFallback className={`${getAvatarColor(voice.voice_id)} text-white`}>
                     {getInitials(voice.name)}
                   </AvatarFallback>
@@ -361,8 +362,8 @@ export default function Voices() {
 
                 {/* Voice Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
-                    <div>
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <div className="flex-1">
                       <h4 className="font-medium text-gray-900 dark:text-white">
                         {voice.name}
                       </h4>
@@ -370,13 +371,14 @@ export default function Voices() {
                         {voice.description || getVoiceMetadata(voice).description || voice.labels?.description || "Professional voice perfect for conversational AI"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2 mt-2 sm:mt-0">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handlePlayVoice(voice.voice_id, voice.preview_url)}
                         data-testid={`button-play-${voice.voice_id}`}
                         title="Play preview"
+                        className="flex-shrink-0"
                       >
                         <Play className={`w-4 h-4 ${playingVoiceId === voice.voice_id ? "text-primary" : ""}`} />
                       </Button>
@@ -387,7 +389,7 @@ export default function Voices() {
                           setSelectedVoiceId(voice.voice_id);
                           setShowAgentDialog(true);
                         }}
-                        className="gap-1"
+                        className="gap-1 whitespace-nowrap"
                         data-testid={`button-use-voice-${voice.voice_id}`}
                       >
                         <UserCheck className="w-3 h-3" />
@@ -397,7 +399,7 @@ export default function Voices() {
                   </div>
 
                   {/* Metadata */}
-                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-3">
                     {/* Language */}
                     {voice.labels && Object.entries(voice.labels).map(([key, value]) => {
                       // Show all labels as badges
