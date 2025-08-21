@@ -1049,7 +1049,7 @@ export function registerRoutes(app: Express): Server {
       // Create phone number first (following Vapi/Synthflow pattern)
       // Set initial status to pending for validation
       phoneNumberData.status = "pending";
-      const phoneNumber = await storage.createPhoneNumber(phoneNumberData);
+      let phoneNumber = await storage.createPhoneNumber(phoneNumberData);
       
       // Then attempt to sync with ElevenLabs if integration exists
       // This is a non-blocking validation step
@@ -1104,16 +1104,25 @@ export function registerRoutes(app: Express): Server {
             elevenLabsPayload
           );
 
+          console.log("ElevenLabs phone creation response:", response);
+
           if (response.phone_id) {
             // Update the phone number status to active after successful sync
-            await storage.updatePhoneNumber(phoneNumber.id, user.organizationId, {
+            const updateResult = await storage.updatePhoneNumber(phoneNumber.id, user.organizationId, {
               elevenLabsPhoneId: response.phone_id,
               status: "active",
               lastSynced: new Date()
             });
+            console.log("Updated phone number with ElevenLabs ID:", {
+              phoneId: phoneNumber.id,
+              elevenLabsPhoneId: response.phone_id,
+              updateResult
+            });
             phoneNumber.elevenLabsPhoneId = response.phone_id;
             phoneNumber.status = "active";
             phoneNumber.lastSynced = new Date();
+          } else {
+            console.warn("ElevenLabs response did not include phone_id:", response);
           }
         } catch (elevenLabsError: any) {
           console.error("Warning: Could not validate with ElevenLabs:", elevenLabsError.message);
@@ -1310,32 +1319,59 @@ export function registerRoutes(app: Express): Server {
         elevenLabsAgentId: elevenLabsAgentId
       });
 
-      // If phone number is synced with ElevenLabs, update the assignment there
-      if (phoneNumber.elevenLabsPhoneId && phoneNumber.status === "active") {
+      console.log("Phone number details for agent assignment:", {
+        phoneNumberId: phoneNumber.id,
+        elevenLabsPhoneId: phoneNumber.elevenLabsPhoneId,
+        status: phoneNumber.status,
+        agentId: agentId,
+        elevenLabsAgentId: elevenLabsAgentId
+      });
+
+      // If phone number is synced with ElevenLabs (has elevenLabsPhoneId), update the assignment there
+      // We check for elevenLabsPhoneId regardless of status to ensure sync happens
+      if (phoneNumber.elevenLabsPhoneId) {
         const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
         if (integration && integration.apiKey) {
           try {
             const decryptedKey = decryptApiKey(integration.apiKey);
             
             // Update phone number in ElevenLabs with agent assignment
-            const payload: any = {};
-            if (elevenLabsAgentId) {
-              payload.agent_id = elevenLabsAgentId;
-            }
+            // Send the agent_id even if null to clear assignment
+            const payload: any = {
+              agent_id: elevenLabsAgentId || null
+            };
             
-            if (Object.keys(payload).length > 0) {
-              await callElevenLabsAPI(
+            console.log("Updating ElevenLabs phone number with payload:", payload);
+            
+            // Try PATCH first, then fall back to PUT if it fails
+            let response;
+            try {
+              response = await callElevenLabsAPI(
+                decryptedKey,
+                `/v1/convai/phone-numbers/${phoneNumber.elevenLabsPhoneId}`,
+                "PATCH",
+                payload
+              );
+              console.log("ElevenLabs PATCH response:", response);
+            } catch (patchError: any) {
+              console.log("PATCH failed, trying PUT:", patchError.message);
+              response = await callElevenLabsAPI(
                 decryptedKey,
                 `/v1/convai/phone-numbers/${phoneNumber.elevenLabsPhoneId}`,
                 "PUT",
                 payload
               );
+              console.log("ElevenLabs PUT response:", response);
             }
-          } catch (elevenLabsError) {
-            console.error("Error updating agent assignment in ElevenLabs:", elevenLabsError);
+          } catch (elevenLabsError: any) {
+            console.error("Error updating agent assignment in ElevenLabs:", elevenLabsError.message || elevenLabsError);
             // Continue even if ElevenLabs update fails - local update is still valid
           }
+        } else {
+          console.log("No ElevenLabs integration found, skipping sync");
         }
+      } else {
+        console.log("Phone number has no elevenLabsPhoneId, skipping ElevenLabs sync");
       }
 
       res.json(updatedPhoneNumber);
