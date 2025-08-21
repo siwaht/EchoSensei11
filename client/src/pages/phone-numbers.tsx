@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Phone, Plus, ChevronDown, Trash2, Edit, Globe, Server, User } from "lucide-react";
+import { Phone, Plus, ChevronDown, Trash2, Edit, Globe, Server, User, RefreshCw } from "lucide-react";
 import type { PhoneNumber, InsertPhoneNumber } from "@shared/schema";
 
 const countryCodes = [
@@ -35,6 +35,7 @@ export default function PhoneNumbers() {
   const [phoneToEdit, setPhoneToEdit] = useState<PhoneNumber | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [assigningAgent, setAssigningAgent] = useState<string | null>(null);
+  const [syncingPhoneId, setSyncingPhoneId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<InsertPhoneNumber>>({
     label: "",
     phoneNumber: "",
@@ -96,6 +97,29 @@ export default function PhoneNumbers() {
       toast({
         title: "Import failed",
         description: error.message || "Failed to import phone number",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Resync phone number with ElevenLabs
+  const resyncPhoneNumber = useMutation({
+    mutationFn: async (phoneNumberId: string) => {
+      return await apiRequest("POST", `/api/phone-numbers/${phoneNumberId}/resync`);
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/phone-numbers"] });
+      setSyncingPhoneId(null);
+      toast({
+        title: "Phone number synced",
+        description: data?.message || "Phone number has been re-synced with ElevenLabs.",
+      });
+    },
+    onError: (error: any) => {
+      setSyncingPhoneId(null);
+      toast({
+        title: "Sync failed",
+        description: error.message || "Failed to sync phone number with ElevenLabs",
         variant: "destructive",
       });
     },
@@ -409,10 +433,28 @@ export default function PhoneNumbers() {
               </div>
 
               <div className="flex gap-2 mt-4 pt-4 border-t">
+                {!phone.elevenLabsPhoneId && phone.status === "pending" && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => {
+                      setSyncingPhoneId(phone.id);
+                      resyncPhoneNumber.mutate(phone.id);
+                    }}
+                    disabled={syncingPhoneId === phone.id}
+                    data-testid={`button-sync-${phone.id}`}
+                  >
+                    {syncingPhoneId === phone.id ? (
+                      <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Syncing...</>
+                    ) : (
+                      <><RefreshCw className="w-4 h-4 mr-1" /> Sync</>
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1"
+                  className={phone.elevenLabsPhoneId ? "flex-1" : ""}
                   onClick={() => {
                     setPhoneToEdit(phone);
                     setEditFormData({

@@ -1104,25 +1104,38 @@ export function registerRoutes(app: Express): Server {
             elevenLabsPayload
           );
 
-          console.log("ElevenLabs phone creation response:", response);
+          console.log("ElevenLabs phone creation response:", JSON.stringify(response, null, 2));
 
-          if (response.phone_id) {
+          // ElevenLabs returns phone_number_id in the response
+          // Let's check multiple possible field names to be sure
+          const phoneId = response.phone_number_id || response.phone_id || response.id;
+          
+          if (phoneId) {
             // Update the phone number status to active after successful sync
             const updateResult = await storage.updatePhoneNumber(phoneNumber.id, user.organizationId, {
-              elevenLabsPhoneId: response.phone_id,
+              elevenLabsPhoneId: phoneId,
               status: "active",
               lastSynced: new Date()
             });
             console.log("Updated phone number with ElevenLabs ID:", {
-              phoneId: phoneNumber.id,
-              elevenLabsPhoneId: response.phone_id,
-              updateResult
+              localPhoneId: phoneNumber.id,
+              elevenLabsPhoneId: phoneId,
+              updateSuccess: !!updateResult
             });
-            phoneNumber.elevenLabsPhoneId = response.phone_id;
+            
+            // Update the returned phone number object
+            phoneNumber.elevenLabsPhoneId = phoneId;
             phoneNumber.status = "active";
             phoneNumber.lastSynced = new Date();
           } else {
-            console.warn("ElevenLabs response did not include phone_id:", response);
+            console.warn("ElevenLabs response did not include phone ID. Full response:", JSON.stringify(response, null, 2));
+            // Still mark as active since it was created successfully
+            await storage.updatePhoneNumber(phoneNumber.id, user.organizationId, {
+              status: "active",
+              lastSynced: new Date()
+            });
+            phoneNumber.status = "active";
+            phoneNumber.lastSynced = new Date();
           }
         } catch (elevenLabsError: any) {
           console.error("Warning: Could not validate with ElevenLabs:", elevenLabsError.message);
@@ -1336,10 +1349,13 @@ export function registerRoutes(app: Express): Server {
             const decryptedKey = decryptApiKey(integration.apiKey);
             
             // Update phone number in ElevenLabs with agent assignment
-            // Send the agent_id even if null to clear assignment
-            const payload: any = {
-              agent_id: elevenLabsAgentId || null
-            };
+            // ElevenLabs expects just "agent_id" in the request body
+            const payload: any = {};
+            
+            // Only include agent_id if we have one (to assign), otherwise empty payload (to unassign)
+            if (elevenLabsAgentId) {
+              payload.agent_id = elevenLabsAgentId;
+            }
             
             console.log("Updating ElevenLabs phone number with payload:", payload);
             
@@ -1378,6 +1394,87 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error assigning agent to phone number:", error);
       res.status(500).json({ message: "Failed to assign agent to phone number" });
+    }
+  });
+
+  // Re-sync phone number with ElevenLabs (to fix missing IDs)
+  app.post("/api/phone-numbers/:id/resync", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { id } = req.params;
+      const phoneNumber = await storage.getPhoneNumber(id, user.organizationId);
+      
+      if (!phoneNumber) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+      
+      // Get ElevenLabs integration
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs integration not configured" });
+      }
+      
+      const decryptedKey = decryptApiKey(integration.apiKey);
+      
+      // Get all phone numbers from ElevenLabs to find this one
+      try {
+        const elevenLabsPhones = await callElevenLabsAPI(
+          decryptedKey,
+          "/v1/convai/phone-numbers",
+          "GET"
+        );
+        
+        console.log("ElevenLabs phone numbers:", JSON.stringify(elevenLabsPhones, null, 2));
+        
+        // Format our phone number for comparison
+        const cleanPhoneNumber = phoneNumber.phoneNumber.replace(/\D/g, '');
+        const rawCountryCode = (phoneNumber.countryCode || '+1').replace('+', '');
+        let formattedPhoneNumber;
+        if (cleanPhoneNumber.startsWith(rawCountryCode)) {
+          formattedPhoneNumber = '+' + cleanPhoneNumber;
+        } else {
+          formattedPhoneNumber = '+' + rawCountryCode + cleanPhoneNumber;
+        }
+        
+        // Find matching phone number in ElevenLabs
+        const matchingPhone = elevenLabsPhones.find((p: any) => 
+          p.phone_number === formattedPhoneNumber || 
+          p.label === phoneNumber.label
+        );
+        
+        if (matchingPhone) {
+          const phoneId = matchingPhone.phone_number_id || matchingPhone.id;
+          
+          // Update our database with the ElevenLabs ID
+          await storage.updatePhoneNumber(phoneNumber.id, user.organizationId, {
+            elevenLabsPhoneId: phoneId,
+            status: "active",
+            lastSynced: new Date()
+          });
+          
+          res.json({ 
+            message: "Phone number re-synced successfully",
+            elevenLabsPhoneId: phoneId,
+            status: "active"
+          });
+        } else {
+          res.status(404).json({ 
+            message: "Phone number not found in ElevenLabs. You may need to delete and re-import it.",
+            searchedFor: formattedPhoneNumber
+          });
+        }
+      } catch (error: any) {
+        console.error("Error re-syncing phone number:", error);
+        res.status(500).json({ message: error.message || "Failed to re-sync phone number" });
+      }
+    } catch (error) {
+      console.error("Error in resync:", error);
+      res.status(500).json({ message: "Failed to re-sync phone number" });
     }
   });
 
