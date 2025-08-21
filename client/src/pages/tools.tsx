@@ -14,7 +14,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Plus, Trash2, Save, Globe, Webhook, Code, Wrench, 
   ChevronDown, ChevronRight, Settings2, Zap, Hammer,
-  Sheet, Calendar, CheckCircle, XCircle, Database,
+  Sheet, Calendar, Mail, CheckCircle, XCircle, Database,
   Brain, FileText, Upload, Search, Phone, Languages,
   SkipForward, UserPlus, Voicemail, Hash, Server,
   Mic, AudioLines, Bot, Key, Shield, Sparkles
@@ -54,6 +54,14 @@ interface GoogleCalendarConfig {
   clientId?: string;
   clientSecret?: string;
   operations?: string[]; // read, create, update, delete
+}
+
+interface GoogleGmailConfig {
+  email?: string;
+  apiKey?: string;
+  clientId?: string;
+  clientSecret?: string;
+  operations?: string[]; // read, send, reply, forward, delete
 }
 
 interface RAGToolConfig {
@@ -120,6 +128,10 @@ export default function Tools() {
       enabled: false,
       config: {} as GoogleCalendarConfig,
     },
+    googleGmail: {
+      enabled: false,
+      config: {} as GoogleGmailConfig,
+    },
     ragTool: {
       enabled: false,
       name: 'Knowledge Base RAG',
@@ -144,6 +156,7 @@ export default function Tools() {
       const tools = selectedAgent.tools as any || {};
       const googleSheetsIntegration = tools.integrations?.find((i: any) => i.type === 'google-sheets');
       const googleCalendarIntegration = tools.integrations?.find((i: any) => i.type === 'google-calendar');
+      const googleGmailIntegration = tools.integrations?.find((i: any) => i.type === 'google-gmail');
       const ragToolConfig = tools.customTools?.find((t: any) => t.type === 'rag');
       
       setToolsConfig({
@@ -166,6 +179,10 @@ export default function Tools() {
         googleCalendar: {
           enabled: googleCalendarIntegration?.enabled || false,
           config: googleCalendarIntegration?.configuration || {},
+        },
+        googleGmail: {
+          enabled: googleGmailIntegration?.enabled || false,
+          config: googleGmailIntegration?.configuration || {},
         },
         ragTool: ragToolConfig?.configuration || {
           enabled: false,
@@ -222,7 +239,7 @@ export default function Tools() {
     
     // Remove existing Google integrations
     const filteredIntegrations = integrations.filter(
-      i => i.type !== 'google-sheets' && i.type !== 'google-calendar'
+      i => i.type !== 'google-sheets' && i.type !== 'google-calendar' && i.type !== 'google-gmail'
     );
     
     // Add Google Sheets if configured
@@ -243,6 +260,17 @@ export default function Tools() {
         name: 'Google Calendar',
         type: 'google-calendar',
         configuration: toolsConfig.googleCalendar.config,
+        enabled: true,
+      });
+    }
+    
+    // Add Gmail if configured
+    if (toolsConfig.googleGmail.enabled) {
+      filteredIntegrations.push({
+        id: 'google-gmail',
+        name: 'Gmail',
+        type: 'google-gmail',
+        configuration: toolsConfig.googleGmail.config,
         enabled: true,
       });
     }
@@ -1108,6 +1136,154 @@ export default function Tools() {
                             <li>Create an API key with calendar permissions</li>
                             <li>Share your calendar with the service account (if using service account)</li>
                             <li>Enter your calendar ID and API credentials above</li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Card>
+
+              {/* Gmail Integration */}
+              <Card className="p-4 sm:p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                      <Mail className="w-5 h-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-semibold">Gmail</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                        Read, send, and manage Gmail messages
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={toolsConfig.googleGmail.enabled}
+                    onCheckedChange={(checked) => {
+                      setToolsConfig({
+                        ...toolsConfig,
+                        googleGmail: {
+                          ...toolsConfig.googleGmail,
+                          enabled: checked,
+                        },
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    data-testid="switch-google-gmail"
+                  />
+                </div>
+
+                {toolsConfig.googleGmail.enabled && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div>
+                      <Label htmlFor="gmail-email" className="text-sm">Email Address</Label>
+                      <Input
+                        id="gmail-email"
+                        type="email"
+                        placeholder="your.email@gmail.com"
+                        value={toolsConfig.googleGmail.config.email || ""}
+                        onChange={(e) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            googleGmail: {
+                              ...toolsConfig.googleGmail,
+                              config: {
+                                ...toolsConfig.googleGmail.config,
+                                email: e.target.value,
+                              },
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm mt-1"
+                        data-testid="input-gmail-email"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        The Gmail account to connect to
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="gmail-api-key" className="text-sm">
+                        API Key
+                      </Label>
+                      <Input
+                        id="gmail-api-key"
+                        type="password"
+                        placeholder="Enter your Google API key"
+                        value={toolsConfig.googleGmail.config.apiKey || ""}
+                        onChange={(e) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            googleGmail: {
+                              ...toolsConfig.googleGmail,
+                              config: {
+                                ...toolsConfig.googleGmail.config,
+                                apiKey: e.target.value,
+                              },
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm mt-1"
+                        data-testid="input-gmail-api-key"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Required for accessing Gmail. Get it from Google Cloud Console.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm">Operations</Label>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {['read', 'send', 'reply', 'forward', 'delete'].map((operation) => {
+                          const operations = toolsConfig.googleGmail.config.operations || [];
+                          const isSelected = operations.includes(operation);
+                          return (
+                            <Button
+                              key={operation}
+                              variant={isSelected ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => {
+                                const newOperations = isSelected
+                                  ? operations.filter(op => op !== operation)
+                                  : [...operations, operation];
+                                setToolsConfig({
+                                  ...toolsConfig,
+                                  googleGmail: {
+                                    ...toolsConfig.googleGmail,
+                                    config: {
+                                      ...toolsConfig.googleGmail.config,
+                                      operations: newOperations,
+                                    },
+                                  },
+                                });
+                                setHasUnsavedChanges(true);
+                              }}
+                              data-testid={`button-gmail-operation-${operation}`}
+                            >
+                              {isSelected && <CheckCircle className="w-3 h-3 mr-1" />}
+                              {operation.charAt(0).toUpperCase() + operation.slice(1)}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Select which operations the agent can perform on Gmail
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                      <div className="flex gap-2">
+                        <Mail className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5" />
+                        <div className="text-sm text-red-800 dark:text-red-200">
+                          <p className="font-medium">Setup Instructions</p>
+                          <ol className="text-xs mt-1 space-y-1 list-decimal list-inside">
+                            <li>Enable Gmail API in Google Cloud Console</li>
+                            <li>Create an API key with Gmail permissions</li>
+                            <li>Configure OAuth 2.0 consent screen if needed</li>
+                            <li>Enter your email address and API credentials above</li>
                           </ol>
                         </div>
                       </div>
