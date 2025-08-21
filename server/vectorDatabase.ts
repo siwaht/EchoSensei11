@@ -32,17 +32,27 @@ export class VectorDatabaseService {
 
   async initialize(apiKey?: string): Promise<void> {
     try {
+      console.log('Initializing vector database...');
+      console.log('Database path:', this.dbPath);
+      
       // Initialize LanceDB connection
       this.connection = await connect(this.dbPath);
+      console.log('LanceDB connection established');
       
       // Initialize OpenAI if API key is provided
       if (apiKey) {
         this.openai = new OpenAI({ apiKey });
+        console.log('OpenAI client initialized with provided API key');
+      } else {
+        console.log('No OpenAI API key provided, will use mock embeddings');
       }
 
       // Create or open the documents table
       const tableNames = await this.connection.tableNames();
+      console.log('Existing tables:', tableNames);
+      
       if (!tableNames.includes('documents')) {
+        console.log('Creating documents table...');
         // Create table with schema
         this.table = await this.connection.createTable('documents', [
           {
@@ -58,9 +68,13 @@ export class VectorDatabaseService {
         ]);
         // Clear the initial document
         await this.table.delete('id = "doc_1"');
+        console.log('Documents table created and initialized');
       } else {
         this.table = await this.connection.openTable('documents');
+        console.log('Opened existing documents table');
       }
+      
+      console.log('Vector database initialization completed successfully');
     } catch (error) {
       console.error('Failed to initialize vector database:', error);
       throw error;
