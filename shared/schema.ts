@@ -417,6 +417,27 @@ export const insertPhoneNumberSchema = createInsertSchema(phoneNumbers).omit({
   updatedAt: true,
 });
 
+// Google OAuth tokens table
+export const googleOAuthTokens = pgTable(
+  "google_oauth_tokens",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    organizationId: varchar("organization_id").notNull(),
+    userId: varchar("user_id").notNull(),
+    email: varchar("email").notNull(),
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token"),
+    expiresAt: timestamp("expires_at"),
+    scope: text("scope"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    organizationUserIdx: index("org_user_idx").on(table.organizationId, table.userId),
+    emailIdx: index("email_idx").on(table.email),
+  })
+);
+
 // Batch Calls table for outbound calling
 export const batchCalls = pgTable("batch_calls", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -488,6 +509,12 @@ export const insertBatchCallSchema = createInsertSchema(batchCalls).omit({
 });
 
 export const insertBatchCallRecipientSchema = createInsertSchema(batchCallRecipients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertGoogleOAuthTokenSchema = createInsertSchema(googleOAuthTokens).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -574,3 +601,5 @@ export type SystemTemplate = typeof systemTemplates.$inferSelect;
 export type InsertSystemTemplate = z.infer<typeof insertSystemTemplateSchema>;
 export type QuickActionButton = typeof quickActionButtons.$inferSelect;
 export type InsertQuickActionButton = z.infer<typeof insertQuickActionButtonSchema>;
+export type GoogleOAuthToken = typeof googleOAuthTokens.$inferSelect;
+export type InsertGoogleOAuthToken = z.infer<typeof insertGoogleOAuthTokenSchema>;

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 import { SystemToolConfigModal } from "@/components/tools/system-tool-config-modal";
+import { GoogleAuthButton } from "@/components/google-auth-button";
 
 interface WebhookConfig {
   id: string;
@@ -1138,33 +1139,18 @@ export default function Tools() {
                       </div>
                     </div>
 
-                    <div>
-                      <Label htmlFor="sheets-api-key" className="text-sm">Google Cloud API Key</Label>
-                      <Input
-                        id="sheets-api-key"
-                        type="password"
-                        placeholder="Enter your Google Cloud API key"
-                        value={toolsConfig.googleSheets.config.apiKey || ""}
-                        onChange={(e) => {
-                          setToolsConfig({
-                            ...toolsConfig,
-                            googleSheets: {
-                              ...toolsConfig.googleSheets,
-                              config: {
-                                ...toolsConfig.googleSheets.config,
-                                apiKey: e.target.value,
-                              },
-                            },
-                          });
-                          setHasUnsavedChanges(true);
-                        }}
-                        className="text-sm mt-1"
-                        data-testid="input-sheets-api-key"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Required for accessing your Google Sheets. Get it from Google Cloud Console.
-                      </p>
-                    </div>
+                    <GoogleAuthButton
+                      onAuthSuccess={() => {
+                        toast({ title: "Google account connected successfully" });
+                      }}
+                      onAuthError={(error) => {
+                        toast({ 
+                          title: "Failed to connect Google account",
+                          description: error,
+                          variant: "destructive"
+                        });
+                      }}
+                    />
 
                     <div>
                       <Label className="text-sm">Operations</Label>
@@ -1268,33 +1254,18 @@ export default function Tools() {
                       </p>
                     </div>
 
-                    <div>
-                      <Label htmlFor="calendar-api-key" className="text-sm">Google Cloud API Key</Label>
-                      <Input
-                        id="calendar-api-key"
-                        type="password"
-                        placeholder="Enter your Google Cloud API key"
-                        value={toolsConfig.googleCalendar.config.apiKey || ""}
-                        onChange={(e) => {
-                          setToolsConfig({
-                            ...toolsConfig,
-                            googleCalendar: {
-                              ...toolsConfig.googleCalendar,
-                              config: {
-                                ...toolsConfig.googleCalendar.config,
-                                apiKey: e.target.value,
-                              },
-                            },
-                          });
-                          setHasUnsavedChanges(true);
-                        }}
-                        className="text-sm mt-1"
-                        data-testid="input-calendar-api-key"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Required for accessing Google Calendar. Get it from Google Cloud Console.
-                      </p>
-                    </div>
+                    <GoogleAuthButton
+                      onAuthSuccess={() => {
+                        toast({ title: "Google account connected successfully" });
+                      }}
+                      onAuthError={(error) => {
+                        toast({ 
+                          title: "Failed to connect Google account",
+                          description: error,
+                          variant: "destructive"
+                        });
+                      }}
+                    />
 
                     <div>
                       <Label className="text-sm">Operations</Label>
@@ -1414,35 +1385,18 @@ export default function Tools() {
                       </p>
                     </div>
 
-                    <div>
-                      <Label htmlFor="gmail-api-key" className="text-sm">
-                        API Key
-                      </Label>
-                      <Input
-                        id="gmail-api-key"
-                        type="password"
-                        placeholder="Enter your Google API key"
-                        value={toolsConfig.googleGmail.config.apiKey || ""}
-                        onChange={(e) => {
-                          setToolsConfig({
-                            ...toolsConfig,
-                            googleGmail: {
-                              ...toolsConfig.googleGmail,
-                              config: {
-                                ...toolsConfig.googleGmail.config,
-                                apiKey: e.target.value,
-                              },
-                            },
-                          });
-                          setHasUnsavedChanges(true);
-                        }}
-                        className="text-sm mt-1"
-                        data-testid="input-gmail-api-key"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Required for accessing Gmail. Get it from Google Cloud Console.
-                      </p>
-                    </div>
+                    <GoogleAuthButton
+                      onAuthSuccess={() => {
+                        toast({ title: "Google account connected successfully" });
+                      }}
+                      onAuthError={(error) => {
+                        toast({ 
+                          title: "Failed to connect Google account",
+                          description: error,
+                          variant: "destructive"
+                        });
+                      }}
+                    />
 
                     <div>
                       <Label className="text-sm">Operations</Label>

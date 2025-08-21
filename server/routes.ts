@@ -136,6 +136,132 @@ export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
   // Auth routes already handled by setupAuth in auth.ts
+  
+  // Google OAuth routes
+  app.get('/api/auth/google', isAuthenticated, async (req: any, res) => {
+    try {
+      const { googleOAuthService } = await import('./services/google-oauth.js');
+      
+      // Check if OAuth is configured
+      if (!googleOAuthService.isConfigured()) {
+        return res.status(503).json({ 
+          error: 'Google OAuth is not configured. Please add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.' 
+        });
+      }
+      
+      // Generate state token for CSRF protection
+      const state = crypto.randomBytes(32).toString('hex');
+      req.session.googleOAuthState = state;
+      req.session.googleOAuthReturnUrl = req.query.returnUrl || '/tools';
+      
+      const authUrl = googleOAuthService.getAuthUrl(state);
+      res.json({ authUrl });
+    } catch (error) {
+      console.error('Google OAuth initiation error:', error);
+      res.status(500).json({ error: 'Failed to initiate Google OAuth' });
+    }
+  });
+
+  app.get('/api/auth/google/callback', async (req: any, res) => {
+    try {
+      const { googleOAuthService } = await import('./services/google-oauth.js');
+      
+      // Check if OAuth is configured
+      if (!googleOAuthService.isConfigured()) {
+        return res.status(503).send('Google OAuth is not configured');
+      }
+      
+      const { code, state } = req.query;
+      
+      // Verify state token
+      if (!state || state !== req.session.googleOAuthState) {
+        return res.status(400).send('Invalid state token');
+      }
+      
+      // Exchange code for tokens
+      const tokens = await googleOAuthService.getTokens(code as string);
+      
+      // Get user info
+      const userInfo = await googleOAuthService.getUserInfo(tokens.access_token!);
+      
+      // Save tokens to database
+      const userId = req.user?.id;
+      const organizationId = req.user?.organizationId;
+      
+      if (!userId || !organizationId) {
+        return res.status(401).send('User not authenticated');
+      }
+      
+      await googleOAuthService.saveTokens(
+        organizationId,
+        userId,
+        userInfo.email,
+        tokens
+      );
+      
+      // Clear OAuth state
+      delete req.session.googleOAuthState;
+      const returnUrl = req.session.googleOAuthReturnUrl || '/tools';
+      delete req.session.googleOAuthReturnUrl;
+      
+      // Redirect back to the app with success message
+      res.redirect(`${returnUrl}?google_auth=success`);
+    } catch (error) {
+      console.error('Google OAuth callback error:', error);
+      res.redirect('/tools?google_auth=error');
+    }
+  });
+  
+  app.post('/api/auth/google/disconnect', isAuthenticated, async (req: any, res) => {
+    try {
+      const { googleOAuthService } = await import('./services/google-oauth.js');
+      const userId = req.user?.id;
+      const organizationId = req.user?.organizationId;
+      
+      if (!userId || !organizationId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+      
+      await googleOAuthService.removeTokens(organizationId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Google OAuth disconnect error:', error);
+      res.status(500).json({ error: 'Failed to disconnect Google account' });
+    }
+  });
+  
+  app.get('/api/auth/google/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const { googleOAuthService } = await import('./services/google-oauth.js');
+      const userId = req.user?.id;
+      const organizationId = req.user?.organizationId;
+      
+      if (!userId || !organizationId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+      
+      // Check if OAuth is configured
+      if (!googleOAuthService.isConfigured()) {
+        return res.json({
+          connected: false,
+          email: null,
+          configured: false
+        });
+      }
+      
+      const hasTokens = await googleOAuthService.hasValidTokens(organizationId, userId);
+      const tokens = hasTokens ? await googleOAuthService.getStoredTokens(organizationId, userId) : null;
+      
+      res.json({
+        connected: hasTokens,
+        email: tokens?.email || null,
+        configured: true
+      });
+    } catch (error) {
+      console.error('Google OAuth status error:', error);
+      res.status(500).json({ error: 'Failed to check Google OAuth status' });
+    }
+  });
 
   // Admin middleware
   const isAdmin = async (req: any, res: any, next: any) => {
