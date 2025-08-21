@@ -217,45 +217,47 @@ export default function Agents() {
               </div>
               
               {/* Action Buttons */}
-              <div className="flex gap-2 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col gap-2 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLocation(`/playground?agentId=${agent.id}`);
+                    }}
+                    data-testid={`button-test-${agent.id}`}
+                  >
+                    <Play className="w-4 h-4 mr-1" />
+                    Test
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedAgent(agent);
+                    }}
+                    data-testid={`button-details-${agent.id}`}
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    Details
+                  </Button>
+                </div>
                 <Button
-                  variant="outline"
+                  variant="destructive"
                   size="sm"
-                  className="flex-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLocation(`/playground?agentId=${agent.id}`);
-                  }}
-                  data-testid={`button-test-${agent.id}`}
-                >
-                  <Play className="w-4 h-4 mr-1" />
-                  Test
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedAgent(agent);
-                  }}
-                  data-testid={`button-details-${agent.id}`}
-                >
-                  <Eye className="w-4 h-4 mr-1" />
-                  Details
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300"
+                  className="w-full"
                   onClick={(e) => {
                     e.stopPropagation();
                     setAgentToDelete(agent);
                   }}
                   data-testid={`button-delete-${agent.id}`}
                 >
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  Delete
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Agent
                 </Button>
               </div>
 

@@ -1017,11 +1017,16 @@ export function registerRoutes(app: Express): Server {
         
         try {
           // Fetch all agents from ElevenLabs
-          const elevenLabsAgents = await callElevenLabsAPI(
+          const elevenLabsResponse = await callElevenLabsAPI(
             decryptedKey,
             "/v1/convai/agents",
             "GET"
           );
+          
+          // Handle the response - it might be an object with agents array or direct array
+          const elevenLabsAgents = Array.isArray(elevenLabsResponse) 
+            ? elevenLabsResponse 
+            : (elevenLabsResponse.agents || []);
           
           // Get local agents
           const localAgents = await storage.getAgents(user.organizationId);
