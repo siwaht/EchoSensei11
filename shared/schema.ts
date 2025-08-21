@@ -171,52 +171,88 @@ export const agents = pgTable("agents", {
       endCall?: {
         enabled: boolean;
         description?: string;
+        disableInterruptions?: boolean;
       };
       detectLanguage?: {
         enabled: boolean;
         supportedLanguages?: string[];
         description?: string;
+        disableInterruptions?: boolean;
       };
       skipTurn?: {
         enabled: boolean;
         description?: string;
+        disableInterruptions?: boolean;
       };
       transferToAgent?: {
         enabled: boolean;
-        targetAgentId?: string;
         description?: string;
+        disableInterruptions?: boolean;
+        transferRules?: Array<{
+          agentId: string;
+          agentName?: string;
+          condition: string;
+          delayMs?: number;
+          transferMessage?: string;
+          enableFirstMessage?: boolean;
+        }>;
       };
       transferToNumber?: {
         enabled: boolean;
         phoneNumbers?: Array<{
           number: string;
           label: string;
+          condition?: string;
         }>;
         description?: string;
+        disableInterruptions?: boolean;
       };
       playKeypadTone?: {
         enabled: boolean;
         description?: string;
+        disableInterruptions?: boolean;
       };
       voicemailDetection?: {
         enabled: boolean;
         leaveMessage?: boolean;
         messageContent?: string;
         description?: string;
+        disableInterruptions?: boolean;
       };
     };
+    // Webhooks
+    webhooks?: Array<{
+      id: string;
+      name: string;
+      url: string;
+      method?: string;
+      headers?: Record<string, string>;
+      description?: string;
+      enabled?: boolean;
+    }>;
+    // Integrations
+    integrations?: Array<{
+      id: string;
+      name: string;
+      type: string;
+      configuration?: Record<string, any>;
+      enabled?: boolean;
+    }>;
     // Custom Tools (webhooks, integrations)
     customTools?: Array<{
       id: string;
       name: string;
-      type: 'webhook' | 'integration' | 'server' | 'client';
+      type: 'webhook' | 'integration' | 'server' | 'client' | 'rag' | 'custom';
       url?: string;
       method?: string;
       headers?: Record<string, string>;
       parameters?: Record<string, any>;
+      configuration?: Record<string, any>;
       description?: string;
       enabled: boolean;
     }>;
+    // Tool IDs for ElevenLabs
+    toolIds?: string[];
     // MCP Servers
     mcpServers?: Array<{
       id: string;

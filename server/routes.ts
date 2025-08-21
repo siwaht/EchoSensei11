@@ -1344,64 +1344,101 @@ export function registerRoutes(app: Express): Server {
                   // ElevenLabs interprets the presence of a tool in the array as enabling it
                   
                   if (systemTools.endCall?.enabled === true) {
-                    elevenLabsTools.push({
+                    const tool: any = {
                       type: "system",
                       name: "end_call",
                       description: systemTools.endCall.description || "Allows agent to end the call"
-                    });
+                    };
+                    if (systemTools.endCall.disableInterruptions) {
+                      tool.disable_interruptions = true;
+                    }
+                    elevenLabsTools.push(tool);
                   }
                   
                   if (systemTools.detectLanguage?.enabled === true) {
-                    elevenLabsTools.push({
+                    const tool: any = {
                       type: "system",
                       name: "language_detection",
                       description: systemTools.detectLanguage.description || "Automatically detect and switch languages",
                       config: {
                         supported_languages: systemTools.detectLanguage.supportedLanguages || []
                       }
-                    });
+                    };
+                    if (systemTools.detectLanguage.disableInterruptions) {
+                      tool.disable_interruptions = true;
+                    }
+                    elevenLabsTools.push(tool);
                   }
                   
                   if (systemTools.skipTurn?.enabled === true) {
-                    elevenLabsTools.push({
+                    const tool: any = {
                       type: "system",
                       name: "skip_turn",
                       description: systemTools.skipTurn.description || "Skip agent turn when user needs a moment"
-                    });
+                    };
+                    if (systemTools.skipTurn.disableInterruptions) {
+                      tool.disable_interruptions = true;
+                    }
+                    elevenLabsTools.push(tool);
                   }
                   
                   if (systemTools.transferToAgent?.enabled === true) {
-                    elevenLabsTools.push({
+                    const tool: any = {
                       type: "system",
                       name: "transfer_to_agent",
-                      description: systemTools.transferToAgent.description || "Transfer to another AI agent",
-                      config: {
-                        target_agent_id: systemTools.transferToAgent.targetAgentId || ""
-                      }
-                    });
+                      description: systemTools.transferToAgent.description || "Transfer to another AI agent"
+                    };
+                    
+                    // Handle transfer rules for transfer_to_agent
+                    if (systemTools.transferToAgent.transferRules && systemTools.transferToAgent.transferRules.length > 0) {
+                      tool.transfer_rules = systemTools.transferToAgent.transferRules.map((rule: any) => ({
+                        agent_id: rule.agentId,
+                        condition: rule.condition,
+                        delay_ms: rule.delayMs || 0,
+                        transfer_message: rule.transferMessage || "",
+                        enable_first_message: rule.enableFirstMessage !== false
+                      }));
+                    }
+                    
+                    if (systemTools.transferToAgent.disableInterruptions) {
+                      tool.disable_interruptions = true;
+                    }
+                    elevenLabsTools.push(tool);
                   }
                   
                   if (systemTools.transferToNumber?.enabled === true) {
-                    elevenLabsTools.push({
+                    const tool: any = {
                       type: "system",
                       name: "transfer_to_number",
                       description: systemTools.transferToNumber.description || "Transfer to human operator",
                       config: {
-                        phone_numbers: systemTools.transferToNumber.phoneNumbers || []
+                        phone_numbers: (systemTools.transferToNumber.phoneNumbers || []).map((phone: any) => ({
+                          number: phone.number,
+                          label: phone.label,
+                          condition: phone.condition || ""
+                        }))
                       }
-                    });
+                    };
+                    if (systemTools.transferToNumber.disableInterruptions) {
+                      tool.disable_interruptions = true;
+                    }
+                    elevenLabsTools.push(tool);
                   }
                   
                   if (systemTools.playKeypadTone?.enabled === true) {
-                    elevenLabsTools.push({
+                    const tool: any = {
                       type: "system",
                       name: "play_dtmf",
                       description: systemTools.playKeypadTone.description || "Play keypad touch tones"
-                    });
+                    };
+                    if (systemTools.playKeypadTone.disableInterruptions) {
+                      tool.disable_interruptions = true;
+                    }
+                    elevenLabsTools.push(tool);
                   }
                   
                   if (systemTools.voicemailDetection?.enabled === true) {
-                    elevenLabsTools.push({
+                    const tool: any = {
                       type: "system",
                       name: "voicemail_detection",
                       description: systemTools.voicemailDetection.description || "Detect voicemail systems",
@@ -1409,7 +1446,11 @@ export function registerRoutes(app: Express): Server {
                         leave_message: systemTools.voicemailDetection.leaveMessage || false,
                         message_content: systemTools.voicemailDetection.messageContent || ""
                       }
-                    });
+                    };
+                    if (systemTools.voicemailDetection.disableInterruptions) {
+                      tool.disable_interruptions = true;
+                    }
+                    elevenLabsTools.push(tool);
                   }
                   
                   // Always send the tools array to ElevenLabs to ensure proper sync

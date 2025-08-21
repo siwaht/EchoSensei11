@@ -17,9 +17,10 @@ import {
   Sheet, Calendar, Mail, CheckCircle, XCircle, Database,
   Brain, FileText, Upload, Search, Phone, Languages,
   SkipForward, UserPlus, Voicemail, Hash, Server,
-  Mic, AudioLines, Bot, Key, Shield, Sparkles
+  Mic, AudioLines, Bot, Key, Shield, Sparkles, Settings
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
+import { SystemToolConfigModal } from "@/components/tools/system-tool-config-modal";
 
 interface WebhookConfig {
   id: string;
@@ -98,6 +99,11 @@ export default function Tools() {
     integrations: false,
     custom: false,
   });
+  const [systemToolModal, setSystemToolModal] = useState<{
+    isOpen: boolean;
+    toolType: string;
+    toolName: string;
+  }>({ isOpen: false, toolType: "", toolName: "" });
 
   // Fetch agents
   const { data: agents = [], isLoading: agentsLoading } = useQuery<Agent[]>({
@@ -566,20 +572,29 @@ export default function Tools() {
                       </p>
                     </div>
                   </div>
-                  <Switch
-                    checked={toolsConfig.systemTools?.endCall?.enabled || false}
-                    onCheckedChange={(checked) => {
-                      setToolsConfig({
-                        ...toolsConfig,
-                        systemTools: {
-                          ...toolsConfig.systemTools,
-                          endCall: { ...(toolsConfig.systemTools?.endCall || {}), enabled: checked },
-                        },
-                      });
-                      setHasUnsavedChanges(true);
-                    }}
-                    data-testid="switch-tool-end-call"
-                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSystemToolModal({ isOpen: true, toolType: "endCall", toolName: "End call" })}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Switch
+                      checked={toolsConfig.systemTools?.endCall?.enabled || false}
+                      onCheckedChange={(checked) => {
+                        setToolsConfig({
+                          ...toolsConfig,
+                          systemTools: {
+                            ...toolsConfig.systemTools,
+                            endCall: { ...(toolsConfig.systemTools?.endCall || {}), enabled: checked },
+                          },
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
+                      data-testid="switch-tool-end-call"
+                    />
+                  </div>
                 </div>
 
                 {/* Detect Language Tool */}
@@ -595,20 +610,29 @@ export default function Tools() {
                       </p>
                     </div>
                   </div>
-                  <Switch
-                    checked={toolsConfig.systemTools?.detectLanguage?.enabled || false}
-                    onCheckedChange={(checked) => {
-                      setToolsConfig({
-                        ...toolsConfig,
-                        systemTools: {
-                          ...toolsConfig.systemTools,
-                          detectLanguage: { ...(toolsConfig.systemTools?.detectLanguage || {}), enabled: checked },
-                        },
-                      });
-                      setHasUnsavedChanges(true);
-                    }}
-                    data-testid="switch-tool-detect-language"
-                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSystemToolModal({ isOpen: true, toolType: "detectLanguage", toolName: "Detect language" })}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Switch
+                      checked={toolsConfig.systemTools?.detectLanguage?.enabled || false}
+                      onCheckedChange={(checked) => {
+                        setToolsConfig({
+                          ...toolsConfig,
+                          systemTools: {
+                            ...toolsConfig.systemTools,
+                            detectLanguage: { ...(toolsConfig.systemTools?.detectLanguage || {}), enabled: checked },
+                          },
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
+                      data-testid="switch-tool-detect-language"
+                    />
+                  </div>
                 </div>
 
                 {/* Skip Turn Tool */}
@@ -624,20 +648,29 @@ export default function Tools() {
                       </p>
                     </div>
                   </div>
-                  <Switch
-                    checked={toolsConfig.systemTools?.skipTurn?.enabled || false}
-                    onCheckedChange={(checked) => {
-                      setToolsConfig({
-                        ...toolsConfig,
-                        systemTools: {
-                          ...toolsConfig.systemTools,
-                          skipTurn: { ...(toolsConfig.systemTools?.skipTurn || {}), enabled: checked },
-                        },
-                      });
-                      setHasUnsavedChanges(true);
-                    }}
-                    data-testid="switch-tool-skip-turn"
-                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSystemToolModal({ isOpen: true, toolType: "skipTurn", toolName: "Skip turn" })}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Switch
+                      checked={toolsConfig.systemTools?.skipTurn?.enabled || false}
+                      onCheckedChange={(checked) => {
+                        setToolsConfig({
+                          ...toolsConfig,
+                          systemTools: {
+                            ...toolsConfig.systemTools,
+                            skipTurn: { ...(toolsConfig.systemTools?.skipTurn || {}), enabled: checked },
+                          },
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
+                      data-testid="switch-tool-skip-turn"
+                    />
+                  </div>
                 </div>
 
                 {/* Transfer to Agent Tool */}
@@ -653,20 +686,29 @@ export default function Tools() {
                       </p>
                     </div>
                   </div>
-                  <Switch
-                    checked={toolsConfig.systemTools?.transferToAgent?.enabled || false}
-                    onCheckedChange={(checked) => {
-                      setToolsConfig({
-                        ...toolsConfig,
-                        systemTools: {
-                          ...toolsConfig.systemTools,
-                          transferToAgent: { ...(toolsConfig.systemTools?.transferToAgent || {}), enabled: checked },
-                        },
-                      });
-                      setHasUnsavedChanges(true);
-                    }}
-                    data-testid="switch-tool-transfer-agent"
-                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSystemToolModal({ isOpen: true, toolType: "transferToAgent", toolName: "Transfer to agent" })}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Switch
+                      checked={toolsConfig.systemTools?.transferToAgent?.enabled || false}
+                      onCheckedChange={(checked) => {
+                        setToolsConfig({
+                          ...toolsConfig,
+                          systemTools: {
+                            ...toolsConfig.systemTools,
+                            transferToAgent: { ...(toolsConfig.systemTools?.transferToAgent || {}), enabled: checked },
+                          },
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
+                      data-testid="switch-tool-transfer-agent"
+                    />
+                  </div>
                 </div>
 
                 {/* Transfer to Number Tool */}
@@ -682,20 +724,29 @@ export default function Tools() {
                       </p>
                     </div>
                   </div>
-                  <Switch
-                    checked={toolsConfig.systemTools?.transferToNumber?.enabled || false}
-                    onCheckedChange={(checked) => {
-                      setToolsConfig({
-                        ...toolsConfig,
-                        systemTools: {
-                          ...toolsConfig.systemTools,
-                          transferToNumber: { ...(toolsConfig.systemTools?.transferToNumber || {}), enabled: checked },
-                        },
-                      });
-                      setHasUnsavedChanges(true);
-                    }}
-                    data-testid="switch-tool-transfer-number"
-                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSystemToolModal({ isOpen: true, toolType: "transferToNumber", toolName: "Transfer to number" })}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Switch
+                      checked={toolsConfig.systemTools?.transferToNumber?.enabled || false}
+                      onCheckedChange={(checked) => {
+                        setToolsConfig({
+                          ...toolsConfig,
+                          systemTools: {
+                            ...toolsConfig.systemTools,
+                            transferToNumber: { ...(toolsConfig.systemTools?.transferToNumber || {}), enabled: checked },
+                          },
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
+                      data-testid="switch-tool-transfer-number"
+                    />
+                  </div>
                 </div>
 
                 {/* Play Keypad Touch Tone Tool */}
@@ -711,20 +762,29 @@ export default function Tools() {
                       </p>
                     </div>
                   </div>
-                  <Switch
-                    checked={toolsConfig.systemTools?.playKeypadTone?.enabled || false}
-                    onCheckedChange={(checked) => {
-                      setToolsConfig({
-                        ...toolsConfig,
-                        systemTools: {
-                          ...toolsConfig.systemTools,
-                          playKeypadTone: { ...(toolsConfig.systemTools?.playKeypadTone || {}), enabled: checked },
-                        },
-                      });
-                      setHasUnsavedChanges(true);
-                    }}
-                    data-testid="switch-tool-keypad-tone"
-                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSystemToolModal({ isOpen: true, toolType: "playKeypadTone", toolName: "Play keypad touch tone" })}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Switch
+                      checked={toolsConfig.systemTools?.playKeypadTone?.enabled || false}
+                      onCheckedChange={(checked) => {
+                        setToolsConfig({
+                          ...toolsConfig,
+                          systemTools: {
+                            ...toolsConfig.systemTools,
+                            playKeypadTone: { ...(toolsConfig.systemTools?.playKeypadTone || {}), enabled: checked },
+                          },
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
+                      data-testid="switch-tool-keypad-tone"
+                    />
+                  </div>
                 </div>
 
                 {/* Voicemail Detection Tool */}
@@ -740,20 +800,29 @@ export default function Tools() {
                       </p>
                     </div>
                   </div>
-                  <Switch
-                    checked={toolsConfig.systemTools?.voicemailDetection?.enabled || false}
-                    onCheckedChange={(checked) => {
-                      setToolsConfig({
-                        ...toolsConfig,
-                        systemTools: {
-                          ...toolsConfig.systemTools,
-                          voicemailDetection: { ...(toolsConfig.systemTools?.voicemailDetection || {}), enabled: checked },
-                        },
-                      });
-                      setHasUnsavedChanges(true);
-                    }}
-                    data-testid="switch-tool-voicemail"
-                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSystemToolModal({ isOpen: true, toolType: "voicemailDetection", toolName: "Voicemail detection" })}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Switch
+                      checked={toolsConfig.systemTools?.voicemailDetection?.enabled || false}
+                      onCheckedChange={(checked) => {
+                        setToolsConfig({
+                          ...toolsConfig,
+                          systemTools: {
+                            ...toolsConfig.systemTools,
+                            voicemailDetection: { ...(toolsConfig.systemTools?.voicemailDetection || {}), enabled: checked },
+                          },
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
+                      data-testid="switch-tool-voicemail"
+                    />
+                  </div>
                 </div>
               </div>
             </Card>
@@ -1688,6 +1757,29 @@ export default function Tools() {
             </Card>
           </TabsContent>
         </Tabs>
+      )}
+
+      {/* System Tool Configuration Modal */}
+      {systemToolModal.isOpen && (
+        <SystemToolConfigModal
+          isOpen={systemToolModal.isOpen}
+          onClose={() => setSystemToolModal({ isOpen: false, toolType: "", toolName: "" })}
+          toolType={systemToolModal.toolType}
+          toolName={systemToolModal.toolName}
+          config={toolsConfig.systemTools?.[systemToolModal.toolType as keyof typeof toolsConfig.systemTools] || { enabled: false }}
+          onSave={(config) => {
+            setToolsConfig({
+              ...toolsConfig,
+              systemTools: {
+                ...toolsConfig.systemTools,
+                [systemToolModal.toolType]: config,
+              },
+            });
+            setHasUnsavedChanges(true);
+            setSystemToolModal({ isOpen: false, toolType: "", toolName: "" });
+          }}
+          availableAgents={agents}
+        />
       )}
     </div>
   );
