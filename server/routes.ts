@@ -754,7 +754,7 @@ export function registerRoutes(app: Express): Server {
             use_speaker_boost: true
           },
           turn: {
-            mode: "simultaneous",
+            mode: "turn",
             threshold: 0.5
           },
           asr: {
