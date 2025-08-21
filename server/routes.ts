@@ -1456,9 +1456,9 @@ export function registerRoutes(app: Express): Server {
                     });
                   }
                   
-                  if (elevenLabsTools.length > 0) {
-                    elevenLabsPayload.conversation_config.agent.tools = elevenLabsTools;
-                  }
+                  // Always send the tools array to ElevenLabs to ensure proper sync
+                  // Even if empty, this will clear all tools in ElevenLabs
+                  elevenLabsPayload.conversation_config.agent.tools = elevenLabsTools;
                 }
               }
               
@@ -1487,12 +1487,16 @@ export function registerRoutes(app: Express): Server {
             
             // Update in ElevenLabs if we have any changes
             if (Object.keys(elevenLabsPayload).length > 0) {
-              await callElevenLabsAPI(
+              console.log(`Updating agent in ElevenLabs with payload:`, JSON.stringify(elevenLabsPayload, null, 2));
+              
+              const response = await callElevenLabsAPI(
                 decryptedKey,
                 `/v1/convai/agents/${agent.elevenLabsAgentId}`,
                 "PATCH",
                 elevenLabsPayload
               );
+              
+              console.log(`ElevenLabs update response:`, response);
             }
           } catch (elevenLabsError) {
             console.error("Error updating agent in ElevenLabs:", elevenLabsError);
