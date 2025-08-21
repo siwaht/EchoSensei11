@@ -169,51 +169,13 @@ export default function Playground() {
       ws.onopen = () => {
         console.log("WebSocket connected, sending initialization message");
         
-        // Get the agent's custom settings from our database
-        const agentSettings = agents.find(a => a.id === selectedAgent);
-        
-        // Try to send conversation overrides with the agent's custom settings
-        // Note: These overrides only work if enabled in the agent's Security settings in ElevenLabs
-        const initMessage: any = {
+        // Send a simple initialization message without overrides
+        // Overrides often fail due to agent security settings in ElevenLabs
+        const initMessage = {
           type: "conversation_initiation_client_data"
         };
         
-        // Add conversation config override if we have any custom settings
-        const hasCustomSettings = agentSettings?.firstMessage || 
-                                 agentSettings?.systemPrompt || 
-                                 agentSettings?.voiceId ||
-                                 agentSettings?.voiceSettings;
-        
-        if (hasCustomSettings) {
-          initMessage.conversation_config_override = {
-            agent: {
-              prompt: {
-                prompt: agentSettings.systemPrompt || ""
-              },
-              first_message: agentSettings.firstMessage || "",
-              language: agentSettings.language || "en"
-            }
-          };
-          
-          // Add voice/TTS settings if available
-          if (agentSettings.voiceId || agentSettings.voiceSettings) {
-            const voiceSettings = agentSettings.voiceSettings || {};
-            initMessage.conversation_config_override.tts = {
-              voice_id: agentSettings.voiceId,
-              agent_output_audio_format: "pcm_16000",
-              optimize_streaming_latency: 3,
-              stability: voiceSettings.stability ?? 0.5,
-              similarity_boost: voiceSettings.similarityBoost ?? 0.75,
-              style: voiceSettings.style ?? 0,
-              use_speaker_boost: voiceSettings.useSpeakerBoost ?? true
-            };
-          }
-          
-          console.log("Sending init message with overrides:", initMessage);
-        } else {
-          console.log("Sending init message without overrides:", initMessage);
-        }
-        
+        console.log("Sending init message:", initMessage);
         ws.send(JSON.stringify(initMessage));
       };
 
