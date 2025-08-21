@@ -1252,10 +1252,15 @@ export function registerRoutes(app: Express): Server {
               if (updates.firstMessage || updates.systemPrompt || updates.language || updates.tools) {
                 elevenLabsPayload.conversation_config.agent = {};
                 
-                if (updates.firstMessage || updates.systemPrompt || updates.language) {
+                // First message goes directly in agent, not in prompt
+                if (updates.firstMessage) {
+                  elevenLabsPayload.conversation_config.agent.first_message = updates.firstMessage;
+                }
+                
+                // System prompt and language go in the prompt object
+                if (updates.systemPrompt || updates.language) {
                   elevenLabsPayload.conversation_config.agent.prompt = {
                     prompt: updates.systemPrompt || agent.systemPrompt,
-                    first_message: updates.firstMessage || agent.firstMessage,
                     language: updates.language || agent.language
                   };
                 }
