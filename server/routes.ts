@@ -974,7 +974,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Delete the agent from local database
-      await storage.deleteAgent(agentId, user.organizationId);
+      await storage.deleteAgent(user.organizationId, agentId);
       
       res.json({ message: "Agent deleted successfully" });
     } catch (error) {
@@ -1591,7 +1591,7 @@ export function registerRoutes(app: Express): Server {
       console.log("================================\n");
 
       // First, get the agent to get the ElevenLabs agent ID
-      const agent = await storage.getAgent(user.organizationId, agentId);
+      const agent = await storage.getAgent(agentId, user.organizationId);
       if (!agent) {
         return res.status(404).json({ message: "Agent not found" });
       }
@@ -2631,7 +2631,7 @@ export function registerRoutes(app: Express): Server {
       const apiKey = decryptApiKey(integration.apiKey);
 
       // Get agent details
-      const agent = await storage.getAgent(organizationId, batchCall.agentId);
+      const agent = await storage.getAgent(batchCall.agentId, organizationId);
       if (!agent) {
         return res.status(400).json({ error: "Agent not found" });
       }
@@ -2696,7 +2696,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Get agent details
-      const agent = await storage.getAgent(organizationId, batchCall.agentId);
+      const agent = await storage.getAgent(batchCall.agentId, organizationId);
       if (!agent) {
         return res.status(400).json({ error: "Agent not found" });
       }
