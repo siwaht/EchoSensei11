@@ -1671,14 +1671,35 @@ export function registerRoutes(app: Express): Server {
                           console.log('Adding RAG tool to agent with URL:', webhookUrl);
                           elevenLabsTools.push(ragTool);
                         } else if (customTool.type === 'webhook' && customTool.url) {
-                          // Add regular webhooks
+                          // Add regular webhooks with proper ElevenLabs format
                           const webhookTool: any = {
                             type: "webhook",
                             name: customTool.name,
                             description: customTool.description || "",
                             url: customTool.url,
                             method: customTool.method || "POST",
-                            headers: customTool.headers || {}
+                            headers: customTool.headers || {},
+                            query_parameters: customTool.queryParameters?.map((param: any) => ({
+                              identifier: param.name,
+                              data_type: param.type || "String",
+                              required: param.required || false,
+                              value_type: param.valueType || "LLM Prompt",
+                              description: param.description || ""
+                            })) || [],
+                            body_parameters: customTool.bodyParameters?.map((param: any) => ({
+                              identifier: param.name,
+                              data_type: param.type || "String",
+                              required: param.required || false,
+                              value_type: param.valueType || "LLM Prompt",
+                              description: param.description || ""
+                            })) || [],
+                            path_parameters: customTool.pathParameters?.map((param: any) => ({
+                              identifier: param.name,
+                              data_type: param.type || "String",
+                              required: param.required || false,
+                              value_type: param.valueType || "LLM Prompt",
+                              description: param.description || ""
+                            })) || []
                           };
                           elevenLabsTools.push(webhookTool);
                         }
@@ -1686,7 +1707,7 @@ export function registerRoutes(app: Express): Server {
                     }
                   }
                   
-                  // Add configured webhooks
+                  // Add configured webhooks with proper ElevenLabs format
                   if (updates.tools.webhooks && Array.isArray(updates.tools.webhooks)) {
                     for (const webhook of updates.tools.webhooks) {
                       if (webhook.enabled && webhook.url) {
@@ -1696,7 +1717,28 @@ export function registerRoutes(app: Express): Server {
                           description: webhook.description || "",
                           url: webhook.url,
                           method: webhook.method || "POST",
-                          headers: webhook.headers || {}
+                          headers: webhook.headers || {},
+                          query_parameters: webhook.queryParameters?.map((param: any) => ({
+                            identifier: param.name,
+                            data_type: param.type || "String",
+                            required: param.required || false,
+                            value_type: param.valueType || "LLM Prompt",
+                            description: param.description || ""
+                          })) || [],
+                          body_parameters: webhook.bodyParameters?.map((param: any) => ({
+                            identifier: param.name,
+                            data_type: param.type || "String",
+                            required: param.required || false,
+                            value_type: param.valueType || "LLM Prompt",
+                            description: param.description || ""
+                          })) || [],
+                          path_parameters: webhook.pathParameters?.map((param: any) => ({
+                            identifier: param.name,
+                            data_type: param.type || "String",
+                            required: param.required || false,
+                            value_type: param.valueType || "LLM Prompt",
+                            description: param.description || ""
+                          })) || []
                         };
                         elevenLabsTools.push(webhookTool);
                       }
