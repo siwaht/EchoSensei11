@@ -3853,11 +3853,8 @@ export function registerRoutes(app: Express): Server {
         }
 
         try {
-          console.log(`Processing file: ${file.originalname}`);
-          
           // Process the document
           const processed = await processor.processBuffer(file.buffer, file.originalname);
-          console.log(`Processed ${file.originalname}: ${processed.chunks.length} chunks created`);
           
           // Add chunks to vector database
           const documents = processed.chunks.map((chunk, index) => ({
@@ -3870,9 +3867,7 @@ export function registerRoutes(app: Express): Server {
             }
           }));
 
-          console.log(`Adding ${documents.length} documents to vector database`);
           const ids = await vectorDb.addDocuments(documents);
-          console.log(`Successfully added documents with IDs: ${ids.slice(0, 3).join(', ')}${ids.length > 3 ? '...' : ''}`);
           
           results.push({
             fileName: file.originalname,

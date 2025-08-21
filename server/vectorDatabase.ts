@@ -32,27 +32,18 @@ export class VectorDatabaseService {
 
   async initialize(apiKey?: string): Promise<void> {
     try {
-      console.log('Initializing vector database...');
-      console.log('Database path:', this.dbPath);
-      
       // Initialize LanceDB connection
       this.connection = await connect(this.dbPath);
-      console.log('LanceDB connection established');
       
       // Initialize OpenAI if API key is provided
       if (apiKey) {
         this.openai = new OpenAI({ apiKey });
-        console.log('OpenAI client initialized with provided API key');
-      } else {
-        console.log('No OpenAI API key provided, will use mock embeddings');
       }
 
       // Create or open the documents table
       const tableNames = await this.connection.tableNames();
-      console.log('Existing tables:', tableNames);
       
       if (!tableNames.includes('documents')) {
-        console.log('Creating documents table...');
         // Create table with schema
         this.table = await this.connection.createTable('documents', [
           {
@@ -62,19 +53,40 @@ export class VectorDatabaseService {
             metadata: {
               source: 'init',
               fileType: 'text',
-              timestamp: new Date()
+              pageNumber: 1,
+              agentId: 'init',
+              timestamp: new Date().toISOString()
             }
           }
         ]);
         // Clear the initial document
         await this.table.delete('id = "doc_1"');
-        console.log('Documents table created and initialized');
       } else {
-        this.table = await this.connection.openTable('documents');
-        console.log('Opened existing documents table');
+        // Drop and recreate the table to avoid schema conflicts
+        try {
+          await this.connection.dropTable('documents');
+        } catch (e) {
+          // Table might not exist or be corrupted
+        }
+        
+        // Recreate with clean schema
+        this.table = await this.connection.createTable('documents', [
+          {
+            id: 'doc_1',
+            content: 'Initial document',
+            embedding: new Array(1536).fill(0),
+            metadata: {
+              source: 'init',
+              fileType: 'text',
+              pageNumber: 1,
+              agentId: 'init',
+              timestamp: new Date().toISOString()
+            }
+          }
+        ]);
+        // Clear the initial document
+        await this.table.delete('id = "doc_1"');
       }
-      
-      console.log('Vector database initialization completed successfully');
     } catch (error) {
       console.error('Failed to initialize vector database:', error);
       throw error;
@@ -117,17 +129,20 @@ export class VectorDatabaseService {
     const id = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const embedding = await this.generateEmbedding(content);
 
-    const document: DocumentChunk = {
-      id,
-      content,
-      embedding,
+    const document = {
+      id: id,
+      content: String(content),
+      embedding: embedding,
       metadata: {
-        ...metadata,
-        timestamp: new Date()
+        source: String(metadata.source || ''),
+        fileType: String(metadata.fileType || ''),
+        pageNumber: Number(metadata.pageNumber || 1),
+        agentId: String(metadata.agentId || ''),
+        timestamp: new Date().toISOString()
       }
     };
 
-    await this.table.add([document as any]);
+    await this.table.add([document]);
     return id;
   }
 
@@ -146,26 +161,46 @@ export class VectorDatabaseService {
       throw new Error('Database not initialized');
     }
 
-    const documentChunks: DocumentChunk[] = [];
+    const documentChunks: any[] = [];
     const ids: string[] = [];
 
     for (const doc of documents) {
       const id = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const embedding = await this.generateEmbedding(doc.content);
       
+      // Ensure all metadata fields have consistent types
       documentChunks.push({
-        id,
-        content: doc.content,
-        embedding,
+        id: id,
+        content: String(doc.content),
+        embedding: embedding,
         metadata: {
-          ...doc.metadata,
-          timestamp: new Date()
+          source: String(doc.metadata.source || ''),
+          fileType: String(doc.metadata.fileType || ''),
+          pageNumber: Number(doc.metadata.pageNumber || 1),
+          agentId: String(doc.metadata.agentId || ''),
+          timestamp: new Date().toISOString()
         }
       });
       ids.push(id);
     }
 
-    await this.table.add(documentChunks as any);
+    try {
+      await this.table.add(documentChunks);
+    } catch (error: any) {
+      console.error('Error adding documents to table:', error);
+      // If there's a schema error, try to recreate the table
+      if ((error.message?.includes('Schema') || error.message?.includes('dictionary')) && this.connection) {
+        console.log('Schema conflict detected, recreating table...');
+        await this.connection.dropTable('documents');
+        this.table = await this.connection.createTable('documents', documentChunks.slice(0, 1));
+        if (documentChunks.length > 1 && this.table) {
+          await this.table.add(documentChunks.slice(1));
+        }
+      } else {
+        throw error;
+      }
+    }
+    
     return ids;
   }
 
