@@ -742,7 +742,58 @@ export function registerRoutes(app: Express): Server {
               language: language || "en"
             },
             first_message: firstMessage,
-            language: language || "en"
+            language: language || "en",
+            // Add default system tools - all enabled by default
+            tools: [
+              {
+                type: 'system',
+                name: 'end_call',
+                description: 'Allows agent to end the call'
+              },
+              {
+                type: 'system',
+                name: 'language_detection',
+                description: 'Automatically detect and switch languages',
+                config: {
+                  supported_languages: []
+                }
+              },
+              {
+                type: 'system',
+                name: 'skip_turn',
+                description: 'Skip agent turn when user needs a moment'
+              },
+              {
+                type: 'system',
+                name: 'transfer_to_agent',
+                description: 'Transfer to another AI agent',
+                config: {
+                  target_agent_id: ""
+                }
+              },
+              {
+                type: 'system',
+                name: 'transfer_to_number',
+                description: 'Transfer to human operator',
+                config: {
+                  phone_numbers: []
+                }
+              },
+              {
+                type: 'system',
+                name: 'play_dtmf',
+                description: 'Play keypad touch tones'
+              },
+              {
+                type: 'system',
+                name: 'voicemail_detection',
+                description: 'Detect voicemail systems',
+                config: {
+                  leave_message: false,
+                  message_content: ""
+                }
+              }
+            ]
           },
           tts: {
             voice_id: voiceId || "21m00Tcm4TlvDq8ikWAM", // Default to Rachel voice if not specified
@@ -780,7 +831,7 @@ export function registerRoutes(app: Express): Server {
 
       console.log("ElevenLabs agent created:", elevenLabsResponse);
 
-      // Save agent to our database
+      // Save agent to our database with default tools configuration
       const agentData = insertAgentSchema.parse({
         organizationId: user.organizationId,
         elevenLabsAgentId: elevenLabsResponse.agent_id,
@@ -790,7 +841,49 @@ export function registerRoutes(app: Express): Server {
         systemPrompt: systemPrompt,
         language: language || "en",
         voiceId: voiceId,
-        isActive: true
+        isActive: true,
+        // Save default tools configuration
+        tools: {
+          systemTools: {
+            endCall: {
+              enabled: true,
+              description: "Allows agent to end the call"
+            },
+            detectLanguage: {
+              enabled: true,
+              description: "Automatically detect and switch languages",
+              supportedLanguages: []
+            },
+            skipTurn: {
+              enabled: true,
+              description: "Skip agent turn when user needs a moment"
+            },
+            transferToAgent: {
+              enabled: true,
+              description: "Transfer to another AI agent",
+              targetAgentId: ""
+            },
+            transferToNumber: {
+              enabled: true,
+              description: "Transfer to human operator",
+              phoneNumbers: []
+            },
+            playKeypadTone: {
+              enabled: true,
+              description: "Play keypad touch tones"
+            },
+            voicemailDetection: {
+              enabled: true,
+              description: "Detect voicemail systems",
+              leaveMessage: false,
+              messageContent: ""
+            }
+          },
+          webhooks: [],
+          integrations: [],
+          customTools: [],
+          toolIds: []
+        }
       });
 
       const newAgent = await storage.createAgent(agentData);
