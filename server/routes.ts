@@ -1276,6 +1276,75 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Assign agent to phone number
+  app.patch("/api/phone-numbers/:id/assign-agent", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { id } = req.params;
+      const { agentId } = req.body;
+
+      // Get phone number to check it exists
+      const phoneNumber = await storage.getPhoneNumber(id, user.organizationId);
+      if (!phoneNumber) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+
+      // If agentId is provided, verify the agent exists
+      let elevenLabsAgentId = null;
+      if (agentId) {
+        const agent = await storage.getAgent(agentId, user.organizationId);
+        if (!agent) {
+          return res.status(404).json({ message: "Agent not found" });
+        }
+        elevenLabsAgentId = agent.elevenLabsAgentId;
+      }
+
+      // Update phone number with agent assignment
+      const updatedPhoneNumber = await storage.updatePhoneNumber(id, user.organizationId, {
+        agentId: agentId,
+        elevenLabsAgentId: elevenLabsAgentId
+      });
+
+      // If phone number is synced with ElevenLabs, update the assignment there
+      if (phoneNumber.elevenLabsPhoneId && phoneNumber.status === "active") {
+        const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+        if (integration && integration.apiKey) {
+          try {
+            const decryptedKey = decryptApiKey(integration.apiKey);
+            
+            // Update phone number in ElevenLabs with agent assignment
+            const payload: any = {};
+            if (elevenLabsAgentId) {
+              payload.agent_id = elevenLabsAgentId;
+            }
+            
+            if (Object.keys(payload).length > 0) {
+              await callElevenLabsAPI(
+                decryptedKey,
+                `/v1/convai/phone-numbers/${phoneNumber.elevenLabsPhoneId}`,
+                "PUT",
+                payload
+              );
+            }
+          } catch (elevenLabsError) {
+            console.error("Error updating agent assignment in ElevenLabs:", elevenLabsError);
+            // Continue even if ElevenLabs update fails - local update is still valid
+          }
+        }
+      }
+
+      res.json(updatedPhoneNumber);
+    } catch (error) {
+      console.error("Error assigning agent to phone number:", error);
+      res.status(500).json({ message: "Failed to assign agent to phone number" });
+    }
+  });
+
   app.delete("/api/phone-numbers/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -1645,7 +1714,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Update the agent in our database
-      const updatedAgent = await storage.updateAgent(user.organizationId, agentId, updates);
+      const updatedAgent = await storage.updateAgent(agentId, user.organizationId, updates);
       res.json(updatedAgent);
     } catch (error) {
       console.error("Error updating agent:", error);

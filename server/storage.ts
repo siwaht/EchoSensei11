@@ -264,7 +264,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(agents).where(eq(agents.organizationId, organizationId));
   }
 
-  async getAgent(organizationId: string, id: string): Promise<Agent | undefined> {
+  async getAgent(id: string, organizationId: string): Promise<Agent | undefined> {
     const [agent] = await db
       .select()
       .from(agents)
@@ -295,7 +295,7 @@ export class DatabaseStorage implements IStorage {
     return agent;
   }
 
-  async updateAgent(organizationId: string, id: string, updates: Partial<Omit<Agent, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'>>): Promise<Agent> {
+  async updateAgent(id: string, organizationId: string, updates: Partial<Omit<Agent, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'>>): Promise<Agent> {
     const [agent] = await db
       .update(agents)
       .set({ ...updates, updatedAt: new Date() })

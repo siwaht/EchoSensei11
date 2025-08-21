@@ -104,6 +104,8 @@ export const phoneNumbers = pgTable("phone_numbers", {
   sipUsername: varchar("sip_username"),
   sipPassword: varchar("sip_password"), // encrypted
   elevenLabsPhoneId: varchar("eleven_labs_phone_id"),
+  agentId: varchar("agent_id"), // Local agent ID
+  elevenLabsAgentId: varchar("elevenlabs_agent_id"), // ElevenLabs agent ID
   status: phoneStatusEnum("status").notNull().default("pending"),
   lastSynced: timestamp("last_synced"),
   metadata: json("metadata").$type<Record<string, any>>(),

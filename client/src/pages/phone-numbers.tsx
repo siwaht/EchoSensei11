@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Phone, Plus, ChevronDown, Trash2, Edit, Globe, Server, CheckCircle } from "lucide-react";
+import { Phone, Plus, ChevronDown, Trash2, Edit, Globe, Server, User } from "lucide-react";
 import type { PhoneNumber, InsertPhoneNumber } from "@shared/schema";
 
 const countryCodes = [
@@ -34,7 +34,7 @@ export default function PhoneNumbers() {
   const [phoneToDelete, setPhoneToDelete] = useState<PhoneNumber | null>(null);
   const [phoneToEdit, setPhoneToEdit] = useState<PhoneNumber | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [assigningAgent, setAssigningAgent] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<InsertPhoneNumber>>({
     label: "",
     phoneNumber: "",
@@ -61,6 +61,11 @@ export default function PhoneNumbers() {
   // Fetch phone numbers
   const { data: phoneNumbers = [], isLoading } = useQuery<PhoneNumber[]>({
     queryKey: ["/api/phone-numbers"],
+  });
+
+  // Fetch agents for assignment
+  const { data: agents = [] } = useQuery<any[]>({
+    queryKey: ["/api/agents"],
   });
 
   // Create phone number mutation
@@ -118,6 +123,29 @@ export default function PhoneNumbers() {
     },
   });
   
+  // Assign agent to phone number mutation
+  const assignAgent = useMutation({
+    mutationFn: async ({ phoneNumberId, agentId }: { phoneNumberId: string; agentId: string | null }) => {
+      return await apiRequest("PATCH", `/api/phone-numbers/${phoneNumberId}/assign-agent`, { agentId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/phone-numbers"] });
+      setAssigningAgent(null);
+      toast({
+        title: "Agent assigned",
+        description: "The agent has been successfully assigned to this phone number.",
+      });
+    },
+    onError: (error: any) => {
+      setAssigningAgent(null);
+      toast({
+        title: "Assignment failed",
+        description: error.message || "Failed to assign agent to phone number",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Update phone number mutation
   const updatePhoneNumber = useMutation({
     mutationFn: async (data: { id: string; updates: Partial<InsertPhoneNumber> }) => {
@@ -162,37 +190,6 @@ export default function PhoneNumbers() {
 
     createPhoneNumber.mutate(dataToSubmit);
   };
-  
-  // Verify phone number mutation
-  const verifyPhoneNumber = useMutation({
-    mutationFn: async (id: string) => {
-      return await apiRequest("POST", `/api/phone-numbers/${id}/verify`);
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/phone-numbers"] });
-      setVerifyingId(null);
-      if (data?.status === "active") {
-        toast({
-          title: "Phone number verified",
-          description: "Your phone number has been successfully verified and activated.",
-        });
-      } else {
-        toast({
-          title: "Verification failed", 
-          description: data?.message || "Unable to verify phone number. Please check your credentials.",
-          variant: "destructive",
-        });
-      }
-    },
-    onError: (error: any) => {
-      setVerifyingId(null);
-      toast({
-        title: "Verification failed",
-        description: error.message || "Failed to verify phone number",
-        variant: "destructive",
-      });
-    },
-  });
   
   const handleEdit = () => {
     if (!phoneToEdit) return;
@@ -371,33 +368,51 @@ export default function PhoneNumbers() {
                 )}
               </div>
 
+              {/* Agent Assignment */}
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    Assigned Agent
+                  </Label>
+                  {phone.agentId && (
+                    <Badge variant="outline" className="text-xs">
+                      {agents.find((a: any) => a.id === phone.agentId)?.name || "Unknown"}
+                    </Badge>
+                  )}
+                </div>
+                <Select
+                  value={phone.agentId || "none"}
+                  onValueChange={(value) => {
+                    setAssigningAgent(phone.id);
+                    assignAgent.mutate({
+                      phoneNumberId: phone.id,
+                      agentId: value === "none" ? null : value,
+                    });
+                  }}
+                  disabled={assigningAgent === phone.id}
+                >
+                  <SelectTrigger className="w-full" data-testid={`select-agent-${phone.id}`}>
+                    <SelectValue placeholder="Select an agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      <span className="text-muted-foreground">No agent assigned</span>
+                    </SelectItem>
+                    {agents.map((agent: any) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {agent.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="flex gap-2 mt-4 pt-4 border-t">
-                {phone.status === "pending" && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      setVerifyingId(phone.id);
-                      verifyPhoneNumber.mutate(phone.id);
-                    }}
-                    disabled={verifyingId === phone.id}
-                    data-testid={`button-verify-${phone.id}`}
-                  >
-                    {verifyingId === phone.id ? (
-                      <>Verifying...</>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        Verify
-                      </>
-                    )}
-                  </Button>
-                )}
                 <Button
                   variant="outline"
                   size="sm"
-                  className={phone.status === "pending" ? "" : "flex-1"}
+                  className="flex-1"
                   onClick={() => {
                     setPhoneToEdit(phone);
                     setEditFormData({
