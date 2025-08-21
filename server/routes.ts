@@ -972,17 +972,53 @@ export function registerRoutes(app: Express): Server {
             }
             
             
-            if (agentConfig.tool_ids) {
-              // Map tool_ids to the expected tools structure
-              agentData.tools = {
-                customTools: agentConfig.tool_ids ? agentConfig.tool_ids.map((id: string) => ({
-                  id,
-                  name: id,
-                  type: 'integration',
-                  enabled: true
-                })) : []
-              };
-            }
+            // Always set up default tools with all system tools enabled
+            agentData.tools = {
+              systemTools: {
+                endCall: {
+                  enabled: true,
+                  description: "Allows agent to end the call"
+                },
+                detectLanguage: {
+                  enabled: true,
+                  description: "Automatically detect and switch languages",
+                  supportedLanguages: []
+                },
+                skipTurn: {
+                  enabled: true,
+                  description: "Skip agent turn when user needs a moment"
+                },
+                transferToAgent: {
+                  enabled: true,
+                  description: "Transfer to another AI agent",
+                  targetAgentId: ""
+                },
+                transferToNumber: {
+                  enabled: true,
+                  description: "Transfer to human operator",
+                  phoneNumbers: []
+                },
+                playKeypadTone: {
+                  enabled: true,
+                  description: "Play keypad touch tones"
+                },
+                voicemailDetection: {
+                  enabled: true,
+                  description: "Detect voicemail systems",
+                  leaveMessage: false,
+                  messageContent: ""
+                }
+              },
+              webhooks: [],
+              integrations: [],
+              customTools: agentConfig.tool_ids ? agentConfig.tool_ids.map((id: string) => ({
+                id,
+                name: id,
+                type: 'integration',
+                enabled: true
+              })) : [],
+              toolIds: []
+            };
             
             if (agentConfig.dynamic_variables) {
               agentData.dynamicVariables = agentConfig.dynamic_variables;
@@ -1046,9 +1082,43 @@ export function registerRoutes(app: Express): Server {
             const ttsConfig = conversationConfig.tts || {};
             const llmConfig = conversationConfig.llm || {};
             
-            // Parse tools from ElevenLabs format
+            // Initialize with all system tools enabled by default
             const tools: any = {
-              systemTools: {},
+              systemTools: {
+                endCall: {
+                  enabled: true,
+                  description: "Allows agent to end the call"
+                },
+                detectLanguage: {
+                  enabled: true,
+                  description: "Automatically detect and switch languages",
+                  supportedLanguages: []
+                },
+                skipTurn: {
+                  enabled: true,
+                  description: "Skip agent turn when user needs a moment"
+                },
+                transferToAgent: {
+                  enabled: true,
+                  description: "Transfer to another AI agent",
+                  targetAgentId: ""
+                },
+                transferToNumber: {
+                  enabled: true,
+                  description: "Transfer to human operator",
+                  phoneNumbers: []
+                },
+                playKeypadTone: {
+                  enabled: true,
+                  description: "Play keypad touch tones"
+                },
+                voicemailDetection: {
+                  enabled: true,
+                  description: "Detect voicemail systems",
+                  leaveMessage: false,
+                  messageContent: ""
+                }
+              },
               webhooks: [],
               integrations: [],
               customTools: [],
