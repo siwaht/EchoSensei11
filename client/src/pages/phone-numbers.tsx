@@ -32,12 +32,26 @@ export default function PhoneNumbers() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importProvider, setImportProvider] = useState<"twilio" | "sip_trunk" | null>(null);
   const [phoneToDelete, setPhoneToDelete] = useState<PhoneNumber | null>(null);
+  const [phoneToEdit, setPhoneToEdit] = useState<PhoneNumber | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState<Partial<InsertPhoneNumber>>({
     label: "",
     phoneNumber: "",
     countryCode: "+1",
     provider: "twilio",
     twilioAccountSid: "",
+    sipTrunkUri: "",
+    sipUsername: "",
+    sipPassword: "",
+  });
+  
+  const [editFormData, setEditFormData] = useState<Partial<InsertPhoneNumber>>({
+    label: "",
+    phoneNumber: "",
+    countryCode: "+1",
+    provider: "twilio",
+    twilioAccountSid: "",
+    twilioAuthToken: "",
     sipTrunkUri: "",
     sipUsername: "",
     sipPassword: "",
@@ -102,6 +116,29 @@ export default function PhoneNumbers() {
       });
     },
   });
+  
+  // Update phone number mutation
+  const updatePhoneNumber = useMutation({
+    mutationFn: async (data: { id: string; updates: Partial<InsertPhoneNumber> }) => {
+      return await apiRequest("PATCH", `/api/phone-numbers/${data.id}`, data.updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/phone-numbers"] });
+      setShowEditModal(false);
+      setPhoneToEdit(null);
+      toast({
+        title: "Phone number updated",
+        description: "Your phone number has been successfully updated.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update failed",
+        description: error.message || "Failed to update phone number",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleImport = () => {
     if (!importProvider) return;
@@ -123,6 +160,37 @@ export default function PhoneNumbers() {
     }
 
     createPhoneNumber.mutate(dataToSubmit);
+  };
+  
+  const handleEdit = () => {
+    if (!phoneToEdit) return;
+    
+    const updates: Partial<InsertPhoneNumber> = {
+      label: editFormData.label,
+      phoneNumber: editFormData.phoneNumber,
+      countryCode: editFormData.countryCode,
+    };
+    
+    if (phoneToEdit.provider === "twilio") {
+      if (editFormData.twilioAccountSid) {
+        updates.twilioAccountSid = editFormData.twilioAccountSid;
+      }
+      if (editFormData.twilioAuthToken) {
+        updates.twilioAuthToken = editFormData.twilioAuthToken;
+      }
+    } else if (phoneToEdit.provider === "sip_trunk") {
+      if (editFormData.sipTrunkUri) {
+        updates.sipTrunkUri = editFormData.sipTrunkUri;
+      }
+      if (editFormData.sipUsername) {
+        updates.sipUsername = editFormData.sipUsername;
+      }
+      if (editFormData.sipPassword) {
+        updates.sipPassword = editFormData.sipPassword;
+      }
+    }
+    
+    updatePhoneNumber.mutate({ id: phoneToEdit.id, updates });
   };
 
   if (isLoading) {
@@ -277,11 +345,19 @@ export default function PhoneNumbers() {
                   size="sm"
                   className="flex-1"
                   onClick={() => {
-                    // TODO: Implement edit functionality
-                    toast({
-                      title: "Coming soon",
-                      description: "Edit functionality will be available soon.",
+                    setPhoneToEdit(phone);
+                    setEditFormData({
+                      label: phone.label,
+                      phoneNumber: phone.phoneNumber,
+                      countryCode: phone.countryCode || "+1",
+                      provider: phone.provider,
+                      twilioAccountSid: phone.twilioAccountSid || "",
+                      twilioAuthToken: "", // Don't pre-fill sensitive data
+                      sipTrunkUri: phone.sipTrunkUri || "",
+                      sipUsername: phone.sipUsername || "",
+                      sipPassword: "", // Don't pre-fill sensitive data
                     });
+                    setShowEditModal(true);
                   }}
                   data-testid={`button-edit-${phone.id}`}
                 >
@@ -447,6 +523,156 @@ export default function PhoneNumbers() {
               data-testid="button-import"
             >
               {createPhoneNumber.isPending ? "Importing..." : "Import"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              <div className="flex items-center gap-2">
+                <Edit className="w-5 h-5" />
+                Edit phone number
+              </div>
+            </DialogTitle>
+            <DialogDescription>
+              Update the details of your phone number
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-label">Label</Label>
+              <Input
+                id="edit-label"
+                placeholder="Easy to identify name of the phone number"
+                value={editFormData.label}
+                onChange={(e) => setEditFormData({ ...editFormData, label: e.target.value })}
+                data-testid="input-edit-label"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">Phone number</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={editFormData.countryCode}
+                  onValueChange={(value) => setEditFormData({ ...editFormData, countryCode: value })}
+                >
+                  <SelectTrigger className="w-[120px]" data-testid="select-edit-country-code">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countryCodes.map((country) => (
+                      <SelectItem key={country.code} value={country.code}>
+                        <div className="flex items-center gap-2">
+                          <span>{country.flag}</span>
+                          <span>{country.code}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  id="edit-phone"
+                  placeholder="Enter phone number"
+                  value={editFormData.phoneNumber}
+                  onChange={(e) => setEditFormData({ ...editFormData, phoneNumber: e.target.value })}
+                  className="flex-1"
+                  data-testid="input-edit-phone-number"
+                />
+              </div>
+            </div>
+
+            {phoneToEdit?.provider === "twilio" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-twilioSid">Twilio Account SID</Label>
+                  <Input
+                    id="edit-twilioSid"
+                    placeholder="Twilio Account SID"
+                    value={editFormData.twilioAccountSid || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, twilioAccountSid: e.target.value })}
+                    data-testid="input-edit-twilio-sid"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-twilioToken">Twilio Auth Token</Label>
+                  <Input
+                    id="edit-twilioToken"
+                    type="password"
+                    placeholder="Enter new token (leave blank to keep existing)"
+                    value={editFormData.twilioAuthToken || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, twilioAuthToken: e.target.value })}
+                    data-testid="input-edit-twilio-token"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Only enter if you want to update the token
+                  </p>
+                </div>
+              </>
+            )}
+
+            {phoneToEdit?.provider === "sip_trunk" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-sipUri">SIP Trunk URI</Label>
+                  <Input
+                    id="edit-sipUri"
+                    placeholder="sip.example.com"
+                    value={editFormData.sipTrunkUri || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, sipTrunkUri: e.target.value })}
+                    data-testid="input-edit-sip-uri"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-sipUsername">SIP Username</Label>
+                  <Input
+                    id="edit-sipUsername"
+                    placeholder="Username"
+                    value={editFormData.sipUsername || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, sipUsername: e.target.value })}
+                    data-testid="input-edit-sip-username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-sipPassword">SIP Password</Label>
+                  <Input
+                    id="edit-sipPassword"
+                    type="password"
+                    placeholder="Enter new password (leave blank to keep existing)"
+                    value={editFormData.sipPassword || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, sipPassword: e.target.value })}
+                    data-testid="input-edit-sip-password"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Only enter if you want to update the password
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEditModal(false);
+                setPhoneToEdit(null);
+              }}
+              data-testid="button-cancel-edit"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEdit}
+              disabled={!editFormData.label || !editFormData.phoneNumber || updatePhoneNumber.isPending}
+              data-testid="button-save-edit"
+            >
+              {updatePhoneNumber.isPending ? "Saving..." : "Save changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
