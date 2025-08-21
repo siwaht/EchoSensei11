@@ -1507,7 +1507,7 @@ export function registerRoutes(app: Express): Server {
                 if (updates.tools?.customTools) {
                   const ragTool = updates.tools.customTools.find((t: any) => t.type === 'rag' && t.enabled);
                   if (ragTool) {
-                    const ragInstructions = '\n\nIMPORTANT: When users ask questions about specific people, companies, facts or information, ALWAYS use the "Knowledge Base RAG" tool to search for relevant information first. Call the tool with the query to search the knowledge base.';
+                    const ragInstructions = '\n\nIMPORTANT: When users ask questions about specific people, companies, facts or information, ALWAYS use the "Knowledge Base RAG" tool to search for relevant information first. The tool will extract the search query from the conversation and return relevant information from the knowledge base.';
                     if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('Knowledge Base RAG')) {
                       enhancedSystemPrompt = enhancedSystemPrompt + ragInstructions;
                       console.log('Enhanced system prompt with RAG instructions');
@@ -1661,10 +1661,10 @@ export function registerRoutes(app: Express): Server {
                             query_parameters: [
                               {
                                 name: "query",
-                                type: "string",
+                                data_type: "String",
                                 required: true,
-                                value_type: "llm_prompt",
-                                description: "Extract the search query from the user's question. This should be the key information, person, company, topic or fact the user is asking about. For example, if the user asks 'Who is John?' extract 'John'. If they ask 'Tell me about the company policy' extract 'company policy'."
+                                value_type: "LLM Prompt",
+                                description: "This field will be passed to the LLM and should describe in detail how to extract the data from the transcript. Extract the search query from the user's question. This should be the key information, person, company, topic or fact the user is asking about. For example, if the user asks 'Who is John?' extract 'John'. If they ask 'Tell me about the company policy' extract 'company policy'."
                               }
                             ]
                           };
