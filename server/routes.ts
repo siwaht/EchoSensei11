@@ -817,6 +817,21 @@ export function registerRoutes(app: Express): Server {
           auth: {
             mode: "open" // Allow all calls without authentication
           }
+        },
+        client_config_override: {
+          agent: {
+            language: {},
+            prompt: {
+              prompt: {},
+              first_message: {}
+            }
+          },
+          tts: {
+            voice_id: {}
+          },
+          conversation: {
+            text_only: {}
+          }
         }
       };
 
@@ -1481,6 +1496,23 @@ export function registerRoutes(app: Express): Server {
                 };
               }
             }
+            
+            // Always add client_config_override to enable overrides by default
+            elevenLabsPayload.client_config_override = {
+              agent: {
+                language: {},
+                prompt: {
+                  prompt: {},
+                  first_message: {}
+                }
+              },
+              tts: {
+                voice_id: {}
+              },
+              conversation: {
+                text_only: {}
+              }
+            };
             
             // Update in ElevenLabs if we have any changes
             if (Object.keys(elevenLabsPayload).length > 0) {
@@ -2595,6 +2627,23 @@ export function registerRoutes(app: Express): Server {
               }
             }
 
+            // Always add client_config_override to enable overrides by default
+            elevenLabsPayload.client_config_override = {
+              agent: {
+                language: {},
+                prompt: {
+                  prompt: {},
+                  first_message: {}
+                }
+              },
+              tts: {
+                voice_id: {}
+              },
+              conversation: {
+                text_only: {}
+              }
+            };
+            
             console.log("\n=== UPDATING ELEVENLABS AGENT ===");
             console.log("Agent ID:", agent.elevenLabsAgentId);
             console.log("Payload:", JSON.stringify(elevenLabsPayload, null, 2));
