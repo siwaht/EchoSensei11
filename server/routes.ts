@@ -1507,20 +1507,21 @@ export function registerRoutes(app: Express): Server {
                 if (updates.tools?.customTools) {
                   const ragTool = updates.tools.customTools.find((t: any) => t.type === 'rag' && t.enabled);
                   if (ragTool) {
-                    const ragInstructions = '\n\nIMPORTANT: You have access to a "Knowledge Base RAG" webhook tool that searches a knowledge base for information.\n\n' +
-                      'CRITICAL RULES FOR USING WEBHOOK TOOLS:\n' +
-                      '1. When users ask about specific people, companies, facts or any information, use the Knowledge Base RAG webhook tool\n' +
-                      '2. DO NOT output any code blocks or tool_code syntax\n' +
-                      '3. DO NOT speak your thought process, planning, or tool usage out loud\n' +
-                      '4. DO NOT say "Let me search" or "I\'m looking that up" or similar phrases\n' +
-                      '5. Simply invoke the webhook tool internally and use the response to answer\n' +
-                      '6. The webhook will automatically extract the search query from the conversation\n' +
-                      '7. Respond naturally with the information returned by the webhook\n' +
-                      '8. If the webhook returns no results, say you don\'t have that information\n' +
-                      '9. NEVER expose the webhook response format or structure to the user';
-                    if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('WEBHOOK TOOLS')) {
+                    const ragInstructions = '\n\nYou have access to webhook tools including knowledge_base_rag for searching information.\n\n' +
+                      'CRITICAL: These are webhook tools that work exactly like any other webhook - they are NOT code functions.\n\n' +
+                      'When using ANY webhook tool (including knowledge_base_rag):\n' +
+                      '- NEVER output ```tool_code``` blocks or any code syntax\n' +
+                      '- NEVER speak your planning, thoughts, or narrate tool usage\n' +
+                      '- The tool is invoked automatically when you mention it\n' +
+                      '- The system extracts parameters from the conversation context\n' +
+                      '- Simply state what the user asked about and the tool will handle it\n\n' +
+                      'For example:\n' +
+                      '- User: "Who is John?"\n' +
+                      '- You: [Tool automatically invoked, respond with information about John]\n\n' +
+                      'Remember: Webhooks are invoked by the system, not by outputting code.';
+                    if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('webhook tools')) {
                       enhancedSystemPrompt = enhancedSystemPrompt + ragInstructions;
-                      console.log('Enhanced system prompt with webhook RAG instructions');
+                      console.log('Enhanced system prompt with webhook instructions');
                     }
                   }
                 }
@@ -1664,7 +1665,7 @@ export function registerRoutes(app: Express): Server {
                           const ragTool: any = {
                             type: "webhook",
                             name: customTool.name || "knowledge_base_rag",
-                            description: "Use this webhook tool to search the knowledge base when users ask about any information, people, companies, facts, or documents. This tool will search and return relevant information.",
+                            description: "Searches the knowledge base for information about people, companies, facts, or documents. Automatically invoked when users ask questions.",
                             url: webhookUrl,
                             method: "GET",
                             headers: {},
@@ -1674,7 +1675,7 @@ export function registerRoutes(app: Express): Server {
                                 data_type: "String",
                                 required: true,
                                 value_type: "LLM Prompt",
-                                description: "Extract the main search term or question from what the user is asking about. If user asks 'Who is John?' extract 'John'. If user asks 'Tell me about the company policy' extract 'company policy'. If user asks 'What products do you sell?' extract 'products'. Always extract the key topic, person, or thing being asked about."
+                                description: "Extract what the user is asking about. Examples: 'Who is John?' -> 'John', 'Tell me about company policy' -> 'company policy', 'What products do you sell?' -> 'products'"
                               }
                             ]
                           };
