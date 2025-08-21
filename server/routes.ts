@@ -816,6 +816,14 @@ export function registerRoutes(app: Express): Server {
         platform_settings: {
           auth: {
             mode: "open" // Allow all calls without authentication
+          },
+          conversation_initiation_client_data_webhook: {
+            enabled: false,
+            url: ""
+          },
+          post_call_webhook: {
+            enabled: false,
+            url: ""
           }
         },
         client_config_override: {
@@ -2672,6 +2680,33 @@ export function registerRoutes(app: Express): Server {
                   ...elevenLabsPayload.platform_settings,
                   data_collection: {
                     fields: collection.fields
+                  }
+                };
+              }
+            }
+
+            // Add webhook settings if provided
+            if (updates.tools || agent.tools) {
+              const tools = updates.tools || agent.tools;
+              
+              // Add conversation initiation webhook
+              if (tools.conversationInitiationWebhook) {
+                elevenLabsPayload.platform_settings = {
+                  ...elevenLabsPayload.platform_settings,
+                  conversation_initiation_client_data_webhook: {
+                    enabled: tools.conversationInitiationWebhook.enabled || false,
+                    url: tools.conversationInitiationWebhook.url || ""
+                  }
+                };
+              }
+              
+              // Add post-call webhook
+              if (tools.postCallWebhook) {
+                elevenLabsPayload.platform_settings = {
+                  ...elevenLabsPayload.platform_settings,
+                  post_call_webhook: {
+                    enabled: tools.postCallWebhook.enabled || false,
+                    url: tools.postCallWebhook.url || ""
                   }
                 };
               }

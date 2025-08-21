@@ -123,6 +123,16 @@ export default function Tools() {
       playKeypadTone: { enabled: false, description: 'Play keypad touch tones' },
       voicemailDetection: { enabled: false, description: 'Detect voicemail systems', leaveMessage: false, messageContent: '' },
     },
+    conversationInitiationWebhook: {
+      enabled: false,
+      url: '',
+      description: 'Fetch initiation client data from webhook when receiving Twilio or SIP trunk calls',
+    },
+    postCallWebhook: {
+      enabled: false,
+      url: '',
+      description: 'Override the post-call webhook configured in settings for this agent',
+    },
     webhooks: [] as WebhookConfig[],
     integrations: [] as ToolConfig[],
     customTools: [] as ToolConfig[],
@@ -177,6 +187,16 @@ export default function Tools() {
           transferToNumber: systemTools.transferToNumber || { enabled: false, description: 'Transfer to human operator', phoneNumbers: [] },
           playKeypadTone: systemTools.playKeypadTone || { enabled: false, description: 'Play keypad touch tones' },
           voicemailDetection: systemTools.voicemailDetection || { enabled: false, description: 'Detect voicemail systems', leaveMessage: false, messageContent: '' },
+        },
+        conversationInitiationWebhook: tools.conversationInitiationWebhook || {
+          enabled: false,
+          url: '',
+          description: 'Fetch initiation client data from webhook when receiving Twilio or SIP trunk calls',
+        },
+        postCallWebhook: tools.postCallWebhook || {
+          enabled: false,
+          url: '',
+          description: 'Override the post-call webhook configured in settings for this agent',
         },
         webhooks: tools.webhooks || [],
         integrations: tools.integrations || [],
@@ -301,6 +321,8 @@ export default function Tools() {
     updateAgentMutation.mutate({
       tools: {
         systemTools: toolsConfig.systemTools,
+        conversationInitiationWebhook: toolsConfig.conversationInitiationWebhook,
+        postCallWebhook: toolsConfig.postCallWebhook,
         webhooks: toolsConfig.webhooks,
         integrations: filteredIntegrations as any,
         customTools: customTools as any,
@@ -823,6 +845,122 @@ export default function Tools() {
                       data-testid="switch-tool-voicemail"
                     />
                   </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Platform Webhooks Section */}
+            <Card className="p-4 sm:p-6">
+              <div className="mb-4">
+                <h3 className="text-base sm:text-lg font-semibold">Platform Webhooks</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                  Configure webhook settings for conversation initiation and post-call processing
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {/* Conversation Initiation Webhook */}
+                <div className="p-4 border rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium">Fetch initiation client data from webhook</p>
+                      <p className="text-sm text-muted-foreground">
+                        If enabled, the conversation initiation client data will be fetched from the webhook defined in the settings when receiving Twilio or SIP trunk calls
+                      </p>
+                    </div>
+                    <Switch
+                      checked={toolsConfig.conversationInitiationWebhook?.enabled || false}
+                      onCheckedChange={(checked) => {
+                        setToolsConfig({
+                          ...toolsConfig,
+                          conversationInitiationWebhook: {
+                            ...toolsConfig.conversationInitiationWebhook,
+                            enabled: checked,
+                          },
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
+                      data-testid="switch-conversation-initiation-webhook"
+                    />
+                  </div>
+                  {toolsConfig.conversationInitiationWebhook?.enabled && (
+                    <Input
+                      placeholder="Webhook URL (e.g., https://api.example.com/initiation)"
+                      value={toolsConfig.conversationInitiationWebhook?.url || ''}
+                      onChange={(e) => {
+                        setToolsConfig({
+                          ...toolsConfig,
+                          conversationInitiationWebhook: {
+                            ...toolsConfig.conversationInitiationWebhook,
+                            url: e.target.value,
+                          },
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="text-sm"
+                      data-testid="input-conversation-initiation-webhook-url"
+                    />
+                  )}
+                </div>
+
+                {/* Post-Call Webhook */}
+                <div className="p-4 border rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium">Post-Call Webhook</p>
+                      <p className="text-sm text-muted-foreground">
+                        Override the post-call webhook configured in settings for this agent
+                      </p>
+                    </div>
+                    <Switch
+                      checked={toolsConfig.postCallWebhook?.enabled || false}
+                      onCheckedChange={(checked) => {
+                        setToolsConfig({
+                          ...toolsConfig,
+                          postCallWebhook: {
+                            ...toolsConfig.postCallWebhook,
+                            enabled: checked,
+                          },
+                        });
+                        setHasUnsavedChanges(true);
+                      }}
+                      data-testid="switch-post-call-webhook"
+                    />
+                  </div>
+                  {toolsConfig.postCallWebhook?.enabled && (
+                    <div className="space-y-3">
+                      <Input
+                        placeholder="Webhook URL (e.g., https://api.example.com/post-call)"
+                        value={toolsConfig.postCallWebhook?.url || ''}
+                        onChange={(e) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            postCallWebhook: {
+                              ...toolsConfig.postCallWebhook,
+                              url: e.target.value,
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="text-sm"
+                        data-testid="input-post-call-webhook-url"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={() => {
+                          // Add webhook creation logic here
+                          toast({
+                            title: "Create Webhook",
+                            description: "This will open the webhook creation modal",
+                          });
+                        }}
+                      >
+                        Create Webhook
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>

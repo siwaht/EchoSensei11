@@ -230,6 +230,17 @@ export const agents = pgTable("agents", {
       description?: string;
       enabled?: boolean;
     }>;
+    // Platform webhook settings
+    conversationInitiationWebhook?: {
+      enabled: boolean;
+      url?: string;
+      description?: string;
+    };
+    postCallWebhook?: {
+      enabled: boolean;
+      url?: string;
+      description?: string;
+    };
     // Integrations
     integrations?: Array<{
       id: string;
