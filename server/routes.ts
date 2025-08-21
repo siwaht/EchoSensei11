@@ -852,6 +852,10 @@ export function registerRoutes(app: Express): Server {
             model: {},
             temperature: {},
             max_tokens: {}
+          },
+          platform_settings: {
+            conversation_initiation_client_data_webhook: {},
+            post_call_webhook: {}
           }
         }
       };
@@ -1553,6 +1557,10 @@ export function registerRoutes(app: Express): Server {
                 model: {},
                 temperature: {},
                 max_tokens: {}
+              },
+              platform_settings: {
+                conversation_initiation_client_data_webhook: {},
+                post_call_webhook: {}
               }
             };
             
@@ -2704,6 +2712,10 @@ export function registerRoutes(app: Express): Server {
                 model: {},
                 temperature: {},
                 max_tokens: {}
+              },
+              platform_settings: {
+                conversation_initiation_client_data_webhook: {},
+                post_call_webhook: {}
               }
             };
             
