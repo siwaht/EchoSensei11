@@ -371,6 +371,54 @@ export default function Tools() {
     setHasUnsavedChanges(true);
   };
 
+  const deleteKnowledgeBase = async (kbId: string, kbName: string) => {
+    try {
+      // First, initialize the vector database if needed
+      await fetch('/api/vector-db/initialize', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Delete documents from vector database
+      const response = await fetch(`/api/documents/source/${encodeURIComponent(kbName)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete knowledge base');
+      }
+
+      // Update local state immediately
+      setToolsConfig({
+        ...toolsConfig,
+        ragTool: {
+          ...toolsConfig.ragTool,
+          knowledgeBases: toolsConfig.ragTool.knowledgeBases?.filter(kb => kb.id !== kbId) || [],
+        },
+      });
+      setHasUnsavedChanges(true);
+
+      toast({
+        title: "Knowledge base deleted",
+        description: `Successfully deleted "${kbName}"`,
+      });
+    } catch (error) {
+      console.error('Error deleting knowledge base:', error);
+      toast({
+        title: "Failed to delete",
+        description: "Could not delete the knowledge base. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -1811,6 +1859,7 @@ export default function Tools() {
                             <Button
                               size="icon"
                               variant="ghost"
+                              onClick={() => deleteKnowledgeBase(kb.id, kb.name)}
                               data-testid={`button-delete-kb-${kb.id}`}
                             >
                               <Trash2 className="w-4 h-4" />
