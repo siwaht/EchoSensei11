@@ -1061,10 +1061,19 @@ export function registerRoutes(app: Express): Server {
           // Format phone number for ElevenLabs in E.164 format
           // Remove any non-digit characters from the phone number
           const cleanPhoneNumber = phoneNumberData.phoneNumber.replace(/\D/g, '');
-          // Ensure country code has + prefix and combine with phone number
-          const rawCountryCode = phoneNumberData.countryCode || '+1';
-          const countryCode = rawCountryCode.startsWith('+') ? rawCountryCode : '+' + rawCountryCode;
-          const formattedPhoneNumber = countryCode + cleanPhoneNumber;
+          // Get the country code without the + sign
+          const rawCountryCode = (phoneNumberData.countryCode || '+1').replace('+', '');
+          
+          // Check if the phone number already starts with the country code
+          // If it does, don't add it again
+          let formattedPhoneNumber;
+          if (cleanPhoneNumber.startsWith(rawCountryCode)) {
+            // Phone number already includes country code
+            formattedPhoneNumber = '+' + cleanPhoneNumber;
+          } else {
+            // Add country code to phone number
+            formattedPhoneNumber = '+' + rawCountryCode + cleanPhoneNumber;
+          }
           
           // Create phone number in ElevenLabs
           const elevenLabsPayload: any = {
@@ -1176,9 +1185,19 @@ export function registerRoutes(app: Express): Server {
         
         // Format phone number for ElevenLabs in E.164 format
         const cleanPhoneNumber = phoneNumber.phoneNumber.replace(/\D/g, '');
-        const rawCountryCode = phoneNumber.countryCode || '+1';
-        const countryCode = rawCountryCode.startsWith('+') ? rawCountryCode : '+' + rawCountryCode;
-        const formattedPhoneNumber = countryCode + cleanPhoneNumber;
+        // Get the country code without the + sign
+        const rawCountryCode = (phoneNumber.countryCode || '+1').replace('+', '');
+        
+        // Check if the phone number already starts with the country code
+        // If it does, don't add it again
+        let formattedPhoneNumber;
+        if (cleanPhoneNumber.startsWith(rawCountryCode)) {
+          // Phone number already includes country code
+          formattedPhoneNumber = '+' + cleanPhoneNumber;
+        } else {
+          // Add country code to phone number
+          formattedPhoneNumber = '+' + rawCountryCode + cleanPhoneNumber;
+        }
         
         // Create phone number in ElevenLabs
         const elevenLabsPayload: any = {
