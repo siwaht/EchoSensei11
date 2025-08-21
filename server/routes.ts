@@ -1052,11 +1052,14 @@ export function registerRoutes(app: Express): Server {
         try {
           const decryptedKey = decryptApiKey(integration.apiKey);
           
+          // Format phone number for ElevenLabs (remove spaces and add country code)
+          const cleanPhoneNumber = phoneNumberData.phoneNumber.replace(/\D/g, '');
+          const formattedPhoneNumber = phoneNumberData.countryCode + cleanPhoneNumber;
+          
           // Create phone number in ElevenLabs
           const elevenLabsPayload: any = {
             label: phoneNumberData.label,
-            phone_number: phoneNumberData.phoneNumber,
-            country_code: phoneNumberData.countryCode,
+            phone_number: formattedPhoneNumber,
           };
 
           if (phoneNumberData.provider === "twilio" && phoneNumberData.twilioAccountSid) {
@@ -1074,6 +1077,12 @@ export function registerRoutes(app: Express): Server {
             }
           }
 
+          console.log("Sending to ElevenLabs:", JSON.stringify(elevenLabsPayload, null, 2));
+          console.log("Phone number data:", { 
+            provider: phoneNumberData.provider,
+            hasSid: !!phoneNumberData.twilioAccountSid,
+            hasToken: !!phoneNumberData.twilioAuthToken 
+          });
           const response = await callElevenLabsAPI(
             decryptedKey,
             "/v1/convai/phone-numbers",
