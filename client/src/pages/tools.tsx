@@ -159,15 +159,18 @@ export default function Tools() {
       const googleGmailIntegration = tools.integrations?.find((i: any) => i.type === 'google-gmail');
       const ragToolConfig = tools.customTools?.find((t: any) => t.type === 'rag');
       
+      // Ensure each system tool has proper defaults
+      const systemTools = tools.systemTools || {};
+      
       setToolsConfig({
-        systemTools: tools.systemTools || {
-          endCall: { enabled: true, description: 'Allows agent to end the call' },
-          detectLanguage: { enabled: true, description: 'Automatically detect and switch languages', supportedLanguages: [] },
-          skipTurn: { enabled: true, description: 'Skip agent turn when user needs a moment' },
-          transferToAgent: { enabled: false, description: 'Transfer to another AI agent', targetAgentId: '' },
-          transferToNumber: { enabled: false, description: 'Transfer to human operator', phoneNumbers: [] },
-          playKeypadTone: { enabled: false, description: 'Play keypad touch tones' },
-          voicemailDetection: { enabled: false, description: 'Detect voicemail systems', leaveMessage: false, messageContent: '' },
+        systemTools: {
+          endCall: systemTools.endCall || { enabled: true, description: 'Allows agent to end the call' },
+          detectLanguage: systemTools.detectLanguage || { enabled: true, description: 'Automatically detect and switch languages', supportedLanguages: [] },
+          skipTurn: systemTools.skipTurn || { enabled: true, description: 'Skip agent turn when user needs a moment' },
+          transferToAgent: systemTools.transferToAgent || { enabled: false, description: 'Transfer to another AI agent', targetAgentId: '' },
+          transferToNumber: systemTools.transferToNumber || { enabled: false, description: 'Transfer to human operator', phoneNumbers: [] },
+          playKeypadTone: systemTools.playKeypadTone || { enabled: false, description: 'Play keypad touch tones' },
+          voicemailDetection: systemTools.voicemailDetection || { enabled: false, description: 'Detect voicemail systems', leaveMessage: false, messageContent: '' },
         },
         webhooks: tools.webhooks || [],
         integrations: tools.integrations || [],
@@ -564,13 +567,13 @@ export default function Tools() {
                     </div>
                   </div>
                   <Switch
-                    checked={toolsConfig.systemTools.endCall.enabled}
+                    checked={toolsConfig.systemTools?.endCall?.enabled || false}
                     onCheckedChange={(checked) => {
                       setToolsConfig({
                         ...toolsConfig,
                         systemTools: {
                           ...toolsConfig.systemTools,
-                          endCall: { ...toolsConfig.systemTools.endCall, enabled: checked },
+                          endCall: { ...(toolsConfig.systemTools?.endCall || {}), enabled: checked },
                         },
                       });
                       setHasUnsavedChanges(true);
@@ -593,13 +596,13 @@ export default function Tools() {
                     </div>
                   </div>
                   <Switch
-                    checked={toolsConfig.systemTools.detectLanguage.enabled}
+                    checked={toolsConfig.systemTools?.detectLanguage?.enabled || false}
                     onCheckedChange={(checked) => {
                       setToolsConfig({
                         ...toolsConfig,
                         systemTools: {
                           ...toolsConfig.systemTools,
-                          detectLanguage: { ...toolsConfig.systemTools.detectLanguage, enabled: checked },
+                          detectLanguage: { ...(toolsConfig.systemTools?.detectLanguage || {}), enabled: checked },
                         },
                       });
                       setHasUnsavedChanges(true);
@@ -622,13 +625,13 @@ export default function Tools() {
                     </div>
                   </div>
                   <Switch
-                    checked={toolsConfig.systemTools.skipTurn.enabled}
+                    checked={toolsConfig.systemTools?.skipTurn?.enabled || false}
                     onCheckedChange={(checked) => {
                       setToolsConfig({
                         ...toolsConfig,
                         systemTools: {
                           ...toolsConfig.systemTools,
-                          skipTurn: { ...toolsConfig.systemTools.skipTurn, enabled: checked },
+                          skipTurn: { ...(toolsConfig.systemTools?.skipTurn || {}), enabled: checked },
                         },
                       });
                       setHasUnsavedChanges(true);
@@ -651,13 +654,13 @@ export default function Tools() {
                     </div>
                   </div>
                   <Switch
-                    checked={toolsConfig.systemTools.transferToAgent.enabled}
+                    checked={toolsConfig.systemTools?.transferToAgent?.enabled || false}
                     onCheckedChange={(checked) => {
                       setToolsConfig({
                         ...toolsConfig,
                         systemTools: {
                           ...toolsConfig.systemTools,
-                          transferToAgent: { ...toolsConfig.systemTools.transferToAgent, enabled: checked },
+                          transferToAgent: { ...(toolsConfig.systemTools?.transferToAgent || {}), enabled: checked },
                         },
                       });
                       setHasUnsavedChanges(true);
@@ -680,13 +683,13 @@ export default function Tools() {
                     </div>
                   </div>
                   <Switch
-                    checked={toolsConfig.systemTools.transferToNumber.enabled}
+                    checked={toolsConfig.systemTools?.transferToNumber?.enabled || false}
                     onCheckedChange={(checked) => {
                       setToolsConfig({
                         ...toolsConfig,
                         systemTools: {
                           ...toolsConfig.systemTools,
-                          transferToNumber: { ...toolsConfig.systemTools.transferToNumber, enabled: checked },
+                          transferToNumber: { ...(toolsConfig.systemTools?.transferToNumber || {}), enabled: checked },
                         },
                       });
                       setHasUnsavedChanges(true);
@@ -709,13 +712,13 @@ export default function Tools() {
                     </div>
                   </div>
                   <Switch
-                    checked={toolsConfig.systemTools.playKeypadTone.enabled}
+                    checked={toolsConfig.systemTools?.playKeypadTone?.enabled || false}
                     onCheckedChange={(checked) => {
                       setToolsConfig({
                         ...toolsConfig,
                         systemTools: {
                           ...toolsConfig.systemTools,
-                          playKeypadTone: { ...toolsConfig.systemTools.playKeypadTone, enabled: checked },
+                          playKeypadTone: { ...(toolsConfig.systemTools?.playKeypadTone || {}), enabled: checked },
                         },
                       });
                       setHasUnsavedChanges(true);
@@ -738,13 +741,13 @@ export default function Tools() {
                     </div>
                   </div>
                   <Switch
-                    checked={toolsConfig.systemTools.voicemailDetection.enabled}
+                    checked={toolsConfig.systemTools?.voicemailDetection?.enabled || false}
                     onCheckedChange={(checked) => {
                       setToolsConfig({
                         ...toolsConfig,
                         systemTools: {
                           ...toolsConfig.systemTools,
-                          voicemailDetection: { ...toolsConfig.systemTools.voicemailDetection, enabled: checked },
+                          voicemailDetection: { ...(toolsConfig.systemTools?.voicemailDetection || {}), enabled: checked },
                         },
                       });
                       setHasUnsavedChanges(true);
