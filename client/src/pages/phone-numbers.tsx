@@ -377,15 +377,18 @@ export default function PhoneNumbers() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="twilioToken">Twilio Auth Token (Optional)</Label>
+                  <Label htmlFor="twilioToken">Twilio Auth Token</Label>
                   <Input
                     id="twilioToken"
                     type="password"
-                    placeholder="Twilio Auth Token"
+                    placeholder="Twilio Auth Token (Required)"
                     value={formData.twilioAuthToken || ""}
                     onChange={(e) => setFormData({ ...formData, twilioAuthToken: e.target.value })}
                     data-testid="input-twilio-token"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Required for connecting to ElevenLabs. Find it in your Twilio Console.
+                  </p>
                 </div>
               </>
             )}
@@ -440,7 +443,7 @@ export default function PhoneNumbers() {
             </Button>
             <Button
               onClick={handleImport}
-              disabled={!formData.label || !formData.phoneNumber || createPhoneNumber.isPending}
+              disabled={!formData.label || !formData.phoneNumber || (importProvider === "twilio" && (!formData.twilioAccountSid || !formData.twilioAuthToken)) || createPhoneNumber.isPending}
               data-testid="button-import"
             >
               {createPhoneNumber.isPending ? "Importing..." : "Import"}

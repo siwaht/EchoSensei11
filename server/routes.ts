@@ -1061,7 +1061,12 @@ export function registerRoutes(app: Express): Server {
 
           if (phoneNumberData.provider === "twilio" && phoneNumberData.twilioAccountSid) {
             elevenLabsPayload.provider = "twilio";
-            elevenLabsPayload.twilio_account_sid = phoneNumberData.twilioAccountSid;
+            elevenLabsPayload.sid = phoneNumberData.twilioAccountSid;
+            // Add the auth token if provided (required by ElevenLabs)
+            if (phoneNumberData.twilioAuthToken) {
+              const decryptedToken = decryptApiKey(phoneNumberData.twilioAuthToken);
+              elevenLabsPayload.token = decryptedToken;
+            }
           } else if (phoneNumberData.provider === "sip_trunk") {
             elevenLabsPayload.provider = "sip";
             if (phoneNumberData.sipTrunkUri) {
