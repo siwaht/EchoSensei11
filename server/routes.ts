@@ -1010,8 +1010,175 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const agents = await storage.getAgents(user.organizationId);
-      res.json(agents);
+      // Get ElevenLabs integration to sync agents
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (integration && integration.apiKey) {
+        const decryptedKey = decryptApiKey(integration.apiKey);
+        
+        try {
+          // Fetch all agents from ElevenLabs
+          const elevenLabsAgents = await callElevenLabsAPI(
+            decryptedKey,
+            "/v1/convai/agents",
+            "GET"
+          );
+          
+          // Get local agents
+          const localAgents = await storage.getAgents(user.organizationId);
+          const localAgentsByElevenLabsId = new Map(
+            localAgents.map(a => [a.elevenLabsAgentId, a])
+          );
+          
+          // Sync agents from ElevenLabs
+          const syncedAgents = [];
+          
+          for (const elevenLabsAgent of elevenLabsAgents) {
+            const agentId = elevenLabsAgent.agent_id || elevenLabsAgent.id;
+            const existingAgent = localAgentsByElevenLabsId.get(agentId);
+            
+            // Parse agent configuration from ElevenLabs
+            const conversationConfig = elevenLabsAgent.conversation_config || {};
+            const agentConfig = conversationConfig.agent || {};
+            const promptConfig = agentConfig.prompt || {};
+            const ttsConfig = conversationConfig.tts || {};
+            const llmConfig = conversationConfig.llm || {};
+            
+            // Parse tools from ElevenLabs format
+            const tools: any = {
+              systemTools: {},
+              webhooks: [],
+              integrations: [],
+              customTools: [],
+              toolIds: []
+            };
+            
+            if (agentConfig.tools && Array.isArray(agentConfig.tools)) {
+              for (const tool of agentConfig.tools) {
+                if (tool.type === 'system') {
+                  // Map ElevenLabs system tools to our format
+                  switch (tool.name) {
+                    case 'end_call':
+                      tools.systemTools.endCall = {
+                        enabled: true,
+                        description: tool.description || "Allows agent to end the call"
+                      };
+                      break;
+                    case 'language_detection':
+                      tools.systemTools.detectLanguage = {
+                        enabled: true,
+                        description: tool.description || "Automatically detect and switch languages",
+                        supportedLanguages: tool.config?.supported_languages || []
+                      };
+                      break;
+                    case 'skip_turn':
+                      tools.systemTools.skipTurn = {
+                        enabled: true,
+                        description: tool.description || "Skip agent turn when user needs a moment"
+                      };
+                      break;
+                    case 'transfer_to_agent':
+                      tools.systemTools.transferToAgent = {
+                        enabled: true,
+                        description: tool.description || "Transfer to another AI agent",
+                        targetAgentId: tool.config?.target_agent_id || ""
+                      };
+                      break;
+                    case 'transfer_to_number':
+                      tools.systemTools.transferToNumber = {
+                        enabled: true,
+                        description: tool.description || "Transfer to human operator",
+                        phoneNumbers: tool.config?.phone_numbers || []
+                      };
+                      break;
+                    case 'play_dtmf':
+                      tools.systemTools.playKeypadTone = {
+                        enabled: true,
+                        description: tool.description || "Play keypad touch tones"
+                      };
+                      break;
+                    case 'voicemail_detection':
+                      tools.systemTools.voicemailDetection = {
+                        enabled: true,
+                        description: tool.description || "Detect voicemail systems",
+                        leaveMessage: tool.config?.leave_message || false,
+                        messageContent: tool.config?.message_content || ""
+                      };
+                      break;
+                  }
+                } else if (tool.type === 'custom') {
+                  tools.customTools.push({
+                    id: tool.tool_id,
+                    name: tool.name,
+                    type: 'custom',
+                    enabled: true,
+                    description: tool.description
+                  });
+                  tools.toolIds.push(tool.tool_id);
+                }
+              }
+            }
+            
+            const agentData = {
+              organizationId: user.organizationId,
+              elevenLabsAgentId: agentId,
+              name: elevenLabsAgent.name || "Unnamed Agent",
+              description: elevenLabsAgent.description || "Synced from ElevenLabs",
+              firstMessage: promptConfig.first_message || agentConfig.first_message || "Hello! How can I help you today?",
+              systemPrompt: promptConfig.prompt || "You are a helpful AI assistant",
+              language: promptConfig.language || agentConfig.language || "en",
+              voiceId: ttsConfig.voice_id || "21m00Tcm4TlvDq8ikWAM",
+              voiceSettings: {
+                stability: ttsConfig.stability ?? 0.5,
+                similarityBoost: ttsConfig.similarity_boost ?? 0.75,
+                style: ttsConfig.style ?? 0,
+                useSpeakerBoost: ttsConfig.use_speaker_boost ?? true
+              },
+              llmSettings: llmConfig.model ? {
+                model: llmConfig.model,
+                temperature: llmConfig.temperature ?? 0.7,
+                maxTokens: llmConfig.max_tokens ?? 150
+              } : undefined,
+              tools: tools,
+              dynamicVariables: agentConfig.dynamic_variables || {},
+              isActive: true,
+              lastSynced: new Date()
+            };
+            
+            if (existingAgent) {
+              // Update existing agent with latest data from ElevenLabs
+              const updated = await storage.updateAgent(existingAgent.id, user.organizationId, agentData);
+              syncedAgents.push(updated);
+            } else {
+              // Create new agent that exists in ElevenLabs but not locally
+              const created = await storage.createAgent(agentData);
+              syncedAgents.push(created);
+            }
+          }
+          
+          // Remove agents that no longer exist in ElevenLabs
+          const elevenLabsAgentIds = new Set(elevenLabsAgents.map((a: any) => a.agent_id || a.id));
+          for (const localAgent of localAgents) {
+            if (localAgent.elevenLabsAgentId && !elevenLabsAgentIds.has(localAgent.elevenLabsAgentId)) {
+              // Agent exists locally but not in ElevenLabs, mark as inactive or delete
+              await storage.updateAgent(localAgent.id, user.organizationId, { isActive: false });
+            }
+          }
+          
+          // Return all active agents
+          const allAgents = await storage.getAgents(user.organizationId);
+          res.json(allAgents);
+          
+        } catch (syncError) {
+          console.error("Error syncing with ElevenLabs:", syncError);
+          // Fall back to local data if sync fails
+          const agents = await storage.getAgents(user.organizationId);
+          res.json(agents);
+        }
+      } else {
+        // No integration, just return local agents
+        const agents = await storage.getAgents(user.organizationId);
+        res.json(agents);
+      }
     } catch (error) {
       console.error("Error fetching agents:", error);
       res.status(500).json({ message: "Failed to fetch agents" });
@@ -1073,6 +1240,154 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error deleting agent:", error);
       res.status(500).json({ message: "Failed to delete agent" });
+    }
+  });
+
+  // Manual sync agents with ElevenLabs
+  app.post("/api/agents/sync", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs integration not configured" });
+      }
+
+      const decryptedKey = decryptApiKey(integration.apiKey);
+      
+      // Fetch all agents from ElevenLabs
+      const elevenLabsAgents = await callElevenLabsAPI(
+        decryptedKey,
+        "/v1/convai/agents",
+        "GET"
+      );
+      
+      let syncedCount = 0;
+      let createdCount = 0;
+      let updatedCount = 0;
+      
+      // Get local agents
+      const localAgents = await storage.getAgents(user.organizationId);
+      const localAgentsByElevenLabsId = new Map(
+        localAgents.map(a => [a.elevenLabsAgentId, a])
+      );
+      
+      for (const elevenLabsAgent of elevenLabsAgents) {
+        const agentId = elevenLabsAgent.agent_id || elevenLabsAgent.id;
+        const existingAgent = localAgentsByElevenLabsId.get(agentId);
+        
+        // Parse full agent configuration
+        const conversationConfig = elevenLabsAgent.conversation_config || {};
+        const agentConfig = conversationConfig.agent || {};
+        const promptConfig = agentConfig.prompt || {};
+        const ttsConfig = conversationConfig.tts || {};
+        const llmConfig = conversationConfig.llm || {};
+        
+        // Parse tools
+        const tools: any = {
+          systemTools: {},
+          webhooks: [],
+          integrations: [],
+          customTools: [],
+          toolIds: []
+        };
+        
+        if (agentConfig.tools && Array.isArray(agentConfig.tools)) {
+          for (const tool of agentConfig.tools) {
+            if (tool.type === 'system') {
+              switch (tool.name) {
+                case 'end_call':
+                  tools.systemTools.endCall = { enabled: true, description: tool.description || "End call" };
+                  break;
+                case 'language_detection':
+                  tools.systemTools.detectLanguage = { 
+                    enabled: true, 
+                    description: tool.description || "Detect language",
+                    supportedLanguages: tool.config?.supported_languages || []
+                  };
+                  break;
+                case 'skip_turn':
+                  tools.systemTools.skipTurn = { enabled: true, description: tool.description || "Skip turn" };
+                  break;
+                case 'transfer_to_agent':
+                  tools.systemTools.transferToAgent = { 
+                    enabled: true, 
+                    description: tool.description || "Transfer to agent",
+                    targetAgentId: tool.config?.target_agent_id || ""
+                  };
+                  break;
+                case 'transfer_to_number':
+                  tools.systemTools.transferToNumber = { 
+                    enabled: true, 
+                    description: tool.description || "Transfer to number",
+                    phoneNumbers: tool.config?.phone_numbers || []
+                  };
+                  break;
+                case 'play_dtmf':
+                  tools.systemTools.playKeypadTone = { enabled: true, description: tool.description || "Play DTMF" };
+                  break;
+                case 'voicemail_detection':
+                  tools.systemTools.voicemailDetection = { 
+                    enabled: true, 
+                    description: tool.description || "Voicemail detection",
+                    leaveMessage: tool.config?.leave_message || false,
+                    messageContent: tool.config?.message_content || ""
+                  };
+                  break;
+              }
+            }
+          }
+        }
+        
+        const agentData = {
+          organizationId: user.organizationId,
+          elevenLabsAgentId: agentId,
+          name: elevenLabsAgent.name || "Unnamed Agent",
+          description: elevenLabsAgent.description || "Synced from ElevenLabs",
+          firstMessage: promptConfig.first_message || agentConfig.first_message || "Hello!",
+          systemPrompt: promptConfig.prompt || "You are a helpful assistant",
+          language: promptConfig.language || agentConfig.language || "en",
+          voiceId: ttsConfig.voice_id || "21m00Tcm4TlvDq8ikWAM",
+          voiceSettings: {
+            stability: ttsConfig.stability ?? 0.5,
+            similarityBoost: ttsConfig.similarity_boost ?? 0.75,
+            style: ttsConfig.style ?? 0,
+            useSpeakerBoost: ttsConfig.use_speaker_boost ?? true
+          },
+          llmSettings: llmConfig.model ? {
+            model: llmConfig.model,
+            temperature: llmConfig.temperature ?? 0.7,
+            maxTokens: llmConfig.max_tokens ?? 150
+          } : undefined,
+          tools: tools,
+          dynamicVariables: agentConfig.dynamic_variables || {},
+          isActive: true,
+          lastSynced: new Date()
+        };
+        
+        if (existingAgent) {
+          await storage.updateAgent(existingAgent.id, user.organizationId, agentData);
+          updatedCount++;
+        } else {
+          await storage.createAgent(agentData);
+          createdCount++;
+        }
+        syncedCount++;
+      }
+      
+      res.json({ 
+        message: "Sync completed successfully",
+        syncedCount,
+        createdCount,
+        updatedCount
+      });
+    } catch (error) {
+      console.error("Error syncing agents:", error);
+      res.status(500).json({ message: "Failed to sync agents" });
     }
   });
 

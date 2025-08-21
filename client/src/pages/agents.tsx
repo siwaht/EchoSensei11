@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Plus, Trash2, Eye, Play } from "lucide-react";
+import { Bot, Plus, Trash2, Eye, Play, RefreshCw } from "lucide-react";
 import { AddAgentModal } from "@/components/modals/add-agent-modal";
 import { AgentDetailModal } from "@/components/modals/agent-detail-modal";
 import { useToast } from "@/hooks/use-toast";
@@ -67,6 +67,42 @@ export default function Agents() {
     },
   });
 
+  // Sync mutation
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/agents/sync", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to sync agents");
+      }
+      
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Sync Completed",
+        description: `Successfully synced ${data.syncedCount} agents (${data.createdCount} new, ${data.updatedCount} updated)`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/call-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics/organization"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Could not sync agents with ElevenLabs",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getStatusColor = (isActive: boolean) => {
     return isActive ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200" : 
                      "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200";
@@ -103,10 +139,22 @@ export default function Agents() {
             Manage your ElevenLabs voice agents
           </p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto" data-testid="button-add-agent">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Agent
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button 
+            onClick={() => syncMutation.mutate()} 
+            variant="outline"
+            disabled={syncMutation.isPending}
+            className="w-full sm:w-auto" 
+            data-testid="button-sync-agents"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+            {syncMutation.isPending ? 'Syncing...' : 'Sync with ElevenLabs'}
+          </Button>
+          <Button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto" data-testid="button-add-agent">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Agent
+          </Button>
+        </div>
       </div>
 
       {/* Agents Grid */}
