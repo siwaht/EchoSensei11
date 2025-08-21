@@ -245,16 +245,17 @@ export default function Agents() {
                   Details
                 </Button>
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300"
                   onClick={(e) => {
                     e.stopPropagation();
                     setAgentToDelete(agent);
                   }}
                   data-testid={`button-delete-${agent.id}`}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete
                 </Button>
               </div>
 
