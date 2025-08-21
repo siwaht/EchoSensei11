@@ -152,7 +152,7 @@ export default function Tools() {
     ragTool: {
       enabled: false,
       name: 'Knowledge Base RAG',
-      description: '',
+      description: 'check the knowledge base for more information',
       vectorDatabase: 'lancedb' as 'pinecone' | 'weaviate' | 'chroma' | 'qdrant' | 'lancedb',
       embeddingModel: 'openai' as 'openai' | 'cohere' | 'huggingface',
       apiKey: '',
@@ -162,7 +162,7 @@ export default function Tools() {
       similarityThreshold: 0.7,
       maxTokens: 2000,
       temperature: 0.7,
-      systemPrompt: '',
+      systemPrompt: 'reference the most relevant entries when providing facts about a person\'s background, preferences, or company information. If the user inquires about a person\'s location, what they like to eat, or a company\'s services, cite the related knowledge base entry in your answer. Respond concisely, truthfully, and in a helpful manner based on the provided information.',
       knowledgeBases: [],
     } as RAGToolConfig,
   });
@@ -314,9 +314,12 @@ export default function Tools() {
         id: 'rag-tool',
         name: toolsConfig.ragTool.name,
         type: 'rag',
-        configuration: toolsConfig.ragTool,
+        configuration: {
+          ...toolsConfig.ragTool,
+          description: toolsConfig.ragTool.description || 'check the knowledge base for more information',
+        },
         enabled: true,
-      });
+      } as ToolConfig);
     }
 
     updateAgentMutation.mutate({

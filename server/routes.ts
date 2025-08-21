@@ -8,6 +8,7 @@ import crypto from "crypto";
 import type { RequestHandler } from "express";
 import { seedAdminUser } from "./seedAdmin";
 import multer from "multer";
+import { getVectorDatabaseService } from "./vectorDatabase";
 
 // Authentication middleware
 const isAuthenticated: RequestHandler = (req, res, next) => {
@@ -1627,6 +1628,56 @@ export function registerRoutes(app: Express): Server {
                     elevenLabsTools.push(tool);
                   }
                   
+                  // Add custom tools (webhooks, RAG, etc.)
+                  if (updates.tools.customTools && Array.isArray(updates.tools.customTools)) {
+                    for (const customTool of updates.tools.customTools) {
+                      if (customTool.enabled) {
+                        if (customTool.type === 'rag') {
+                          // Add RAG tool as a webhook
+                          const ragTool: any = {
+                            type: "webhook",
+                            name: customTool.name || "Knowledge Base RAG",
+                            description: customTool.description || "Search the knowledge base for relevant information",
+                            url: `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000'}/api/webhooks/rag-search`,
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json"
+                            }
+                          };
+                          elevenLabsTools.push(ragTool);
+                        } else if (customTool.type === 'webhook' && customTool.url) {
+                          // Add regular webhooks
+                          const webhookTool: any = {
+                            type: "webhook",
+                            name: customTool.name,
+                            description: customTool.description || "",
+                            url: customTool.url,
+                            method: customTool.method || "POST",
+                            headers: customTool.headers || {}
+                          };
+                          elevenLabsTools.push(webhookTool);
+                        }
+                      }
+                    }
+                  }
+                  
+                  // Add configured webhooks
+                  if (updates.tools.webhooks && Array.isArray(updates.tools.webhooks)) {
+                    for (const webhook of updates.tools.webhooks) {
+                      if (webhook.enabled && webhook.url) {
+                        const webhookTool: any = {
+                          type: "webhook",
+                          name: webhook.name,
+                          description: webhook.description || "",
+                          url: webhook.url,
+                          method: webhook.method || "POST",
+                          headers: webhook.headers || {}
+                        };
+                        elevenLabsTools.push(webhookTool);
+                      }
+                    }
+                  }
+                  
                   // Always send the tools array to ElevenLabs to ensure proper sync
                   // An empty array will clear all tools in ElevenLabs
                   elevenLabsPayload.conversation_config.agent.tools = elevenLabsTools;
@@ -2988,6 +3039,58 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching call log:", error);
       res.status(500).json({ message: "Failed to fetch call log" });
+    }
+  });
+
+  // RAG Search Webhook endpoint for ElevenLabs agents
+  app.post("/api/webhooks/rag-search", async (req, res) => {
+    try {
+      console.log("RAG search webhook received:", JSON.stringify(req.body, null, 2));
+      
+      // Get vector database service
+      const vectorDb = getVectorDatabaseService();
+      
+      // ElevenLabs sends the webhook with this structure:
+      // { message: "user query", agent_id: "...", conversation_id: "..." }
+      const { message, query, agent_id, top_k = 5 } = req.body;
+      const searchQuery = message || query;
+      
+      if (!searchQuery) {
+        return res.json({ 
+          content: "I need a specific question to search the knowledge base. Please provide more details about what you'd like to know."
+        });
+      }
+
+      // Initialize vector database
+      await vectorDb.initialize();
+      
+      // Search the vector database
+      const results = await vectorDb.searchDocuments(searchQuery, top_k);
+      
+      if (results.length === 0) {
+        return res.json({ 
+          content: "I couldn't find any relevant information in the knowledge base about that topic. Could you provide more context or rephrase your question?"
+        });
+      }
+
+      // Format the response for the agent
+      const formattedResults = results.map((result: any, index: number) => {
+        return `Information ${index + 1}: ${result.content}`;
+      }).join('\n\n');
+
+      // ElevenLabs expects a 'content' field in the response
+      const response = {
+        content: formattedResults
+      };
+
+      console.log("RAG search response sent to agent");
+      res.json(response);
+      
+    } catch (error) {
+      console.error("Error in RAG search webhook:", error);
+      res.json({ 
+        content: "I'm having trouble accessing the knowledge base right now. Please try again in a moment."
+      });
     }
   });
 
