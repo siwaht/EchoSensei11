@@ -557,14 +557,27 @@ export default function Playground() {
         bytes[i] = binaryString.charCodeAt(i);
       }
       
-      // Convert PCM to WAV format for playback
-      const pcmData = new Int16Array(bytes.buffer);
+      // Check if we have valid data
+      if (bytes.length === 0 || bytes.length % 2 !== 0) {
+        console.warn('Invalid audio data length:', bytes.length);
+        isPlayingRef.current = false;
+        processAudioQueue();
+        return;
+      }
+      
+      // Convert bytes to Int16Array (PCM 16-bit)
+      const pcmData = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
+      
+      // Create WAV format for playback
       const wavBuffer = createWavFromPcm(pcmData, 16000); // 16kHz sample rate
       
       // Create blob and play
       const blob = new Blob([wavBuffer], { type: 'audio/wav' });
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
+      
+      // Set volume to max
+      audio.volume = 1.0;
       currentAudioRef.current = audio;
       
       // When audio ends, process next in queue
@@ -575,17 +588,27 @@ export default function Playground() {
         processAudioQueue(); // Process next audio in queue
       });
       
-      audio.addEventListener('error', () => {
-        console.error('Audio playback error');
+      audio.addEventListener('error', (e) => {
+        console.error('Audio playback error:', e);
+        URL.revokeObjectURL(audioUrl);
         isPlayingRef.current = false;
         currentAudioRef.current = null;
         processAudioQueue(); // Continue with next audio even on error
       });
       
-      await audio.play();
-      console.log('Playing audio chunk from queue');
+      // Use play() with catch to handle autoplay issues
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          console.log('Playing audio chunk, duration:', audio.duration);
+        }).catch((error) => {
+          console.error('Failed to play audio:', error);
+          isPlayingRef.current = false;
+          processAudioQueue();
+        });
+      }
     } catch (error) {
-      console.error('Error playing audio:', error);
+      console.error('Error processing audio:', error);
       isPlayingRef.current = false;
       processAudioQueue(); // Continue processing queue on error
     }
@@ -618,10 +641,10 @@ export default function Playground() {
     writeString(36, 'data');
     view.setUint32(40, length, true);
     
-    // Copy PCM data
-    const uint8View = new Uint8Array(arrayBuffer, 44);
-    const pcmUint8 = new Uint8Array(pcmData.buffer);
-    uint8View.set(pcmUint8);
+    // Copy PCM data with proper byte order
+    for (let i = 0; i < pcmData.length; i++) {
+      view.setInt16(44 + i * 2, pcmData[i], true); // little-endian
+    }
     
     return arrayBuffer;
   };
