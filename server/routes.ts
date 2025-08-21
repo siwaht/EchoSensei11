@@ -1502,10 +1502,23 @@ export function registerRoutes(app: Express): Server {
                   elevenLabsPayload.conversation_config.agent.first_message = updates.firstMessage;
                 }
                 
+                // Check if RAG tool is enabled and enhance system prompt
+                let enhancedSystemPrompt = updates.systemPrompt || agent.systemPrompt;
+                if (updates.tools?.customTools) {
+                  const ragTool = updates.tools.customTools.find((t: any) => t.type === 'rag' && t.enabled);
+                  if (ragTool) {
+                    const ragInstructions = '\n\nIMPORTANT: When users ask questions about specific people, companies, facts or information, ALWAYS use the "Knowledge Base RAG" tool to search for relevant information first. Call the tool with the query to search the knowledge base.';
+                    if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('Knowledge Base RAG')) {
+                      enhancedSystemPrompt = enhancedSystemPrompt + ragInstructions;
+                      console.log('Enhanced system prompt with RAG instructions');
+                    }
+                  }
+                }
+                
                 // System prompt and language go in the prompt object
-                if (updates.systemPrompt || updates.language) {
+                if (enhancedSystemPrompt || updates.language) {
                   elevenLabsPayload.conversation_config.agent.prompt = {
-                    prompt: updates.systemPrompt || agent.systemPrompt,
+                    prompt: enhancedSystemPrompt,
                     language: updates.language || agent.language
                   };
                 }
@@ -1634,16 +1647,21 @@ export function registerRoutes(app: Express): Server {
                       if (customTool.enabled) {
                         if (customTool.type === 'rag') {
                           // Add RAG tool as a webhook
+                          const webhookUrl = process.env.REPLIT_DEV_DOMAIN 
+                            ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/webhooks/rag-search`
+                            : 'https://voiceai-dashboard.replit.app/api/webhooks/rag-search';
+                          
                           const ragTool: any = {
                             type: "webhook",
                             name: customTool.name || "Knowledge Base RAG",
-                            description: customTool.description || "Search the knowledge base for relevant information",
-                            url: `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000'}/api/webhooks/rag-search`,
+                            description: customTool.description || "When the user asks about information that might be in the knowledge base (like details about people, companies, or documents), search the knowledge base to find relevant information",
+                            url: webhookUrl,
                             method: "POST",
                             headers: {
                               "Content-Type": "application/json"
                             }
                           };
+                          console.log('Adding RAG tool to agent with URL:', webhookUrl);
                           elevenLabsTools.push(ragTool);
                         } else if (customTool.type === 'webhook' && customTool.url) {
                           // Add regular webhooks
@@ -3045,7 +3063,9 @@ export function registerRoutes(app: Express): Server {
   // RAG Search Webhook endpoint for ElevenLabs agents
   app.post("/api/webhooks/rag-search", async (req, res) => {
     try {
-      console.log("RAG search webhook received:", JSON.stringify(req.body, null, 2));
+      console.log("=== RAG WEBHOOK CALLED ===");
+      console.log("Headers:", req.headers);
+      console.log("Body:", JSON.stringify(req.body, null, 2));
       
       // Get vector database service
       const vectorDb = getVectorDatabaseService();
@@ -3054,6 +3074,7 @@ export function registerRoutes(app: Express): Server {
       // { message: "user query", agent_id: "...", conversation_id: "..." }
       const { message, query, agent_id, top_k = 5 } = req.body;
       const searchQuery = message || query;
+      console.log("Search query:", searchQuery);
       
       if (!searchQuery) {
         return res.json({ 

@@ -43,49 +43,38 @@ export class VectorDatabaseService {
       // Create or open the documents table
       const tableNames = await this.connection.tableNames();
       
-      if (!tableNames.includes('documents')) {
-        // Create table with schema
-        this.table = await this.connection.createTable('documents', [
-          {
-            id: 'doc_1',
-            content: 'Initial document',
-            embedding: new Array(1536).fill(0), // OpenAI embedding dimension
-            metadata: {
-              source: 'init',
-              fileType: 'text',
-              pageNumber: 1,
-              agentId: 'init',
-              timestamp: new Date().toISOString()
-            }
-          }
-        ]);
-        // Clear the initial document
-        await this.table.delete('id = "doc_1"');
-      } else {
-        // Drop and recreate the table to avoid schema conflicts
+      if (tableNames.includes('documents')) {
+        // Drop existing table to ensure clean schema
         try {
           await this.connection.dropTable('documents');
+          console.log('Dropped existing documents table');
         } catch (e) {
-          // Table might not exist or be corrupted
+          console.log('Could not drop table:', e);
         }
-        
-        // Recreate with clean schema
-        this.table = await this.connection.createTable('documents', [
-          {
-            id: 'doc_1',
-            content: 'Initial document',
-            embedding: new Array(1536).fill(0),
-            metadata: {
-              source: 'init',
-              fileType: 'text',
-              pageNumber: 1,
-              agentId: 'init',
-              timestamp: new Date().toISOString()
-            }
-          }
-        ]);
-        // Clear the initial document
-        await this.table.delete('id = "doc_1"');
+      }
+      
+      // Create fresh table with proper schema
+      const initialDoc = {
+        id: 'doc_init',
+        content: 'Initial document for schema',
+        embedding: new Array(1536).fill(0), // OpenAI embedding dimension
+        metadata: {
+          source: 'init',
+          fileType: 'text',
+          pageNumber: 1,
+          agentId: 'init',
+          timestamp: new Date().toISOString()
+        }
+      };
+      
+      this.table = await this.connection.createTable('documents', [initialDoc]);
+      console.log('Created new documents table with proper schema');
+      
+      // Clear the initial document
+      try {
+        await this.table.delete('id = "doc_init"');
+      } catch (e) {
+        // Initial doc might not exist
       }
     } catch (error) {
       console.error('Failed to initialize vector database:', error);
@@ -213,31 +202,42 @@ export class VectorDatabaseService {
       throw new Error('Database not initialized');
     }
 
-    const queryEmbedding = await this.generateEmbedding(query);
-    
-    let searchQuery = this.table
-      .vectorSearch(queryEmbedding)
-      .limit(limit);
+    try {
+      const queryEmbedding = await this.generateEmbedding(query);
+      
+      // Perform vector search
+      const results = await this.table
+        .vectorSearch(queryEmbedding)
+        .limit(limit)
+        .toArray();
 
-    // Filter by agentId if provided
-    if (agentId) {
-      searchQuery = searchQuery.where(`metadata.agentId = '${agentId}'`);
-    }
-
-    const results = await (searchQuery as any).execute();
-    
-    const resultArray: any[] = [];
-    for await (const batch of results) {
-      const records = batch.toArray();
-      records.forEach((record: any) => {
-        resultArray.push({
+      return results.map((record: any) => ({
+        content: record.content,
+        metadata: record.metadata,
+        score: record._distance || 0
+      }));
+    } catch (error: any) {
+      console.error('Error searching documents:', error);
+      
+      // If there's no documents or table is empty, return empty array
+      if (error.message?.includes('No vector column found') || 
+          error.message?.includes('empty table')) {
+        return [];
+      }
+      
+      // Try without vector search - just return recent documents
+      try {
+        const allDocs = await this.table.query().limit(limit).toArray();
+        return allDocs.map((record: any) => ({
           content: record.content,
           metadata: record.metadata,
-          score: record._distance || 0
-        });
-      });
+          score: 1.0
+        }));
+      } catch (fallbackError) {
+        console.error('Fallback search also failed:', fallbackError);
+        return [];
+      }
     }
-    return resultArray;
   }
 
   async deleteDocumentsBySource(source: string): Promise<void> {
