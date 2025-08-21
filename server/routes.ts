@@ -1660,7 +1660,7 @@ export function registerRoutes(app: Express): Server {
                             headers: {},
                             query_parameters: [
                               {
-                                name: "query",
+                                identifier: "query",
                                 data_type: "String",
                                 required: true,
                                 value_type: "LLM Prompt",
