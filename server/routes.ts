@@ -824,13 +824,34 @@ export function registerRoutes(app: Express): Server {
             prompt: {
               prompt: {},
               first_message: {}
-            }
+            },
+            first_message: {},
+            tools: {}
           },
           tts: {
-            voice_id: {}
+            voice_id: {},
+            stability: {},
+            similarity_boost: {},
+            style: {},
+            use_speaker_boost: {},
+            optimize_streaming_latency: {},
+            agent_output_audio_format: {}
           },
           conversation: {
             text_only: {}
+          },
+          turn: {
+            mode: {},
+            threshold: {}
+          },
+          asr: {
+            quality: {},
+            provider: {}
+          },
+          llm: {
+            model: {},
+            temperature: {},
+            max_tokens: {}
           }
         }
       };
@@ -1497,20 +1518,41 @@ export function registerRoutes(app: Express): Server {
               }
             }
             
-            // Always add client_config_override to enable overrides by default
+            // Always add client_config_override to enable ALL overrides by default
             elevenLabsPayload.client_config_override = {
               agent: {
                 language: {},
                 prompt: {
                   prompt: {},
                   first_message: {}
-                }
+                },
+                first_message: {},
+                tools: {}
               },
               tts: {
-                voice_id: {}
+                voice_id: {},
+                stability: {},
+                similarity_boost: {},
+                style: {},
+                use_speaker_boost: {},
+                optimize_streaming_latency: {},
+                agent_output_audio_format: {}
               },
               conversation: {
                 text_only: {}
+              },
+              turn: {
+                mode: {},
+                threshold: {}
+              },
+              asr: {
+                quality: {},
+                provider: {}
+              },
+              llm: {
+                model: {},
+                temperature: {},
+                max_tokens: {}
               }
             };
             
@@ -2627,20 +2669,41 @@ export function registerRoutes(app: Express): Server {
               }
             }
 
-            // Always add client_config_override to enable overrides by default
+            // Always add client_config_override to enable ALL overrides by default
             elevenLabsPayload.client_config_override = {
               agent: {
                 language: {},
                 prompt: {
                   prompt: {},
                   first_message: {}
-                }
+                },
+                first_message: {},
+                tools: {}
               },
               tts: {
-                voice_id: {}
+                voice_id: {},
+                stability: {},
+                similarity_boost: {},
+                style: {},
+                use_speaker_boost: {},
+                optimize_streaming_latency: {},
+                agent_output_audio_format: {}
               },
               conversation: {
                 text_only: {}
+              },
+              turn: {
+                mode: {},
+                threshold: {}
+              },
+              asr: {
+                quality: {},
+                provider: {}
+              },
+              llm: {
+                model: {},
+                temperature: {},
+                max_tokens: {}
               }
             };
             
