@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 
 export interface ProcessedDocument {
@@ -68,6 +67,8 @@ export class DocumentProcessor {
 
   private async processPDF(filePath: string): Promise<{ content: string; pageCount: number }> {
     try {
+      // Dynamically import pdf-parse to avoid initialization issues in production
+      const pdf = (await import('pdf-parse')).default;
       const dataBuffer = fs.readFileSync(filePath);
       const data = await pdf(dataBuffer);
       return {
@@ -172,6 +173,8 @@ export class DocumentProcessor {
 
     switch (ext) {
       case '.pdf':
+        // Dynamically import pdf-parse to avoid initialization issues in production
+        const pdf = (await import('pdf-parse')).default;
         const data = await pdf(buffer);
         content = data.text;
         pageCount = data.numpages;
