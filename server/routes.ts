@@ -1148,9 +1148,9 @@ export function registerRoutes(app: Express): Server {
             };
             
             if (existingAgent) {
-              // Update existing agent with latest data from ElevenLabs
-              const updated = await storage.updateAgent(existingAgent.id, user.organizationId, agentData);
-              syncedAgents.push(updated);
+              // Don't overwrite existing agent data - keep local data as source of truth
+              // Just add the existing agent to the synced list without updating
+              syncedAgents.push(existingAgent);
             } else {
               // Create new agent that exists in ElevenLabs but not locally
               const created = await storage.createAgent(agentData);
@@ -1204,130 +1204,9 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "Agent not found" });
       }
 
-      // If agent has ElevenLabs ID, sync with latest data
-      if (agent.elevenLabsAgentId) {
-        const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
-        if (integration && integration.apiKey) {
-          try {
-            const decryptedKey = decryptApiKey(integration.apiKey);
-            
-            // Fetch latest agent data from ElevenLabs
-            const elevenLabsAgent = await callElevenLabsAPI(
-              decryptedKey,
-              `/v1/convai/agents/${agent.elevenLabsAgentId}`,
-              "GET"
-            );
-            
-            // Parse and update agent configuration
-            const conversationConfig = elevenLabsAgent.conversation_config || {};
-            const agentConfig = conversationConfig.agent || {};
-            const promptConfig = agentConfig.prompt || {};
-            const ttsConfig = conversationConfig.tts || {};
-            const llmConfig = conversationConfig.llm || {};
-            
-            // Parse tools from ElevenLabs format
-            const tools: any = {
-              systemTools: {},
-              webhooks: [],
-              integrations: [],
-              customTools: [],
-              toolIds: []
-            };
-            
-            if (agentConfig.tools && Array.isArray(agentConfig.tools)) {
-              for (const tool of agentConfig.tools) {
-                if (tool.type === 'system') {
-                  switch (tool.name) {
-                    case 'end_call':
-                      tools.systemTools.endCall = {
-                        enabled: true,
-                        description: tool.description || "Allows agent to end the call"
-                      };
-                      break;
-                    case 'language_detection':
-                      tools.systemTools.detectLanguage = {
-                        enabled: true,
-                        description: tool.description || "Automatically detect and switch languages",
-                        supportedLanguages: tool.config?.supported_languages || []
-                      };
-                      break;
-                    case 'skip_turn':
-                      tools.systemTools.skipTurn = {
-                        enabled: true,
-                        description: tool.description || "Skip agent turn when user needs a moment"
-                      };
-                      break;
-                    case 'transfer_to_agent':
-                      tools.systemTools.transferToAgent = {
-                        enabled: true,
-                        description: tool.description || "Transfer to another AI agent",
-                        targetAgentId: tool.config?.target_agent_id || ""
-                      };
-                      break;
-                    case 'transfer_to_number':
-                      tools.systemTools.transferToNumber = {
-                        enabled: true,
-                        description: tool.description || "Transfer to human operator",
-                        phoneNumbers: tool.config?.phone_numbers || []
-                      };
-                      break;
-                    case 'play_dtmf':
-                      tools.systemTools.playKeypadTone = {
-                        enabled: true,
-                        description: tool.description || "Play keypad touch tones"
-                      };
-                      break;
-                    case 'voicemail_detection':
-                      tools.systemTools.voicemailDetection = {
-                        enabled: true,
-                        description: tool.description || "Detect voicemail systems",
-                        leaveMessage: tool.config?.leave_message || false,
-                        messageContent: tool.config?.message_content || ""
-                      };
-                      break;
-                  }
-                }
-              }
-            }
-            
-            // Update local agent with synced data
-            const updates = {
-              name: elevenLabsAgent.name || agent.name,
-              firstMessage: promptConfig.first_message || agentConfig.first_message || agent.firstMessage,
-              systemPrompt: promptConfig.prompt || agent.systemPrompt,
-              language: promptConfig.language || agentConfig.language || agent.language,
-              voiceId: ttsConfig.voice_id || agent.voiceId,
-              voiceSettings: {
-                stability: ttsConfig.stability ?? agent.voiceSettings?.stability ?? 0.5,
-                similarityBoost: ttsConfig.similarity_boost ?? agent.voiceSettings?.similarityBoost ?? 0.75,
-                style: ttsConfig.style ?? agent.voiceSettings?.style ?? 0,
-                useSpeakerBoost: ttsConfig.use_speaker_boost ?? agent.voiceSettings?.useSpeakerBoost ?? true
-              },
-              llmSettings: llmConfig.model ? {
-                model: llmConfig.model,
-                temperature: llmConfig.temperature ?? 0.7,
-                maxTokens: llmConfig.max_tokens ?? 150
-              } : agent.llmSettings,
-              tools: tools,
-              dynamicVariables: agentConfig.dynamic_variables || agent.dynamicVariables || {},
-              lastSynced: new Date()
-            };
-            
-            const updatedAgent = await storage.updateAgent(agentId, user.organizationId, updates);
-            res.json(updatedAgent);
-          } catch (syncError) {
-            console.error("Error syncing agent with ElevenLabs:", syncError);
-            // Return local data if sync fails
-            res.json(agent);
-          }
-        } else {
-          // No integration, return local data
-          res.json(agent);
-        }
-      } else {
-        // No ElevenLabs ID, return local data
-        res.json(agent);
-      }
+      // Don't sync from ElevenLabs - keep local data as source of truth
+      // Just return the local agent data
+      res.json(agent);
     } catch (error) {
       console.error("Error fetching agent:", error);
       res.status(500).json({ message: "Failed to fetch agent" });
