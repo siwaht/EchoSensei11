@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Phone, Plus, ChevronDown, Trash2, Edit, Globe, Server } from "lucide-react";
+import { Phone, Plus, ChevronDown, Trash2, Edit, Globe, Server, CheckCircle } from "lucide-react";
 import type { PhoneNumber, InsertPhoneNumber } from "@shared/schema";
 
 const countryCodes = [
@@ -34,6 +34,7 @@ export default function PhoneNumbers() {
   const [phoneToDelete, setPhoneToDelete] = useState<PhoneNumber | null>(null);
   const [phoneToEdit, setPhoneToEdit] = useState<PhoneNumber | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<InsertPhoneNumber>>({
     label: "",
     phoneNumber: "",
@@ -161,6 +162,37 @@ export default function PhoneNumbers() {
 
     createPhoneNumber.mutate(dataToSubmit);
   };
+  
+  // Verify phone number mutation
+  const verifyPhoneNumber = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("POST", `/api/phone-numbers/${id}/verify`);
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/phone-numbers"] });
+      setVerifyingId(null);
+      if (data?.status === "active") {
+        toast({
+          title: "Phone number verified",
+          description: "Your phone number has been successfully verified and activated.",
+        });
+      } else {
+        toast({
+          title: "Verification failed", 
+          description: data?.message || "Unable to verify phone number. Please check your credentials.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: any) => {
+      setVerifyingId(null);
+      toast({
+        title: "Verification failed",
+        description: error.message || "Failed to verify phone number",
+        variant: "destructive",
+      });
+    },
+  });
   
   const handleEdit = () => {
     if (!phoneToEdit) return;
@@ -340,10 +372,32 @@ export default function PhoneNumbers() {
               </div>
 
               <div className="flex gap-2 mt-4 pt-4 border-t">
+                {phone.status === "pending" && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      setVerifyingId(phone.id);
+                      verifyPhoneNumber.mutate(phone.id);
+                    }}
+                    disabled={verifyingId === phone.id}
+                    data-testid={`button-verify-${phone.id}`}
+                  >
+                    {verifyingId === phone.id ? (
+                      <>Verifying...</>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Verify
+                      </>
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1"
+                  className={phone.status === "pending" ? "" : "flex-1"}
                   onClick={() => {
                     setPhoneToEdit(phone);
                     setEditFormData({

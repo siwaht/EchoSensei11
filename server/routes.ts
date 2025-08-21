@@ -1046,7 +1046,13 @@ export function registerRoutes(app: Express): Server {
         phoneNumberData.sipPassword = encryptApiKey(phoneNumberData.sipPassword);
       }
 
-      // Sync with ElevenLabs if integration exists
+      // Create phone number first (following Vapi/Synthflow pattern)
+      // Set initial status to pending for validation
+      phoneNumberData.status = "pending";
+      const phoneNumber = await storage.createPhoneNumber(phoneNumberData);
+      
+      // Then attempt to sync with ElevenLabs if integration exists
+      // This is a non-blocking validation step
       const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
       if (integration && integration.apiKey) {
         try {
@@ -1090,17 +1096,22 @@ export function registerRoutes(app: Express): Server {
           );
 
           if (response.phone_id) {
-            phoneNumberData.elevenLabsPhoneId = response.phone_id;
-            phoneNumberData.status = "active";
-            phoneNumberData.lastSynced = new Date();
+            // Update the phone number status to active after successful sync
+            await storage.updatePhoneNumber(phoneNumber.id, user.organizationId, {
+              elevenLabsPhoneId: response.phone_id,
+              status: "active",
+              lastSynced: new Date()
+            });
+            phoneNumber.elevenLabsPhoneId = response.phone_id;
+            phoneNumber.status = "active";
+            phoneNumber.lastSynced = new Date();
           }
-        } catch (elevenLabsError) {
-          console.error("Error syncing phone number with ElevenLabs:", elevenLabsError);
-          // Continue with local creation even if sync fails
+        } catch (elevenLabsError: any) {
+          console.error("Warning: Could not validate with ElevenLabs:", elevenLabsError.message);
+          // Phone number remains in pending status - user can fix credentials later
+          // This follows the Vapi/Synthflow pattern of allowing import without immediate validation
         }
       }
-
-      const phoneNumber = await storage.createPhoneNumber(phoneNumberData);
       res.json(phoneNumber);
     } catch (error) {
       console.error("Error creating phone number:", error);
@@ -1132,6 +1143,117 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error updating phone number:", error);
       res.status(500).json({ message: "Failed to update phone number" });
+    }
+  });
+  
+  // Verify phone number with ElevenLabs
+  app.post("/api/phone-numbers/:id/verify", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { id } = req.params;
+      const phoneNumber = await storage.getPhoneNumber(id, user.organizationId);
+      
+      if (!phoneNumber) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+      
+      // Try to sync with ElevenLabs
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ 
+          message: "ElevenLabs integration not configured. Please add your ElevenLabs API key in the integrations section.",
+          status: "pending" 
+        });
+      }
+      
+      try {
+        const decryptedKey = decryptApiKey(integration.apiKey);
+        
+        // Format phone number for ElevenLabs in E.164 format
+        const cleanPhoneNumber = phoneNumber.phoneNumber.replace(/\D/g, '');
+        const rawCountryCode = phoneNumber.countryCode || '+1';
+        const countryCode = rawCountryCode.startsWith('+') ? rawCountryCode : '+' + rawCountryCode;
+        const formattedPhoneNumber = countryCode + cleanPhoneNumber;
+        
+        // Create phone number in ElevenLabs
+        const elevenLabsPayload: any = {
+          label: phoneNumber.label,
+          phone_number: formattedPhoneNumber,
+        };
+
+        if (phoneNumber.provider === "twilio") {
+          if (!phoneNumber.twilioAccountSid || !phoneNumber.twilioAuthToken) {
+            return res.status(400).json({ 
+              message: "Twilio credentials are missing. Please edit the phone number to add your Twilio Account SID and Auth Token.",
+              status: "pending" 
+            });
+          }
+          
+          elevenLabsPayload.provider = "twilio";
+          elevenLabsPayload.sid = phoneNumber.twilioAccountSid;
+          const decryptedToken = decryptApiKey(phoneNumber.twilioAuthToken);
+          elevenLabsPayload.token = decryptedToken;
+        } else if (phoneNumber.provider === "sip_trunk") {
+          elevenLabsPayload.provider = "sip";
+          if (phoneNumber.sipTrunkUri) {
+            elevenLabsPayload.sip_uri = phoneNumber.sipTrunkUri;
+          }
+        }
+
+        const response = await callElevenLabsAPI(
+          decryptedKey,
+          "/v1/convai/phone-numbers",
+          "POST",
+          elevenLabsPayload
+        );
+
+        if (response.phone_id) {
+          // Update the phone number status to active after successful sync
+          await storage.updatePhoneNumber(phoneNumber.id, user.organizationId, {
+            elevenLabsPhoneId: response.phone_id,
+            status: "active",
+            lastSynced: new Date()
+          });
+          
+          res.json({ 
+            status: "active",
+            message: "Phone number successfully verified and activated",
+            elevenLabsPhoneId: response.phone_id 
+          });
+        } else {
+          res.json({ 
+            status: "pending",
+            message: "Verification completed but phone number not activated. Please check your credentials." 
+          });
+        }
+      } catch (elevenLabsError: any) {
+        console.error("ElevenLabs verification error:", elevenLabsError.message);
+        
+        // Parse error message for specific issues
+        let errorMessage = "Unable to verify phone number with ElevenLabs.";
+        if (elevenLabsError.message?.includes("Twilio") || elevenLabsError.message?.includes("Authenticate")) {
+          errorMessage = "Invalid Twilio credentials. Please verify your Account SID and Auth Token are correct.";
+        } else if (elevenLabsError.message?.includes("already exists")) {
+          errorMessage = "This phone number is already registered with ElevenLabs.";
+        }
+        
+        res.json({ 
+          status: "pending",
+          message: errorMessage,
+          error: elevenLabsError.message 
+        });
+      }
+    } catch (error: any) {
+      console.error("Error verifying phone number:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to verify phone number",
+        status: "pending" 
+      });
     }
   });
 
