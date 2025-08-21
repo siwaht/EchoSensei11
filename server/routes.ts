@@ -1507,17 +1507,20 @@ export function registerRoutes(app: Express): Server {
                 if (updates.tools?.customTools) {
                   const ragTool = updates.tools.customTools.find((t: any) => t.type === 'rag' && t.enabled);
                   if (ragTool) {
-                    const ragInstructions = '\n\nIMPORTANT TOOL USAGE INSTRUCTIONS:\n' +
-                      '1. When users ask about specific people, companies, facts or information, use the "Knowledge Base RAG" tool\n' +
-                      '2. DO NOT speak your planning or thought process out loud\n' +
-                      '3. DO NOT narrate that you are searching or using tools\n' +
-                      '4. Simply call the tool silently and respond with the information you find\n' +
-                      '5. If the tool returns no results, politely say you don\'t have that information\n' +
-                      '6. NEVER say things like "Let me search for that" or "I\'m using the knowledge base tool"\n' +
-                      '7. Just use the tool and respond naturally with the answer';
-                    if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('TOOL USAGE INSTRUCTIONS')) {
+                    const ragInstructions = '\n\nIMPORTANT: You have access to a "Knowledge Base RAG" webhook tool that searches a knowledge base for information.\n\n' +
+                      'CRITICAL RULES FOR USING WEBHOOK TOOLS:\n' +
+                      '1. When users ask about specific people, companies, facts or any information, use the Knowledge Base RAG webhook tool\n' +
+                      '2. DO NOT output any code blocks or tool_code syntax\n' +
+                      '3. DO NOT speak your thought process, planning, or tool usage out loud\n' +
+                      '4. DO NOT say "Let me search" or "I\'m looking that up" or similar phrases\n' +
+                      '5. Simply invoke the webhook tool internally and use the response to answer\n' +
+                      '6. The webhook will automatically extract the search query from the conversation\n' +
+                      '7. Respond naturally with the information returned by the webhook\n' +
+                      '8. If the webhook returns no results, say you don\'t have that information\n' +
+                      '9. NEVER expose the webhook response format or structure to the user';
+                    if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('WEBHOOK TOOLS')) {
                       enhancedSystemPrompt = enhancedSystemPrompt + ragInstructions;
-                      console.log('Enhanced system prompt with RAG instructions');
+                      console.log('Enhanced system prompt with webhook RAG instructions');
                     }
                   }
                 }
@@ -1660,8 +1663,8 @@ export function registerRoutes(app: Express): Server {
                           
                           const ragTool: any = {
                             type: "webhook",
-                            name: customTool.name || "Knowledge Base RAG",
-                            description: customTool.description || "When the user asks about information that might be in the knowledge base (like details about people, companies, or documents), search the knowledge base to find relevant information",
+                            name: customTool.name || "knowledge_base_rag",
+                            description: "Use this webhook tool to search the knowledge base when users ask about any information, people, companies, facts, or documents. This tool will search and return relevant information.",
                             url: webhookUrl,
                             method: "GET",
                             headers: {},
@@ -1671,7 +1674,7 @@ export function registerRoutes(app: Express): Server {
                                 data_type: "String",
                                 required: true,
                                 value_type: "LLM Prompt",
-                                description: "This field will be passed to the LLM and should describe in detail how to extract the data from the transcript. Extract the search query from the user's question. This should be the key information, person, company, topic or fact the user is asking about. For example, if the user asks 'Who is John?' extract 'John'. If they ask 'Tell me about the company policy' extract 'company policy'."
+                                description: "Extract the main search term or question from what the user is asking about. If user asks 'Who is John?' extract 'John'. If user asks 'Tell me about the company policy' extract 'company policy'. If user asks 'What products do you sell?' extract 'products'. Always extract the key topic, person, or thing being asked about."
                               }
                             ]
                           };
