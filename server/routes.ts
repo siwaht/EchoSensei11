@@ -1507,8 +1507,15 @@ export function registerRoutes(app: Express): Server {
                 if (updates.tools?.customTools) {
                   const ragTool = updates.tools.customTools.find((t: any) => t.type === 'rag' && t.enabled);
                   if (ragTool) {
-                    const ragInstructions = '\n\nIMPORTANT: When users ask questions about specific people, companies, facts or information, ALWAYS use the "Knowledge Base RAG" tool to search for relevant information first. The tool will extract the search query from the conversation and return relevant information from the knowledge base.';
-                    if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('Knowledge Base RAG')) {
+                    const ragInstructions = '\n\nIMPORTANT TOOL USAGE INSTRUCTIONS:\n' +
+                      '1. When users ask about specific people, companies, facts or information, use the "Knowledge Base RAG" tool\n' +
+                      '2. DO NOT speak your planning or thought process out loud\n' +
+                      '3. DO NOT narrate that you are searching or using tools\n' +
+                      '4. Simply call the tool silently and respond with the information you find\n' +
+                      '5. If the tool returns no results, politely say you don\'t have that information\n' +
+                      '6. NEVER say things like "Let me search for that" or "I\'m using the knowledge base tool"\n' +
+                      '7. Just use the tool and respond naturally with the answer';
+                    if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('TOOL USAGE INSTRUCTIONS')) {
                       enhancedSystemPrompt = enhancedSystemPrompt + ragInstructions;
                       console.log('Enhanced system prompt with RAG instructions');
                     }
