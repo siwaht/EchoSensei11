@@ -79,35 +79,6 @@ interface RAGToolConfig {
   }>;
 }
 
-interface MCPServerConfig {
-  enabled: boolean;
-  apiKey?: string;
-  basePath?: string;
-  deploymentType: 'docker' | 'uvx' | 'pip';
-  approvalMode: 'always_ask' | 'fine_grained' | 'no_approval';
-  enabledTools: {
-    textToSpeech: boolean;
-    speechToSpeech: boolean;
-    voiceCloning: boolean;
-    voiceDesign: boolean;
-    audioTranscription: boolean;
-    audioIsolation: boolean;
-    conversationalAgents: boolean;
-    outboundCalls: boolean;
-  };
-  voiceSettings?: {
-    defaultVoiceId?: string;
-    stability?: number;
-    similarityBoost?: number;
-    style?: number;
-  };
-  agentSettings?: {
-    defaultAgentId?: string;
-    maxCallDuration?: number;
-    enableRecording?: boolean;
-  };
-}
-
 export default function Tools() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -165,34 +136,6 @@ export default function Tools() {
       systemPrompt: '',
       knowledgeBases: [],
     } as RAGToolConfig,
-    mcpServer: {
-      enabled: false,
-      apiKey: '',
-      basePath: '',
-      deploymentType: 'docker' as 'docker' | 'uvx' | 'pip',
-      approvalMode: 'always_ask' as 'always_ask' | 'fine_grained' | 'no_approval',
-      enabledTools: {
-        textToSpeech: true,
-        speechToSpeech: true,
-        voiceCloning: true,
-        voiceDesign: true,
-        audioTranscription: true,
-        audioIsolation: true,
-        conversationalAgents: true,
-        outboundCalls: false,
-      },
-      voiceSettings: {
-        defaultVoiceId: '',
-        stability: 0.5,
-        similarityBoost: 0.75,
-        style: 0,
-      },
-      agentSettings: {
-        defaultAgentId: '',
-        maxCallDuration: 300,
-        enableRecording: true,
-      },
-    } as MCPServerConfig,
   });
 
   // Load agent's tools configuration when agent is selected
@@ -202,7 +145,6 @@ export default function Tools() {
       const googleSheetsIntegration = tools.integrations?.find((i: any) => i.type === 'google-sheets');
       const googleCalendarIntegration = tools.integrations?.find((i: any) => i.type === 'google-calendar');
       const ragToolConfig = tools.customTools?.find((t: any) => t.type === 'rag');
-      const mcpServerConfig = tools.customTools?.find((t: any) => t.type === 'mcp-server');
       
       setToolsConfig({
         systemTools: tools.systemTools || {
@@ -240,34 +182,6 @@ export default function Tools() {
           temperature: 0.7,
           systemPrompt: '',
           knowledgeBases: [],
-        },
-        mcpServer: mcpServerConfig?.configuration || {
-          enabled: false,
-          apiKey: '',
-          basePath: '',
-          deploymentType: 'docker',
-          approvalMode: 'always_ask',
-          enabledTools: {
-            textToSpeech: true,
-            speechToSpeech: true,
-            voiceCloning: true,
-            voiceDesign: true,
-            audioTranscription: true,
-            audioIsolation: true,
-            conversationalAgents: true,
-            outboundCalls: false,
-          },
-          voiceSettings: {
-            defaultVoiceId: '',
-            stability: 0.5,
-            similarityBoost: 0.75,
-            style: 0,
-          },
-          agentSettings: {
-            defaultAgentId: '',
-            maxCallDuration: 300,
-            enableRecording: true,
-          },
         },
       });
     }
@@ -334,7 +248,7 @@ export default function Tools() {
     }
 
     // Build custom tools array
-    const customTools = [...toolsConfig.customTools.filter(t => t.type !== 'rag' && t.type !== 'mcp-server')];
+    const customTools = [...toolsConfig.customTools.filter(t => t.type !== 'rag')];
     
     // Add RAG tool if configured
     if (toolsConfig.ragTool.enabled) {
@@ -343,17 +257,6 @@ export default function Tools() {
         name: toolsConfig.ragTool.name,
         type: 'rag',
         configuration: toolsConfig.ragTool,
-        enabled: true,
-      });
-    }
-    
-    // Add MCP Server if configured
-    if (toolsConfig.mcpServer.enabled) {
-      customTools.push({
-        id: 'mcp-server',
-        name: 'ElevenLabs MCP Server',
-        type: 'mcp-server',
-        configuration: toolsConfig.mcpServer,
         enabled: true,
       });
     }
