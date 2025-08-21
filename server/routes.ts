@@ -920,7 +920,39 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "Agent not found" });
       }
 
-      // Delete the agent
+      // Delete from ElevenLabs first if the agent is synced
+      if (agent.elevenLabsAgentId) {
+        const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+        if (integration && integration.apiKey) {
+          try {
+            const decryptedKey = decryptApiKey(integration.apiKey);
+            
+            console.log(`Deleting agent from ElevenLabs: ${agent.elevenLabsAgentId}`);
+            
+            // Call ElevenLabs API to delete the agent
+            const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
+              method: "DELETE",
+              headers: {
+                "xi-api-key": decryptedKey,
+              }
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`Failed to delete agent from ElevenLabs: ${response.status} - ${errorText}`);
+              // Don't fail the entire operation if ElevenLabs deletion fails
+              // The user may want to remove it from their dashboard anyway
+            } else {
+              console.log(`Successfully deleted agent ${agent.elevenLabsAgentId} from ElevenLabs`);
+            }
+          } catch (elevenLabsError) {
+            console.error("Error deleting agent from ElevenLabs:", elevenLabsError);
+            // Continue with local deletion even if ElevenLabs deletion fails
+          }
+        }
+      }
+
+      // Delete the agent from local database
       await storage.deleteAgent(agentId, user.organizationId);
       
       res.json({ message: "Agent deleted successfully" });
