@@ -347,63 +347,69 @@ export default function PhoneNumbers() {
           {phoneNumbers.map((phone) => (
             <Card key={phone.id} className="p-6">
               <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Phone className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium" data-testid={`text-phone-label-${phone.id}`}>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="font-medium text-lg" data-testid={`text-phone-label-${phone.id}`}>
                       {phone.label}
                     </h3>
-                    <p className="text-sm text-gray-500" data-testid={`text-phone-number-${phone.id}`}>
+                    <Badge variant={phone.status === "active" ? "default" : "secondary"}>
+                      {phone.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Phone className="w-4 h-4" />
+                    <span data-testid={`text-phone-number-${phone.id}`}>
                       {phone.countryCode} {phone.phoneNumber}
-                    </p>
+                    </span>
                   </div>
                 </div>
-                <Badge variant={phone.status === "active" ? "default" : "secondary"}>
-                  {phone.status}
-                </Badge>
               </div>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-x-2">
                   <span className="text-gray-500">Provider:</span>
-                  <span className="font-medium capitalize">
-                    {phone.provider === "sip_trunk" ? "SIP Trunk" : phone.provider}
+                  <span className="font-medium capitalize text-right">
+                    {phone.provider === "sip_trunk" ? "SIP Trunk" : phone.provider === "twilio" ? "Twilio" : phone.provider}
                   </span>
                 </div>
                 {phone.twilioAccountSid && (
-                  <div className="flex justify-between">
+                  <div className="grid grid-cols-2 gap-x-2">
                     <span className="text-gray-500">Twilio SID:</span>
-                    <span className="font-mono text-xs">{phone.twilioAccountSid.slice(0, 10)}...</span>
+                    <span className="font-mono text-xs text-right truncate" title={phone.twilioAccountSid}>
+                      {phone.twilioAccountSid.slice(0, 10)}...
+                    </span>
                   </div>
                 )}
                 {phone.sipTrunkUri && (
-                  <div className="flex justify-between">
+                  <div className="grid grid-cols-2 gap-x-2">
                     <span className="text-gray-500">SIP URI:</span>
-                    <span className="font-mono text-xs truncate max-w-[150px]">{phone.sipTrunkUri}</span>
+                    <span className="font-mono text-xs text-right truncate" title={phone.sipTrunkUri}>
+                      {phone.sipTrunkUri}
+                    </span>
                   </div>
                 )}
                 {phone.lastSynced && (
-                  <div className="flex justify-between">
+                  <div className="grid grid-cols-2 gap-x-2">
                     <span className="text-gray-500">Last synced:</span>
-                    <span>{new Date(phone.lastSynced).toLocaleDateString()}</span>
+                    <span className="text-right">
+                      {new Date(phone.lastSynced).toLocaleDateString()}
+                    </span>
                   </div>
                 )}
               </div>
 
               {/* Agent Assignment */}
               <div className="mt-4 pt-4 border-t">
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-sm flex items-center gap-1">
-                    <User className="w-3 h-3" />
-                    Assigned Agent
-                  </Label>
-                  {phone.agentId && (
-                    <Badge variant="outline" className="text-xs">
-                      {agents.find((a: any) => a.id === phone.agentId)?.name || "Unknown"}
-                    </Badge>
-                  )}
+                <div className="mb-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      Assigned Agent
+                    </Label>
+                    <span className="text-sm text-gray-500">
+                      {phone.agentId ? agents.find((a: any) => a.id === phone.agentId)?.name || "Unknown" : "Unknown"}
+                    </span>
+                  </div>
                 </div>
                 <Select
                   value={phone.agentId || "none"}
