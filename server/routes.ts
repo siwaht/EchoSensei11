@@ -1645,7 +1645,7 @@ export function registerRoutes(app: Express): Server {
                   language: updates.language !== undefined ? updates.language : (agent.language || "en")
                 },
                 turn: {
-                  mode: "simultaneous",
+                  mode: "turn",
                   threshold: 0.5
                 },
                 asr: {
