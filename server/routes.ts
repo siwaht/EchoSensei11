@@ -773,7 +773,7 @@ export function registerRoutes(app: Express): Server {
       
       const elevenLabsResponse = await callElevenLabsAPI(
         apiKey,
-        "/v1/convai/agents",
+        "/v1/convai/agents/create",
         "POST",
         agentPayload
       );
