@@ -1656,10 +1656,17 @@ export function registerRoutes(app: Express): Server {
                             name: customTool.name || "Knowledge Base RAG",
                             description: customTool.description || "When the user asks about information that might be in the knowledge base (like details about people, companies, or documents), search the knowledge base to find relevant information",
                             url: webhookUrl,
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json"
-                            }
+                            method: "GET",
+                            headers: {},
+                            query_parameters: [
+                              {
+                                name: "query",
+                                type: "string",
+                                required: true,
+                                value_type: "llm_prompt",
+                                description: "Extract the search query from the user's question. This should be the key information, person, company, topic or fact the user is asking about. For example, if the user asks 'Who is John?' extract 'John'. If they ask 'Tell me about the company policy' extract 'company policy'."
+                              }
+                            ]
                           };
                           console.log('Adding RAG tool to agent with URL:', webhookUrl);
                           elevenLabsTools.push(ragTool);
@@ -3061,20 +3068,35 @@ export function registerRoutes(app: Express): Server {
   });
 
   // RAG Search Webhook endpoint for ElevenLabs agents
-  app.post("/api/webhooks/rag-search", async (req, res) => {
+  // According to ElevenLabs docs, webhook tools use GET with query parameters
+  const handleRagSearch = async (req: any, res: any) => {
     try {
       console.log("=== RAG WEBHOOK CALLED ===");
+      console.log("Method:", req.method);
       console.log("Headers:", req.headers);
-      console.log("Body:", JSON.stringify(req.body, null, 2));
+      console.log("Query Parameters:", req.query);
+      console.log("Body:", req.body);
       
       // Get vector database service
       const vectorDb = getVectorDatabaseService();
       
-      // ElevenLabs sends the webhook with this structure:
-      // { message: "user query", agent_id: "...", conversation_id: "..." }
-      const { message, query, agent_id, top_k = 5 } = req.body;
-      const searchQuery = message || query;
+      // Handle both GET (query params) and POST (body) for compatibility
+      let searchQuery: string;
+      let top_k: number = 5;
+      
+      if (req.method === 'GET') {
+        // ElevenLabs standard: query parameters
+        searchQuery = req.query.query as string;
+        top_k = parseInt(req.query.top_k as string) || 5;
+      } else {
+        // Fallback for POST requests
+        const { message, query } = req.body;
+        searchQuery = message || query;
+        top_k = req.body.top_k || 5;
+      }
+      
       console.log("Search query:", searchQuery);
+      console.log("Top K:", top_k);
       
       if (!searchQuery) {
         return res.json({ 
@@ -3096,7 +3118,7 @@ export function registerRoutes(app: Express): Server {
 
       // Format the response for the agent
       const formattedResults = results.map((result: any, index: number) => {
-        return `Information ${index + 1}: ${result.content}`;
+        return `[Source ${index + 1}]: ${result.content}`;
       }).join('\n\n');
 
       // ElevenLabs expects a 'content' field in the response
@@ -3104,7 +3126,7 @@ export function registerRoutes(app: Express): Server {
         content: formattedResults
       };
 
-      console.log("RAG search response sent to agent");
+      console.log(`RAG search found ${results.length} results`);
       res.json(response);
       
     } catch (error) {
@@ -3113,7 +3135,11 @@ export function registerRoutes(app: Express): Server {
         content: "I'm having trouble accessing the knowledge base right now. Please try again in a moment."
       });
     }
-  });
+  };
+
+  // Support both GET (ElevenLabs standard) and POST (backward compatibility)
+  app.get("/api/webhooks/rag-search", handleRagSearch);
+  app.post("/api/webhooks/rag-search", handleRagSearch);
 
   // Webhook endpoint for VoiceAI callbacks (new endpoint)
   app.post("/api/webhooks/voiceai", async (req, res) => {
