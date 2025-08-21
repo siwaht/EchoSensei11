@@ -1386,8 +1386,10 @@ export function registerRoutes(app: Express): Server {
                   const elevenLabsTools: any[] = [];
                   const systemTools = updates.tools.systemTools || {};
                   
-                  // Convert system tools to ElevenLabs format
-                  if (systemTools.endCall?.enabled) {
+                  // IMPORTANT: Only add tools that are explicitly enabled
+                  // ElevenLabs interprets the presence of a tool in the array as enabling it
+                  
+                  if (systemTools.endCall?.enabled === true) {
                     elevenLabsTools.push({
                       type: "system",
                       name: "end_call",
@@ -1395,7 +1397,7 @@ export function registerRoutes(app: Express): Server {
                     });
                   }
                   
-                  if (systemTools.detectLanguage?.enabled) {
+                  if (systemTools.detectLanguage?.enabled === true) {
                     elevenLabsTools.push({
                       type: "system",
                       name: "language_detection",
@@ -1406,7 +1408,7 @@ export function registerRoutes(app: Express): Server {
                     });
                   }
                   
-                  if (systemTools.skipTurn?.enabled) {
+                  if (systemTools.skipTurn?.enabled === true) {
                     elevenLabsTools.push({
                       type: "system",
                       name: "skip_turn",
@@ -1414,7 +1416,7 @@ export function registerRoutes(app: Express): Server {
                     });
                   }
                   
-                  if (systemTools.transferToAgent?.enabled) {
+                  if (systemTools.transferToAgent?.enabled === true) {
                     elevenLabsTools.push({
                       type: "system",
                       name: "transfer_to_agent",
@@ -1425,7 +1427,7 @@ export function registerRoutes(app: Express): Server {
                     });
                   }
                   
-                  if (systemTools.transferToNumber?.enabled) {
+                  if (systemTools.transferToNumber?.enabled === true) {
                     elevenLabsTools.push({
                       type: "system",
                       name: "transfer_to_number",
@@ -1436,7 +1438,7 @@ export function registerRoutes(app: Express): Server {
                     });
                   }
                   
-                  if (systemTools.playKeypadTone?.enabled) {
+                  if (systemTools.playKeypadTone?.enabled === true) {
                     elevenLabsTools.push({
                       type: "system",
                       name: "play_dtmf",
@@ -1444,7 +1446,7 @@ export function registerRoutes(app: Express): Server {
                     });
                   }
                   
-                  if (systemTools.voicemailDetection?.enabled) {
+                  if (systemTools.voicemailDetection?.enabled === true) {
                     elevenLabsTools.push({
                       type: "system",
                       name: "voicemail_detection",
@@ -1457,7 +1459,7 @@ export function registerRoutes(app: Express): Server {
                   }
                   
                   // Always send the tools array to ElevenLabs to ensure proper sync
-                  // Even if empty, this will clear all tools in ElevenLabs
+                  // An empty array will clear all tools in ElevenLabs
                   elevenLabsPayload.conversation_config.agent.tools = elevenLabsTools;
                 }
               }
