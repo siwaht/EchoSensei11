@@ -731,20 +731,41 @@ export function registerRoutes(app: Express): Server {
 
       const apiKey = decryptApiKey(integration.apiKey);
       
-      // Create agent on ElevenLabs
+      // Create agent on ElevenLabs with complete configuration override
       const agentPayload: any = {
         name,
         conversation_config: {
           agent: {
             prompt: {
-              prompt: systemPrompt
+              prompt: systemPrompt,
+              first_message: firstMessage,
+              language: language || "en"
             },
             first_message: firstMessage,
             language: language || "en"
           },
-          tts: voiceId ? {
-            voice_id: voiceId
-          } : undefined
+          tts: {
+            voice_id: voiceId || "21m00Tcm4TlvDq8ikWAM", // Default to Rachel voice if not specified
+            agent_output_audio_format: "pcm_16000",
+            optimize_streaming_latency: 3,
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0,
+            use_speaker_boost: true
+          },
+          turn: {
+            mode: "simultaneous",
+            threshold: 0.5
+          },
+          asr: {
+            quality: "high",
+            provider: "elevenlabs"
+          }
+        },
+        platform_settings: {
+          auth: {
+            mode: "open" // Allow all calls without authentication
+          }
         }
       };
 
@@ -1610,16 +1631,31 @@ export function registerRoutes(app: Express): Server {
               console.error("Failed to fetch current agent config, using defaults");
             }
             
-            // Build the update payload, preserving existing structure
+            // Build the update payload - COMPLETE OVERRIDE, not partial update
             const elevenLabsPayload: any = {
-              name: agent.name,
+              name: updates.name || agent.name,
               conversation_config: {
-                ...currentAgentConfig.conversation_config,
                 agent: {
-                  ...currentAgentConfig.conversation_config?.agent,
-                  prompt: updates.systemPrompt !== undefined ? updates.systemPrompt : (agent.systemPrompt || ""),
-                  first_message: updates.firstMessage !== undefined ? updates.firstMessage : (agent.firstMessage || ""),
-                  language: updates.language !== undefined ? updates.language : (agent.language || "en"),
+                  prompt: {
+                    prompt: updates.systemPrompt !== undefined ? updates.systemPrompt : (agent.systemPrompt || "You are a helpful AI assistant"),
+                    first_message: updates.firstMessage !== undefined ? updates.firstMessage : (agent.firstMessage || "Hello! How can I help you today?"),
+                    language: updates.language !== undefined ? updates.language : (agent.language || "en")
+                  },
+                  first_message: updates.firstMessage !== undefined ? updates.firstMessage : (agent.firstMessage || "Hello! How can I help you today?"),
+                  language: updates.language !== undefined ? updates.language : (agent.language || "en")
+                },
+                turn: {
+                  mode: "simultaneous",
+                  threshold: 0.5
+                },
+                asr: {
+                  quality: "high",
+                  provider: "elevenlabs"
+                }
+              },
+              platform_settings: {
+                auth: {
+                  mode: "open" // Allow all calls without authentication
                 }
               }
             };
@@ -1634,19 +1670,17 @@ export function registerRoutes(app: Express): Server {
               };
             }
 
-            // Add voice/TTS settings if provided
-            if (updates.voiceId || updates.voiceSettings || agent.voiceId || agent.voiceSettings) {
-              const voiceSettings = updates.voiceSettings || agent.voiceSettings || {};
-              elevenLabsPayload.conversation_config.tts = {
-                voice_id: updates.voiceId || agent.voiceId,
-                agent_output_audio_format: "pcm_16000",
-                optimize_streaming_latency: 3,
-                stability: voiceSettings.stability || 0.5,
-                similarity_boost: voiceSettings.similarityBoost || 0.75,
-                style: voiceSettings.style || 0,
-                use_speaker_boost: voiceSettings.useSpeakerBoost ?? true
-              };
-            }
+            // Always include complete TTS settings for full override
+            const voiceSettings = updates.voiceSettings || agent.voiceSettings || {};
+            elevenLabsPayload.conversation_config.tts = {
+              voice_id: updates.voiceId || agent.voiceId || "21m00Tcm4TlvDq8ikWAM", // Default to Rachel voice
+              agent_output_audio_format: "pcm_16000",
+              optimize_streaming_latency: 3,
+              stability: voiceSettings.stability !== undefined ? voiceSettings.stability : 0.5,
+              similarity_boost: voiceSettings.similarityBoost !== undefined ? voiceSettings.similarityBoost : 0.75,
+              style: voiceSettings.style !== undefined ? voiceSettings.style : 0,
+              use_speaker_boost: voiceSettings.useSpeakerBoost !== undefined ? voiceSettings.useSpeakerBoost : true
+            };
 
 
             // Add tools configuration if provided
