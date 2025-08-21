@@ -689,7 +689,7 @@ export function registerRoutes(app: Express): Server {
       
       try {
         console.log("Validating agent with ID:", elevenLabsAgentId);
-        const agentData = await callElevenLabsAPI(apiKey, `/v1/convai/agents/${elevenLabsAgentId}`);
+        const agentData = await callElevenLabsAPI(apiKey, `/conversational-ai/agents/${elevenLabsAgentId}`);
         console.log("Agent validation successful:", agentData);
         res.json({ 
           message: "Agent validated successfully", 
@@ -773,7 +773,7 @@ export function registerRoutes(app: Express): Server {
       
       const elevenLabsResponse = await callElevenLabsAPI(
         apiKey,
-        "/v1/convai/agents",
+        "/conversational-ai/agents/create",
         "POST",
         agentPayload
       );
@@ -839,7 +839,7 @@ export function registerRoutes(app: Express): Server {
         
         try {
           // Fetch agent details from ElevenLabs to sync initial settings
-          const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentData.elevenLabsAgentId}`, {
+          const response = await fetch(`https://api.elevenlabs.io/conversational-ai/agents/${agentData.elevenLabsAgentId}`, {
             headers: {
               "xi-api-key": decryptedKey,
               "Content-Type": "application/json",
@@ -951,7 +951,7 @@ export function registerRoutes(app: Express): Server {
             console.log(`Deleting agent from ElevenLabs: ${agent.elevenLabsAgentId}`);
             
             // Call ElevenLabs API to delete the agent
-            const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
+            const response = await fetch(`https://api.elevenlabs.io/conversational-ai/agents/${agent.elevenLabsAgentId}`, {
               method: "DELETE",
               headers: {
                 "xi-api-key": decryptedKey,
@@ -1616,7 +1616,7 @@ export function registerRoutes(app: Express): Server {
           try {
             // First, fetch the current agent configuration from ElevenLabs
             console.log("\n=== FETCHING CURRENT AGENT CONFIG ===");
-            const currentAgentResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
+            const currentAgentResponse = await fetch(`https://api.elevenlabs.io/conversational-ai/agents/${agent.elevenLabsAgentId}`, {
               headers: {
                 "xi-api-key": decryptedKey,
                 "Content-Type": "application/json",
@@ -1859,7 +1859,7 @@ export function registerRoutes(app: Express): Server {
             console.log("Payload:", JSON.stringify(elevenLabsPayload, null, 2));
 
             // Try updating with PUT instead of PATCH if PATCH fails
-            let response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
+            let response = await fetch(`https://api.elevenlabs.io/conversational-ai/agents/${agent.elevenLabsAgentId}`, {
               method: "PATCH",
               headers: {
                 "xi-api-key": decryptedKey,
@@ -1880,7 +1880,7 @@ export function registerRoutes(app: Express): Server {
                 }
               };
               
-              response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agent.elevenLabsAgentId}`, {
+              response = await fetch(`https://api.elevenlabs.io/conversational-ai/agents/${agent.elevenLabsAgentId}`, {
                 method: "PATCH",
                 headers: {
                   "xi-api-key": decryptedKey,
