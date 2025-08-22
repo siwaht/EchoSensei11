@@ -3364,6 +3364,246 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/tools/info", handleInfoTool);
   app.post("/api/tools/info", handleInfoTool);
 
+  // ElevenLabs MCP-style webhook tools
+  const handleTextToSpeech = async (req: any, res: any) => {
+    try {
+      console.log("=== TEXT TO SPEECH TOOL CALLED ===");
+      console.log("Query Parameters:", req.query);
+      console.log("Body:", req.body);
+      
+      const text = req.query.text || req.body?.text || '';
+      const voiceId = req.query.voice_id || req.body?.voice_id || '21m00Tcm4TlvDq8ikWAM'; // Default voice
+      const modelId = req.query.model_id || req.body?.model_id || 'eleven_monolingual_v1';
+      
+      if (!text) {
+        return res.json({
+          error: "No text provided",
+          message: "Please provide 'text' parameter",
+          example: "?text=Hello world&voice_id=21m00Tcm4TlvDq8ikWAM"
+        });
+      }
+
+      // Get user's organization and ElevenLabs integration
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const integration = await storage.getIntegration(user.organizationId, 'elevenlabs');
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({
+          error: "ElevenLabs integration not found",
+          message: "Please configure your ElevenLabs API key in Integrations settings"
+        });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      
+      // Call ElevenLabs TTS API
+      try {
+        const ttsResponse = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'audio/mpeg',
+            'Content-Type': 'application/json',
+            'xi-api-key': apiKey
+          },
+          body: JSON.stringify({
+            text: text,
+            model_id: modelId,
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.5
+            }
+          })
+        });
+
+        if (!ttsResponse.ok) {
+          const errorText = await ttsResponse.text();
+          throw new Error(`ElevenLabs API error: ${ttsResponse.status} - ${errorText}`);
+        }
+
+        // Return success response with metadata
+        return res.json({
+          success: true,
+          message: `Successfully generated speech for text: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`,
+          details: {
+            text_length: text.length,
+            voice_id: voiceId,
+            model_id: modelId,
+            estimated_characters: text.length,
+            audio_format: "mp3"
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("ElevenLabs TTS error:", error);
+        return res.status(500).json({
+          success: false,
+          error: "TTS generation failed",
+          message: error.message || "Unknown error occurred"
+        });
+      }
+      
+    } catch (error) {
+      console.error("Text-to-speech tool error:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Text-to-speech tool error occurred",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  };
+
+  const handleGetVoices = async (req: any, res: any) => {
+    try {
+      console.log("=== GET VOICES TOOL CALLED ===");
+      
+      // Get user's organization and ElevenLabs integration
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const integration = await storage.getIntegration(user.organizationId, 'elevenlabs');
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({
+          error: "ElevenLabs integration not found",
+          message: "Please configure your ElevenLabs API key in Integrations settings"
+        });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      
+      try {
+        const voicesResponse = await fetch('https://api.elevenlabs.io/v1/voices', {
+          headers: {
+            'xi-api-key': apiKey
+          }
+        });
+
+        if (!voicesResponse.ok) {
+          const errorText = await voicesResponse.text();
+          throw new Error(`ElevenLabs API error: ${voicesResponse.status} - ${errorText}`);
+        }
+
+        const voicesData = await voicesResponse.json();
+        
+        // Format voices for easy consumption by voice agents
+        const formattedVoices = voicesData.voices?.map((voice: any) => ({
+          id: voice.voice_id,
+          name: voice.name,
+          category: voice.category,
+          description: voice.description || `${voice.name} voice`,
+          accent: voice.labels?.accent,
+          age: voice.labels?.age,
+          gender: voice.labels?.gender,
+          use_case: voice.labels?.use_case
+        })) || [];
+
+        return res.json({
+          success: true,
+          voices_count: formattedVoices.length,
+          voices: formattedVoices.slice(0, 10), // Limit to first 10 for agent response
+          message: `Found ${formattedVoices.length} available voices. Here are the first 10 options.`,
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("ElevenLabs get voices error:", error);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to fetch voices",
+          message: error.message || "Unknown error occurred"
+        });
+      }
+      
+    } catch (error) {
+      console.error("Get voices tool error:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Get voices tool error occurred",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  };
+
+  const handleVoiceClone = async (req: any, res: any) => {
+    try {
+      console.log("=== VOICE CLONE TOOL CALLED ===");
+      console.log("Query Parameters:", req.query);
+      console.log("Body:", req.body);
+      
+      const name = req.query.name || req.body?.name || '';
+      const description = req.query.description || req.body?.description || '';
+      
+      if (!name) {
+        return res.json({
+          error: "No voice name provided",
+          message: "Please provide 'name' parameter",
+          example: "?name=My Custom Voice&description=A warm, friendly voice"
+        });
+      }
+
+      // Get user's organization and ElevenLabs integration
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const integration = await storage.getIntegration(user.organizationId, 'elevenlabs');
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({
+          error: "ElevenLabs integration not found",
+          message: "Please configure your ElevenLabs API key in Integrations settings"
+        });
+      }
+
+      // Return information about voice cloning process (actual implementation would need audio files)
+      return res.json({
+        success: true,
+        message: `Voice cloning initiated for "${name}". In a real implementation, this would process audio samples to create a custom voice.`,
+        details: {
+          name: name,
+          description: description || `Custom cloned voice: ${name}`,
+          status: "would_process_audio_samples",
+          requirements: [
+            "High-quality audio samples (minimum 1 minute)",
+            "Clear speech without background noise",
+            "Multiple samples for better quality"
+          ],
+          next_steps: [
+            "Upload audio samples",
+            "Process voice characteristics", 
+            "Generate voice model",
+            "Test and refine"
+          ]
+        },
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error("Voice clone tool error:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Voice clone tool error occurred",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  };
+
+  // Register ElevenLabs MCP-style tools
+  app.get("/api/tools/elevenlabs/text-to-speech", isAuthenticated, handleTextToSpeech);
+  app.post("/api/tools/elevenlabs/text-to-speech", isAuthenticated, handleTextToSpeech);
+  app.get("/api/tools/elevenlabs/get-voices", isAuthenticated, handleGetVoices);
+  app.post("/api/tools/elevenlabs/get-voices", isAuthenticated, handleGetVoices);
+  app.get("/api/tools/elevenlabs/voice-clone", isAuthenticated, handleVoiceClone);
+  app.post("/api/tools/elevenlabs/voice-clone", isAuthenticated, handleVoiceClone);
+
   // Webhook endpoint for VoiceAI callbacks (new endpoint)
   app.post("/api/webhooks/voiceai", async (req, res) => {
     try {
