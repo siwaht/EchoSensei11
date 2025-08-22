@@ -236,33 +236,25 @@ export default function Playground() {
               console.log("Queueing agent audio (direct), length:", data.audio_base_64.length);
               queueAudio(data.audio_base_64);
             }
-          } else if (data.transcript_event || data.user_transcription_event) {
-            // Handle transcript events
-            const transcript = data.transcript_event || data.user_transcription_event;
-            
-            if (transcript.user_transcript) {
-              console.log("User said:", transcript.user_transcript);
+          } else if (data.user_transcription_event) {
+            // Handle user transcript - ElevenLabs sends user_transcript field
+            const userTranscript = data.user_transcription_event.user_transcript;
+            if (userTranscript) {
+              console.log("User said:", userTranscript);
               setTranscript(prev => [...prev, {
                 role: "user",
-                message: transcript.user_transcript,
-                timestamp: new Date()
-              }]);
-            } else if (transcript.text) {
-              const role = transcript.role || (data.user_transcription_event ? "user" : "assistant");
-              console.log(`${role} said:`, transcript.text);
-              setTranscript(prev => [...prev, {
-                role: role as "user" | "assistant",
-                message: transcript.text,
+                message: userTranscript,
                 timestamp: new Date()
               }]);
             }
           } else if (data.agent_response_event) {
-            // Handle agent response text
-            if (data.agent_response_event.text) {
-              console.log("Agent response:", data.agent_response_event.text);
+            // Handle agent response - ElevenLabs sends agent_response field
+            const agentResponse = data.agent_response_event.agent_response;
+            if (agentResponse) {
+              console.log("Agent response:", agentResponse);
               setTranscript(prev => [...prev, {
                 role: "assistant",
-                message: data.agent_response_event.text,
+                message: agentResponse,
                 timestamp: new Date()
               }]);
             }
