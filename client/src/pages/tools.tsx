@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
-  Plus, Trash2, Save, Globe, Webhook, Code, Wrench, 
+  Plus, Trash2, Save, Globe, Code, Wrench, Webhook,
   ChevronDown, ChevronRight, Settings2, Zap, Hammer,
   Sheet, Calendar, Mail, CheckCircle, XCircle, Database,
   Brain, FileText, Upload, Search, Phone, Languages,
@@ -24,6 +24,7 @@ import type { Agent, CustomTool } from "@shared/schema";
 import { SystemToolConfigModal } from "@/components/tools/system-tool-config-modal";
 import { GoogleAuthButton } from "@/components/google-auth-button";
 import { MCPServerDialog } from "@/components/mcp-server-dialog";
+import { WebhookToolDialog } from "@/components/webhook-tool-dialog";
 
 interface WebhookParameter {
   name: string;
@@ -121,6 +122,10 @@ export default function Tools() {
   const [mcpServerDialog, setMcpServerDialog] = useState<{
     isOpen: boolean;
     server?: CustomTool;
+  }>({ isOpen: false });
+  const [webhookDialog, setWebhookDialog] = useState<{
+    isOpen: boolean;
+    webhook?: any;
   }>({ isOpen: false });
 
   // Fetch agents
@@ -365,20 +370,7 @@ export default function Tools() {
   };
 
   const addWebhook = () => {
-    const newWebhook: WebhookConfig = {
-      id: `webhook_${Date.now()}`,
-      name: "",
-      url: "",
-      method: "POST",
-      description: "",
-      headers: {},
-      enabled: true,
-    };
-    setToolsConfig({
-      ...toolsConfig,
-      webhooks: [...toolsConfig.webhooks, newWebhook],
-    });
-    setHasUnsavedChanges(true);
+    setWebhookDialog({ isOpen: true });
   };
 
   const updateWebhook = (index: number, updates: Partial<WebhookConfig>) => {
@@ -1055,7 +1047,7 @@ export default function Tools() {
                 </div>
                 <Button
                   size="sm"
-                  onClick={addWebhook}
+                  onClick={() => setWebhookDialog({ isOpen: true })}
                   data-testid="button-add-webhook"
                 >
                   <Plus className="w-4 h-4 sm:mr-2" />
@@ -1066,274 +1058,70 @@ export default function Tools() {
               <div className="space-y-3">
                 {toolsConfig.webhooks.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    <Globe className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <Webhook className="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p>No webhooks configured</p>
                     <p className="text-sm mt-1">Add a webhook to get started</p>
                   </div>
                 ) : (
                   toolsConfig.webhooks.map((webhook, index) => (
-                    <div key={webhook.id} className="p-4 border rounded-lg space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <Input
-                          placeholder="Webhook name"
-                          value={webhook.name}
-                          onChange={(e) => updateWebhook(index, { name: e.target.value })}
-                          className="text-sm"
-                          data-testid={`input-webhook-name-${index}`}
-                        />
-                        <Select
-                          value={webhook.method}
-                          onValueChange={(value) => updateWebhook(index, { method: value })}
-                        >
-                          <SelectTrigger className="text-sm" data-testid={`select-webhook-method-${index}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="GET">GET</SelectItem>
-                            <SelectItem value="POST">POST</SelectItem>
-                            <SelectItem value="PUT">PUT</SelectItem>
-                            <SelectItem value="PATCH">PATCH</SelectItem>
-                            <SelectItem value="DELETE">DELETE</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <Input
-                        placeholder="https://api.example.com/webhook"
-                        value={webhook.url}
-                        onChange={(e) => updateWebhook(index, { url: e.target.value })}
-                        className="text-sm"
-                        data-testid={`input-webhook-url-${index}`}
-                      />
-                      
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Description (optional)"
-                          value={webhook.description || ""}
-                          onChange={(e) => updateWebhook(index, { description: e.target.value })}
-                          className="flex-1 text-sm"
-                          data-testid={`input-webhook-description-${index}`}
-                        />
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => deleteWebhook(index)}
-                          data-testid={`button-delete-webhook-${index}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-
-                      {/* Query Parameters */}
-                      <div className="space-y-2 mt-3 pt-3 border-t">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">Query Parameters</p>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              const params = webhook.queryParameters || [];
-                              updateWebhook(index, {
-                                queryParameters: [...params, { name: '', type: 'String', required: false, valueType: 'LLM Prompt', description: '' }]
+                    <div key={webhook.id} className="p-4 border rounded-lg">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{webhook.name || 'Unnamed Webhook'}</p>
+                            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded">
+                              {webhook.method}
+                            </span>
+                            {webhook.enabled && (
+                              <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          {webhook.description && (
+                            <p className="text-sm text-muted-foreground mt-1">{webhook.description}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-2 truncate">
+                            URL: {webhook.url || 'Not configured'}
+                          </p>
+                          {webhook.webhookConfig?.responseTimeout && (
+                            <p className="text-xs text-muted-foreground">
+                              Timeout: {webhook.webhookConfig.responseTimeout}s
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={webhook.enabled !== false}
+                            onCheckedChange={(checked) => {
+                              const updatedWebhooks = [...toolsConfig.webhooks];
+                              updatedWebhooks[index] = { ...webhook, enabled: checked };
+                              setToolsConfig({
+                                ...toolsConfig,
+                                webhooks: updatedWebhooks,
                               });
+                              setHasUnsavedChanges(true);
                             }}
+                            data-testid={`switch-webhook-${index}`}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setWebhookDialog({ isOpen: true, webhook })}
+                            data-testid={`button-edit-webhook-${index}`}
                           >
-                            <Plus className="w-3 h-3 mr-1" />
-                            Add
+                            <Settings className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteWebhook(index)}
+                            data-testid={`button-delete-webhook-${index}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
-                        {webhook.queryParameters?.map((param, paramIndex) => (
-                          <div key={paramIndex} className="flex gap-2 items-start">
-                            <Input
-                              placeholder="Name"
-                              value={param.name}
-                              onChange={(e) => {
-                                const params = [...(webhook.queryParameters || [])];
-                                params[paramIndex] = { ...params[paramIndex], name: e.target.value };
-                                updateWebhook(index, { queryParameters: params });
-                              }}
-                              className="text-xs w-24"
-                            />
-                            <Select
-                              value={param.type || 'String'}
-                              onValueChange={(value) => {
-                                const params = [...(webhook.queryParameters || [])];
-                                params[paramIndex] = { ...params[paramIndex], type: value };
-                                updateWebhook(index, { queryParameters: params });
-                              }}
-                            >
-                              <SelectTrigger className="text-xs w-24">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="String">String</SelectItem>
-                                <SelectItem value="Number">Number</SelectItem>
-                                <SelectItem value="Boolean">Boolean</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Select
-                              value={param.valueType || 'LLM Prompt'}
-                              onValueChange={(value) => {
-                                const params = [...(webhook.queryParameters || [])];
-                                params[paramIndex] = { ...params[paramIndex], valueType: value };
-                                updateWebhook(index, { queryParameters: params });
-                              }}
-                            >
-                              <SelectTrigger className="text-xs w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="LLM Prompt">LLM Prompt</SelectItem>
-                                <SelectItem value="Constant Value">Constant Value</SelectItem>
-                                <SelectItem value="Dynamic Variable">Dynamic Variable</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Input
-                              placeholder="Description"
-                              value={param.description || ''}
-                              onChange={(e) => {
-                                const params = [...(webhook.queryParameters || [])];
-                                params[paramIndex] = { ...params[paramIndex], description: e.target.value };
-                                updateWebhook(index, { queryParameters: params });
-                              }}
-                              className="text-xs flex-1"
-                            />
-                            <div className="flex items-center gap-1">
-                              <Checkbox
-                                checked={param.required || false}
-                                onCheckedChange={(checked) => {
-                                  const params = [...(webhook.queryParameters || [])];
-                                  params[paramIndex] = { ...params[paramIndex], required: !!checked };
-                                  updateWebhook(index, { queryParameters: params });
-                                }}
-                              />
-                              <label className="text-xs">Required</label>
-                            </div>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={() => {
-                                const params = [...(webhook.queryParameters || [])];
-                                params.splice(paramIndex, 1);
-                                updateWebhook(index, { queryParameters: params });
-                              }}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        ))}
                       </div>
-
-                      {/* Body Parameters (only for POST/PUT/PATCH) */}
-                      {['POST', 'PUT', 'PATCH'].includes(webhook.method) && (
-                        <div className="space-y-2 mt-3 pt-3 border-t">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium">Body Parameters</p>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                const params = webhook.bodyParameters || [];
-                                updateWebhook(index, {
-                                  bodyParameters: [...params, { name: '', type: 'String', required: false, valueType: 'LLM Prompt', description: '' }]
-                                });
-                              }}
-                            >
-                              <Plus className="w-3 h-3 mr-1" />
-                              Add
-                            </Button>
-                          </div>
-                          {webhook.bodyParameters?.map((param, paramIndex) => (
-                            <div key={paramIndex} className="flex gap-2 items-start">
-                              <Input
-                                placeholder="Name"
-                                value={param.name}
-                                onChange={(e) => {
-                                  const params = [...(webhook.bodyParameters || [])];
-                                  params[paramIndex] = { ...params[paramIndex], name: e.target.value };
-                                  updateWebhook(index, { bodyParameters: params });
-                                }}
-                                className="text-xs w-24"
-                              />
-                              <Select
-                                value={param.type || 'String'}
-                                onValueChange={(value) => {
-                                  const params = [...(webhook.bodyParameters || [])];
-                                  params[paramIndex] = { ...params[paramIndex], type: value };
-                                  updateWebhook(index, { bodyParameters: params });
-                                }}
-                              >
-                                <SelectTrigger className="text-xs w-24">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="String">String</SelectItem>
-                                  <SelectItem value="Number">Number</SelectItem>
-                                  <SelectItem value="Boolean">Boolean</SelectItem>
-                                  <SelectItem value="Object">Object</SelectItem>
-                                  <SelectItem value="Array">Array</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <Select
-                                value={param.valueType || 'LLM Prompt'}
-                                onValueChange={(value) => {
-                                  const params = [...(webhook.bodyParameters || [])];
-                                  params[paramIndex] = { ...params[paramIndex], valueType: value };
-                                  updateWebhook(index, { bodyParameters: params });
-                                }}
-                              >
-                                <SelectTrigger className="text-xs w-32">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="LLM Prompt">LLM Prompt</SelectItem>
-                                  <SelectItem value="Constant Value">Constant Value</SelectItem>
-                                  <SelectItem value="Dynamic Variable">Dynamic Variable</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <Input
-                                placeholder="Description"
-                                value={param.description || ''}
-                                onChange={(e) => {
-                                  const params = [...(webhook.bodyParameters || [])];
-                                  params[paramIndex] = { ...params[paramIndex], description: e.target.value };
-                                  updateWebhook(index, { bodyParameters: params });
-                                }}
-                                className="text-xs flex-1"
-                              />
-                              <div className="flex items-center gap-1">
-                                <Checkbox
-                                  checked={param.required || false}
-                                  onCheckedChange={(checked) => {
-                                    const params = [...(webhook.bodyParameters || [])];
-                                    params[paramIndex] = { ...params[paramIndex], required: !!checked };
-                                    updateWebhook(index, { bodyParameters: params });
-                                  }}
-                                />
-                                <label className="text-xs">Required</label>
-                              </div>
-                              <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8"
-                                onClick={() => {
-                                  const params = [...(webhook.bodyParameters || [])];
-                                  params.splice(paramIndex, 1);
-                                  updateWebhook(index, { bodyParameters: params });
-                                }}
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   ))
                 )}
@@ -2285,6 +2073,34 @@ export default function Tools() {
             });
             setHasUnsavedChanges(true);
             setMcpServerDialog({ isOpen: false });
+          }}
+        />
+      )}
+
+      {/* Webhook Tool Dialog */}
+      {webhookDialog.isOpen && (
+        <WebhookToolDialog
+          isOpen={webhookDialog.isOpen}
+          onClose={() => setWebhookDialog({ isOpen: false })}
+          webhook={webhookDialog.webhook}
+          onSave={(webhook) => {
+            const updatedWebhooks = [...(toolsConfig.webhooks || [])];
+            if (webhookDialog.webhook) {
+              // Edit existing webhook
+              const index = updatedWebhooks.findIndex(w => w.id === webhookDialog.webhook?.id);
+              if (index !== -1) {
+                updatedWebhooks[index] = webhook;
+              }
+            } else {
+              // Add new webhook
+              updatedWebhooks.push(webhook);
+            }
+            setToolsConfig({
+              ...toolsConfig,
+              webhooks: updatedWebhooks,
+            });
+            setHasUnsavedChanges(true);
+            setWebhookDialog({ isOpen: false });
           }}
         />
       )}
