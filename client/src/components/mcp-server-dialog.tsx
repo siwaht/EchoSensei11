@@ -110,7 +110,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
         <DialogHeader>
           <DialogTitle>{tool ? "Edit" : "New"} Custom MCP Server</DialogTitle>
           <DialogDescription>
-            Connect a custom Model Context Protocol (MCP) server to add powerful capabilities to your agent.
+            Connect an HTTP-based MCP server via webhooks. Note: Command-line MCP servers (like npx-based servers) are not currently supported.
           </DialogDescription>
         </DialogHeader>
 
@@ -148,7 +148,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
           <div className="space-y-4">
             <h3 className="text-sm font-medium">Server Configuration</h3>
             <p className="text-xs text-muted-foreground">
-              Specify how to connect to your MCP server.
+              Specify the HTTP endpoint for your MCP server. The server must be accessible via HTTP/HTTPS.
             </p>
 
             <div className="space-y-2">
@@ -160,7 +160,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
                   className="flex-1"
                   onClick={() => setServerType('sse')}
                 >
-                  SSE
+                  SSE (Server-Sent Events)
                 </Button>
                 <Button
                   type="button"
@@ -168,7 +168,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
                   className="flex-1"
                   onClick={() => setServerType('streamable_http')}
                 >
-                  Streamable HTTP
+                  HTTP (REST API)
                 </Button>
               </div>
             </div>
@@ -180,7 +180,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://example.com/sse"
+                placeholder="https://your-mcp-server.com/api"
               />
             </div>
 
