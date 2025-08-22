@@ -3169,63 +3169,118 @@ export function registerRoutes(app: Express): Server {
   });
 
   // RAG Search Webhook endpoint for ElevenLabs agents
-  // Test MCP Server endpoint for testing integrations
-  const handleMCPServer = async (req: any, res: any) => {
+  // Test Webhook Tools for ElevenLabs Server Tools integration
+  const handleSearchTool = async (req: any, res: any) => {
     try {
-      console.log("=== MCP SERVER CALLED ===");
+      console.log("=== SEARCH TOOL CALLED ===");
       console.log("Method:", req.method);
       console.log("Headers:", req.headers);
       console.log("Query Parameters:", req.query);
       console.log("Body:", req.body);
       
-      // Get the method and parameters from the request
-      let method: string;
-      let params: any = {};
+      // Get the search query from URL parameters (ElevenLabs Server Tools style)
+      const searchQuery = req.query.query || req.query.q || req.body?.query || '';
       
-      if (req.method === 'GET') {
-        method = req.query.method || 'search';
-        params = req.query;
-      } else {
-        method = req.body.method || 'search';
-        params = req.body.params || req.body;
+      console.log("Search Query:", searchQuery);
+      
+      if (!searchQuery) {
+        return res.json({
+          error: "No search query provided",
+          message: "Please provide a 'query' parameter",
+          example: "?query=hotels in Paris"
+        });
       }
+
+      // Mock search results that the agent can use
+      const mockResults = [
+        {
+          title: `Best ${searchQuery} - Option 1`,
+          description: `Detailed information about ${searchQuery} with premium features and excellent reviews.`,
+          rating: "4.8/5",
+          location: "Prime location",
+          price: "$150-300"
+        },
+        {
+          title: `Popular ${searchQuery} - Option 2`, 
+          description: `Highly rated ${searchQuery} with modern amenities and great customer service.`,
+          rating: "4.6/5",
+          location: "Central area",
+          price: "$100-250"
+        },
+        {
+          title: `Budget-friendly ${searchQuery} - Option 3`,
+          description: `Affordable ${searchQuery} with good value for money and basic amenities.`,
+          rating: "4.2/5", 
+          location: "Convenient location",
+          price: "$50-150"
+        }
+      ];
+
+      // Return data in a format the agent can easily parse and use
+      return res.json({
+        success: true,
+        query: searchQuery,
+        results_count: mockResults.length,
+        results: mockResults,
+        timestamp: new Date().toISOString()
+      });
       
-      console.log("MCP Method:", method);
-      console.log("MCP Params:", params);
-      
-      // Simple MCP server implementation for testing
-      switch (method) {
-        case 'search':
-          const searchQuery = params?.query || params?.q || '';
-          if (!searchQuery) {
-            return res.json({
-              content: "Please provide a search query. Example: search for hotels in Paris"
-            });
-          }
-          return res.json({
-            content: `🔍 MCP Search Results for "${searchQuery}":\n\n• Found 3 relevant results\n• Sample result 1: Information about ${searchQuery}\n• Sample result 2: Related details and context\n• Sample result 3: Additional insights\n\nThis is a test response from the MCP server integration.`
-          });
-          
-        case 'get_info':
-          const topic = params?.topic || params?.subject || 'general';
-          return res.json({
-            content: `📋 Information about "${topic}" from MCP server:\n\n• Overview: Detailed information about ${topic}\n• Key points: Important aspects to consider\n• Additional context: Background and related details\n\nMCP server is working correctly!`
-          });
-          
-        case 'list_capabilities':
-          return res.json({
-            content: `🛠️ Available MCP Server Capabilities:\n\n• search - Search for information\n• get_info - Get detailed information about a topic\n• list_capabilities - List available capabilities\n\nYou can use these commands to test the MCP integration.`
-          });
-          
-        default:
-          return res.json({
-            content: `❌ Unknown method: "${method}"\n\nAvailable methods:\n• search - Search for information\n• get_info - Get detailed information\n• list_capabilities - List available capabilities`
-          });
-      }
     } catch (error) {
-      console.error("MCP server error:", error);
-      res.json({ 
-        content: "❌ MCP server error occurred. Please check the configuration and try again."
+      console.error("Search tool error:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Search tool error occurred",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  };
+
+  const handleInfoTool = async (req: any, res: any) => {
+    try {
+      console.log("=== INFO TOOL CALLED ===");
+      console.log("Method:", req.method);
+      console.log("Query Parameters:", req.query);
+      console.log("Body:", req.body);
+      
+      const topic = req.query.topic || req.body?.topic || 'general';
+      
+      console.log("Info Topic:", topic);
+      
+      // Mock detailed information that the agent can use
+      const mockInfo = {
+        topic: topic,
+        overview: `Comprehensive information about ${topic}`,
+        key_points: [
+          `${topic} is widely recognized for its quality and reliability`,
+          `Key features include advanced functionality and user-friendly design`,
+          `Popular among users for its effectiveness and versatility`
+        ],
+        details: {
+          category: "Service/Product",
+          availability: "Available 24/7",
+          support: "Full customer support included",
+          features: ["Feature A", "Feature B", "Feature C"]
+        },
+        recommendations: [
+          "Best for first-time users",
+          "Suitable for all experience levels", 
+          "Highly recommended by experts"
+        ]
+      };
+
+      return res.json({
+        success: true,
+        topic: topic,
+        information: mockInfo,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error("Info tool error:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Info tool error occurred",
+        message: error instanceof Error ? error.message : "Unknown error"
       });
     }
   };
@@ -3303,9 +3358,11 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/webhooks/rag-search", handleRagSearch);
   app.post("/api/webhooks/rag-search", handleRagSearch);
 
-  // MCP Server test endpoint
-  app.get("/api/mcp/test-server", handleMCPServer);
-  app.post("/api/mcp/test-server", handleMCPServer);
+  // Server Tools test endpoints for ElevenLabs webhook tools
+  app.get("/api/tools/search", handleSearchTool);
+  app.post("/api/tools/search", handleSearchTool);
+  app.get("/api/tools/info", handleInfoTool);
+  app.post("/api/tools/info", handleInfoTool);
 
   // Webhook endpoint for VoiceAI callbacks (new endpoint)
   app.post("/api/webhooks/voiceai", async (req, res) => {

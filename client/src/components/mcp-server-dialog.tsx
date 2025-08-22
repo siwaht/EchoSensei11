@@ -108,9 +108,9 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{tool ? "Edit" : "New"} Custom MCP Server</DialogTitle>
+          <DialogTitle>{tool ? "Edit" : "New"} Server Tool</DialogTitle>
           <DialogDescription>
-            Connect an HTTP-based MCP server via webhooks. Note: Command-line MCP servers (like npx-based servers) are not currently supported.
+            Configure webhook-based Server Tools for ElevenLabs agents. These will be added as "Webhook" tools in your agent settings.
           </DialogDescription>
         </DialogHeader>
 
@@ -119,7 +119,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
           <div className="space-y-4">
             <h3 className="text-sm font-medium">Basic Information</h3>
             <p className="text-xs text-muted-foreground">
-              Identify your MCP server with a clear name and description.
+              Identify your webhook tool with a clear name and description for ElevenLabs Server Tools.
             </p>
             
             <div className="space-y-2">
@@ -128,7 +128,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="My Custom MCP Server"
+                placeholder="Search API Tool"
               />
             </div>
 
@@ -138,7 +138,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe what this MCP server does..."
+                placeholder="Searches for information and returns structured data..."
                 rows={3}
               />
             </div>
@@ -148,7 +148,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
           <div className="space-y-4">
             <h3 className="text-sm font-medium">Server Configuration</h3>
             <p className="text-xs text-muted-foreground">
-              Specify the HTTP endpoint for your MCP server. The server must be accessible via HTTP/HTTPS.
+              Specify the HTTP endpoint for your webhook tool. Configure this as a "Webhook" tool in your ElevenLabs agent settings.
             </p>
 
             <div className="space-y-2">
@@ -180,7 +180,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://your-mcp-server.com/api"
+                placeholder="https://your-domain/api/tools/search"
               />
             </div>
 
@@ -254,7 +254,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
           <div className="space-y-4">
             <h3 className="text-sm font-medium">Tool Approval Mode</h3>
             <p className="text-xs text-muted-foreground">
-              Control how the agent requests permission to use tools from this MCP server.
+              Configure tool approval settings for this webhook tool.
             </p>
 
             <RadioGroup value={approvalMode} onValueChange={(value: any) => setApprovalMode(value)}>
@@ -310,7 +310,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
           <div className="space-y-4 border-t pt-4">
             <h3 className="text-sm font-medium">Confirmation</h3>
             <p className="text-xs text-muted-foreground">
-              Custom MCP servers are not verified by ElevenLabs
+              Custom webhook tools are not verified by ElevenLabs
             </p>
             
             <div className="flex items-center space-x-2">
