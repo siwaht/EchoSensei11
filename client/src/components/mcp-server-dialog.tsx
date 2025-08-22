@@ -59,6 +59,7 @@ export function MCPServerDialog({ isOpen, onClose, onSave, tool }: MCPServerDial
       type: 'mcp',
       url,
       enabled: tool?.enabled ?? true,
+      method: serverType === 'sse' ? 'GET' : 'POST',
       mcpConfig: {
         serverType,
         secretToken: secretToken || undefined,

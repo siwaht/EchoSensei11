@@ -1504,6 +1504,20 @@ export function registerRoutes(app: Express): Server {
                 
                 // Check if RAG tool is enabled and enhance system prompt
                 let enhancedSystemPrompt = updates.systemPrompt || agent.systemPrompt;
+                
+                // Add general tool usage instructions to prevent verbalizing tool codes
+                const toolInstructions = '\n\n**CRITICAL TOOL USAGE INSTRUCTIONS:**\n' +
+                  '- NEVER verbalize tool codes or function names to the user\n' +
+                  '- NEVER say things like "tool_code transfer_to_agent" or "let me use the webhook tool"\n' +
+                  '- When using tools, speak naturally without mentioning the technical process\n' +
+                  '- For transfers: Simply say "I\'ll transfer you now" or "Let me connect you with..."\n' +
+                  '- For searches: Say "Let me find that information for you" instead of mentioning tools\n' +
+                  '- Tools are invoked automatically based on context - just speak naturally\n';
+                
+                if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('CRITICAL TOOL USAGE INSTRUCTIONS')) {
+                  enhancedSystemPrompt = enhancedSystemPrompt + toolInstructions;
+                }
+                
                 if (updates.tools?.customTools) {
                   const ragTool = updates.tools.customTools.find((t: any) => t.type === 'rag' && t.enabled);
                   if (ragTool) {
@@ -1541,7 +1555,8 @@ export function registerRoutes(app: Express): Server {
                     const tool: any = {
                       type: "system",
                       name: "end_call",
-                      description: systemTools.endCall.description || "Allows agent to end the call"
+                      description: systemTools.endCall.description || "Allows agent to end the call",
+                      pre_tool_speech: systemTools.endCall.preToolSpeech || "Thank you for calling. Goodbye!"
                     };
                     if (systemTools.endCall.disableInterruptions) {
                       tool.disable_interruptions = true;
@@ -1554,6 +1569,7 @@ export function registerRoutes(app: Express): Server {
                       type: "system",
                       name: "language_detection",
                       description: systemTools.detectLanguage.description || "Automatically detect and switch languages",
+                      pre_tool_speech: systemTools.detectLanguage.preToolSpeech || "I'll continue in your preferred language.",
                       config: {
                         supported_languages: systemTools.detectLanguage.supportedLanguages || []
                       }
@@ -1568,7 +1584,8 @@ export function registerRoutes(app: Express): Server {
                     const tool: any = {
                       type: "system",
                       name: "skip_turn",
-                      description: systemTools.skipTurn.description || "Skip agent turn when user needs a moment"
+                      description: systemTools.skipTurn.description || "Skip agent turn when user needs a moment",
+                      pre_tool_speech: systemTools.skipTurn.preToolSpeech || ""
                     };
                     if (systemTools.skipTurn.disableInterruptions) {
                       tool.disable_interruptions = true;
@@ -1580,7 +1597,8 @@ export function registerRoutes(app: Express): Server {
                     const tool: any = {
                       type: "system",
                       name: "transfer_to_agent",
-                      description: systemTools.transferToAgent.description || "Transfer to another AI agent"
+                      description: systemTools.transferToAgent.description || "Transfer to another AI agent",
+                      pre_tool_speech: systemTools.transferToAgent.preToolSpeech || "I'll transfer you to the right agent now."
                     };
                     
                     // Handle transfer rules for transfer_to_agent
@@ -1605,6 +1623,7 @@ export function registerRoutes(app: Express): Server {
                       type: "system",
                       name: "transfer_to_number",
                       description: systemTools.transferToNumber.description || "Transfer to human operator",
+                      pre_tool_speech: systemTools.transferToNumber.preToolSpeech || "I'll connect you with a human agent right away.",
                       config: {
                         phone_numbers: (systemTools.transferToNumber.phoneNumbers || []).map((phone: any) => ({
                           number: phone.number,
@@ -1623,7 +1642,8 @@ export function registerRoutes(app: Express): Server {
                     const tool: any = {
                       type: "system",
                       name: "play_dtmf",
-                      description: systemTools.playKeypadTone.description || "Play keypad touch tones"
+                      description: systemTools.playKeypadTone.description || "Play keypad touch tones",
+                      pre_tool_speech: systemTools.playKeypadTone.preToolSpeech || ""
                     };
                     if (systemTools.playKeypadTone.disableInterruptions) {
                       tool.disable_interruptions = true;
@@ -1636,6 +1656,7 @@ export function registerRoutes(app: Express): Server {
                       type: "system",
                       name: "voicemail_detection",
                       description: systemTools.voicemailDetection.description || "Detect voicemail systems",
+                      pre_tool_speech: systemTools.voicemailDetection.preToolSpeech || "",
                       config: {
                         leave_message: systemTools.voicemailDetection.leaveMessage || false,
                         message_content: systemTools.voicemailDetection.messageContent || ""
@@ -1645,6 +1666,38 @@ export function registerRoutes(app: Express): Server {
                       tool.disable_interruptions = true;
                     }
                     elevenLabsTools.push(tool);
+                  }
+                  
+                  // Add MCP servers as webhooks
+                  if (updates.tools.mcpServers && Array.isArray(updates.tools.mcpServers)) {
+                    for (const mcpServer of updates.tools.mcpServers) {
+                      if (mcpServer.enabled && mcpServer.url) {
+                        const mcpTool: any = {
+                          type: "webhook",
+                          name: mcpServer.name || "mcp_server",
+                          description: mcpServer.description || "MCP Server integration",
+                          url: mcpServer.url,
+                          method: "POST",
+                          headers: mcpServer.headers || {},
+                          query_parameters: [],
+                          body_parameters: mcpServer.capabilities?.map((cap: any) => ({
+                            identifier: cap.name,
+                            data_type: "String",
+                            required: cap.required || false,
+                            value_type: "LLM Prompt",
+                            description: cap.description || ""
+                          })) || []
+                        };
+                        
+                        // Add pre-tool speech if configured
+                        if (mcpServer.preToolSpeech) {
+                          mcpTool.pre_tool_speech = mcpServer.preToolSpeech;
+                        }
+                        
+                        console.log('Adding MCP server as webhook:', mcpServer.name);
+                        elevenLabsTools.push(mcpTool);
+                      }
+                    }
                   }
                   
                   // Add custom tools (webhooks, RAG, etc.)
