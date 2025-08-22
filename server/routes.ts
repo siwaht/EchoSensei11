@@ -3169,6 +3169,67 @@ export function registerRoutes(app: Express): Server {
   });
 
   // RAG Search Webhook endpoint for ElevenLabs agents
+  // Test MCP Server endpoint for testing integrations
+  const handleMCPServer = async (req: any, res: any) => {
+    try {
+      console.log("=== MCP SERVER CALLED ===");
+      console.log("Method:", req.method);
+      console.log("Headers:", req.headers);
+      console.log("Query Parameters:", req.query);
+      console.log("Body:", req.body);
+      
+      // Get the method and parameters from the request
+      let method: string;
+      let params: any = {};
+      
+      if (req.method === 'GET') {
+        method = req.query.method || 'search';
+        params = req.query;
+      } else {
+        method = req.body.method || 'search';
+        params = req.body.params || req.body;
+      }
+      
+      console.log("MCP Method:", method);
+      console.log("MCP Params:", params);
+      
+      // Simple MCP server implementation for testing
+      switch (method) {
+        case 'search':
+          const searchQuery = params?.query || params?.q || '';
+          if (!searchQuery) {
+            return res.json({
+              content: "Please provide a search query. Example: search for hotels in Paris"
+            });
+          }
+          return res.json({
+            content: `🔍 MCP Search Results for "${searchQuery}":\n\n• Found 3 relevant results\n• Sample result 1: Information about ${searchQuery}\n• Sample result 2: Related details and context\n• Sample result 3: Additional insights\n\nThis is a test response from the MCP server integration.`
+          });
+          
+        case 'get_info':
+          const topic = params?.topic || params?.subject || 'general';
+          return res.json({
+            content: `📋 Information about "${topic}" from MCP server:\n\n• Overview: Detailed information about ${topic}\n• Key points: Important aspects to consider\n• Additional context: Background and related details\n\nMCP server is working correctly!`
+          });
+          
+        case 'list_capabilities':
+          return res.json({
+            content: `🛠️ Available MCP Server Capabilities:\n\n• search - Search for information\n• get_info - Get detailed information about a topic\n• list_capabilities - List available capabilities\n\nYou can use these commands to test the MCP integration.`
+          });
+          
+        default:
+          return res.json({
+            content: `❌ Unknown method: "${method}"\n\nAvailable methods:\n• search - Search for information\n• get_info - Get detailed information\n• list_capabilities - List available capabilities`
+          });
+      }
+    } catch (error) {
+      console.error("MCP server error:", error);
+      res.json({ 
+        content: "❌ MCP server error occurred. Please check the configuration and try again."
+      });
+    }
+  };
+
   // According to ElevenLabs docs, webhook tools use GET with query parameters
   const handleRagSearch = async (req: any, res: any) => {
     try {
@@ -3241,6 +3302,10 @@ export function registerRoutes(app: Express): Server {
   // Support both GET (ElevenLabs standard) and POST (backward compatibility)
   app.get("/api/webhooks/rag-search", handleRagSearch);
   app.post("/api/webhooks/rag-search", handleRagSearch);
+
+  // MCP Server test endpoint
+  app.get("/api/mcp/test-server", handleMCPServer);
+  app.post("/api/mcp/test-server", handleMCPServer);
 
   // Webhook endpoint for VoiceAI callbacks (new endpoint)
   app.post("/api/webhooks/voiceai", async (req, res) => {
