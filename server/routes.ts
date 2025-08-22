@@ -3372,6 +3372,8 @@ export function registerRoutes(app: Express): Server {
                 duration: details.call_duration_secs,
                 hasTranscript: !!details.transcript,
                 transcriptLength: details.transcript?.length || 0,
+                transcriptType: typeof details.transcript,
+                transcriptSample: typeof details.transcript === 'string' ? details.transcript.substring(0, 200) : JSON.stringify(details.transcript).substring(0, 200),
                 hasAudio: !!(details.audio_url || details.recording_url || details.audio || details.media_url)
               });
               
@@ -3404,13 +3406,59 @@ export function registerRoutes(app: Express): Server {
                 credits_used: details.credits_used || conversation.credits_used,
               };
               
+              // Parse and format the transcript properly
+              let formattedTranscript = "";
+              
+              // Check if transcript is an array or object from ElevenLabs
+              if (details.transcript) {
+                try {
+                  // If transcript is already a string, try to parse it
+                  if (typeof details.transcript === 'string') {
+                    formattedTranscript = details.transcript;
+                  } else if (Array.isArray(details.transcript)) {
+                    // If it's an array of messages, format them properly
+                    const messages = details.transcript.map((msg: any) => ({
+                      role: msg.role || (msg.is_agent ? 'agent' : 'user'),
+                      message: msg.text || msg.message || msg.content || "",
+                      time_in_call_secs: msg.time_in_call_secs || msg.timestamp || undefined
+                    }));
+                    formattedTranscript = messages.map((m: any) => JSON.stringify(m)).join('\n');
+                  } else if (details.transcript.messages) {
+                    // If transcript has a messages array
+                    const messages = details.transcript.messages.map((msg: any) => ({
+                      role: msg.role || (msg.is_agent ? 'agent' : 'user'),
+                      message: msg.text || msg.message || msg.content || "",
+                      time_in_call_secs: msg.time_in_call_secs || msg.timestamp || undefined
+                    }));
+                    formattedTranscript = messages.map((m: any) => JSON.stringify(m)).join('\n');
+                  }
+                  
+                  // If we still don't have a formatted transcript, check for analysis field
+                  if (!formattedTranscript && details.analysis && details.analysis.transcript) {
+                    if (Array.isArray(details.analysis.transcript)) {
+                      const messages = details.analysis.transcript.map((msg: any) => ({
+                        role: msg.role || (msg.speaker === 'agent' ? 'agent' : 'user'),
+                        message: msg.text || msg.message || msg.content || "",
+                        time_in_call_secs: msg.time || msg.timestamp || undefined
+                      }));
+                      formattedTranscript = messages.map((m: any) => JSON.stringify(m)).join('\n');
+                    } else {
+                      formattedTranscript = details.analysis.transcript;
+                    }
+                  }
+                } catch (e) {
+                  console.error("Error formatting transcript:", e);
+                  formattedTranscript = typeof details.transcript === 'string' ? details.transcript : JSON.stringify(details.transcript);
+                }
+              }
+              
               // Create call log with proper field mapping including timestamp
               const callData = {
                 organizationId: user.organizationId,
                 agentId: agent.id,
                 elevenLabsCallId: conversation.conversation_id,
                 duration: details.call_duration_secs || conversation.call_duration_secs || 0,
-                transcript: details.transcript || "",
+                transcript: formattedTranscript || "",
                 audioUrl: audioUrl || "",
                 cost: calculateCallCost(
                   details.call_duration_secs || conversation.call_duration_secs || 0,
