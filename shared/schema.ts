@@ -249,11 +249,11 @@ export const agents = pgTable("agents", {
       configuration?: Record<string, any>;
       enabled?: boolean;
     }>;
-    // Custom Tools (webhooks, integrations)
+    // Custom Tools (webhooks, integrations, MCP servers)
     customTools?: Array<{
       id: string;
       name: string;
-      type: 'webhook' | 'integration' | 'server' | 'client' | 'rag' | 'custom';
+      type: 'webhook' | 'integration' | 'server' | 'client' | 'rag' | 'custom' | 'mcp';
       url?: string;
       method?: string;
       headers?: Record<string, string>;
@@ -261,10 +261,39 @@ export const agents = pgTable("agents", {
       configuration?: Record<string, any>;
       description?: string;
       enabled: boolean;
+      // MCP-specific fields
+      mcpConfig?: {
+        serverType: 'sse' | 'streamable_http';
+        secretToken?: string;
+        approvalMode: 'always_ask' | 'fine_grained' | 'no_approval';
+        trusted: boolean;
+      };
+      // Webhook-specific parameter fields
+      queryParameters?: Array<{
+        name: string;
+        type: string;
+        required: boolean;
+        valueType: string;
+        description: string;
+      }>;
+      bodyParameters?: Array<{
+        name: string;
+        type: string;
+        required: boolean;
+        valueType: string;
+        description: string;
+      }>;
+      pathParameters?: Array<{
+        name: string;
+        type: string;
+        required: boolean;
+        valueType: string;
+        description: string;
+      }>;
     }>;
     // Tool IDs for ElevenLabs
     toolIds?: string[];
-    // MCP Servers
+    // Legacy MCP Servers (for backward compatibility)
     mcpServers?: Array<{
       id: string;
       name: string;
@@ -585,6 +614,7 @@ export type Integration = typeof integrations.$inferSelect;
 export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;
 export type Agent = typeof agents.$inferSelect;
 export type InsertAgent = z.infer<typeof insertAgentSchema>;
+export type CustomTool = NonNullable<NonNullable<Agent['tools']>['customTools']>[number];
 export type CallLog = typeof callLogs.$inferSelect;
 export type InsertCallLog = z.infer<typeof insertCallLogSchema>;
 export type Payment = typeof payments.$inferSelect;

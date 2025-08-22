@@ -20,9 +20,10 @@ import {
   SkipForward, UserPlus, Voicemail, Hash, Server,
   Mic, AudioLines, Bot, Key, Shield, Sparkles, Settings
 } from "lucide-react";
-import type { Agent } from "@shared/schema";
+import type { Agent, CustomTool } from "@shared/schema";
 import { SystemToolConfigModal } from "@/components/tools/system-tool-config-modal";
 import { GoogleAuthButton } from "@/components/google-auth-button";
+import { MCPServerDialog } from "@/components/mcp-server-dialog";
 
 interface WebhookParameter {
   name: string;
@@ -117,6 +118,10 @@ export default function Tools() {
     toolType: string;
     toolName: string;
   }>({ isOpen: false, toolType: "", toolName: "" });
+  const [mcpServerDialog, setMcpServerDialog] = useState<{
+    isOpen: boolean;
+    server?: CustomTool;
+  }>({ isOpen: false });
 
   // Fetch agents
   const { data: agents = [], isLoading: agentsLoading } = useQuery<Agent[]>({
@@ -149,6 +154,7 @@ export default function Tools() {
     webhooks: [] as WebhookConfig[],
     integrations: [] as ToolConfig[],
     customTools: [] as ToolConfig[],
+    mcpServers: [] as CustomTool[],
     googleSheets: {
       enabled: false,
       config: {} as GoogleSheetsConfig,
@@ -187,6 +193,7 @@ export default function Tools() {
       const googleCalendarIntegration = tools.integrations?.find((i: any) => i.type === 'google-calendar');
       const googleGmailIntegration = tools.integrations?.find((i: any) => i.type === 'google-gmail');
       const ragToolConfig = tools.customTools?.find((t: any) => t.type === 'rag');
+      const mcpServers = tools.customTools?.filter((t: any) => t.type === 'mcp') || [];
       
       // Ensure each system tool has proper defaults
       const systemTools = tools.systemTools || {};
@@ -213,7 +220,8 @@ export default function Tools() {
         },
         webhooks: tools.webhooks || [],
         integrations: tools.integrations || [],
-        customTools: tools.customTools || [],
+        customTools: tools.customTools?.filter((t: any) => t.type !== 'rag' && t.type !== 'mcp') || [],
+        mcpServers: mcpServers,
         googleSheets: {
           enabled: googleSheetsIntegration?.enabled || false,
           config: googleSheetsIntegration?.configuration || {},
@@ -318,7 +326,7 @@ export default function Tools() {
     }
 
     // Build custom tools array
-    const customTools = [...toolsConfig.customTools.filter(t => t.type !== 'rag')];
+    const customTools = [...toolsConfig.customTools.filter(t => t.type !== 'rag' && t.type !== 'mcp')];
     
     // Add RAG tool if configured
     if (toolsConfig.ragTool.enabled) {
@@ -332,6 +340,11 @@ export default function Tools() {
         },
         enabled: true,
       } as ToolConfig);
+    }
+    
+    // Add MCP servers to custom tools
+    if (toolsConfig.mcpServers && toolsConfig.mcpServers.length > 0) {
+      customTools.push(...toolsConfig.mcpServers);
     }
 
     updateAgentMutation.mutate({
@@ -2111,6 +2124,106 @@ export default function Tools() {
               )}
             </Card>
 
+            {/* MCP Servers */}
+            <Card className="p-4 sm:p-6">
+              <div className="mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                      <Server className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-semibold">MCP Servers</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                        Connect custom Model Context Protocol servers for advanced capabilities
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setMcpServerDialog({ isOpen: true })}
+                    data-testid="button-add-mcp-server"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Server
+                  </Button>
+                </div>
+              </div>
+
+              {toolsConfig.mcpServers?.length === 0 ? (
+                <div className="text-center py-8 border rounded-lg text-muted-foreground">
+                  <Server className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No MCP servers configured</p>
+                  <p className="text-xs mt-1">Add a custom MCP server to extend your agent's capabilities</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {toolsConfig.mcpServers?.map((server, index) => (
+                    <div key={server.id} className="p-4 border rounded-lg">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{server.name}</p>
+                            {server.enabled && (
+                              <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          {server.description && (
+                            <p className="text-sm text-muted-foreground mt-1">{server.description}</p>
+                          )}
+                          <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                            <p>Type: {server.mcpConfig?.serverType === 'sse' ? 'SSE' : 'Streamable HTTP'}</p>
+                            <p>Approval: {server.mcpConfig?.approvalMode?.replace('_', ' ')}</p>
+                            {server.url && <p className="truncate">URL: {server.url}</p>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={server.enabled}
+                            onCheckedChange={(checked) => {
+                              const updatedServers = [...(toolsConfig.mcpServers || [])];
+                              updatedServers[index] = { ...server, enabled: checked };
+                              setToolsConfig({
+                                ...toolsConfig,
+                                mcpServers: updatedServers,
+                              });
+                              setHasUnsavedChanges(true);
+                            }}
+                            data-testid={`switch-mcp-server-${index}`}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setMcpServerDialog({ isOpen: true, server })}
+                            data-testid={`button-edit-mcp-server-${index}`}
+                          >
+                            <Settings className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const updatedServers = toolsConfig.mcpServers?.filter((_, i) => i !== index) || [];
+                              setToolsConfig({
+                                ...toolsConfig,
+                                mcpServers: updatedServers,
+                              });
+                              setHasUnsavedChanges(true);
+                            }}
+                            data-testid={`button-delete-mcp-server-${index}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
             {/* Other Custom Tools Coming Soon */}
             <Card className="p-4 sm:p-6">
               <div className="text-center py-8 text-muted-foreground">
@@ -2145,6 +2258,34 @@ export default function Tools() {
             setSystemToolModal({ isOpen: false, toolType: "", toolName: "" });
           }}
           availableAgents={agents}
+        />
+      )}
+
+      {/* MCP Server Dialog */}
+      {mcpServerDialog.isOpen && (
+        <MCPServerDialog
+          isOpen={mcpServerDialog.isOpen}
+          onClose={() => setMcpServerDialog({ isOpen: false })}
+          server={mcpServerDialog.server}
+          onSave={(server) => {
+            const updatedServers = [...(toolsConfig.mcpServers || [])];
+            if (mcpServerDialog.server) {
+              // Edit existing server
+              const index = updatedServers.findIndex(s => s.id === mcpServerDialog.server?.id);
+              if (index !== -1) {
+                updatedServers[index] = server;
+              }
+            } else {
+              // Add new server
+              updatedServers.push(server);
+            }
+            setToolsConfig({
+              ...toolsConfig,
+              mcpServers: updatedServers,
+            });
+            setHasUnsavedChanges(true);
+            setMcpServerDialog({ isOpen: false });
+          }}
         />
       )}
     </div>
