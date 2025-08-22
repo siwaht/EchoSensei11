@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX,
-  Loader2, Activity, Circle, AlertCircle, Send, MessageSquare
+  Loader2, Activity, Circle, AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -29,8 +28,6 @@ export default function Playground() {
   const [callDuration, setCallDuration] = useState(0);
   const [transcript, setTranscript] = useState<ConversationMessage[]>([]);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [textInput, setTextInput] = useState('');
-  const [isChatMode, setIsChatMode] = useState(false);
   
   const wsRef = useRef<WebSocket | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -41,7 +38,6 @@ export default function Playground() {
   const audioQueueRef = useRef<string[]>([]);
   const isPlayingRef = useRef(false);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
-  const textInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
 
@@ -173,16 +169,10 @@ export default function Playground() {
       ws.onopen = () => {
         console.log("WebSocket connected, sending initialization message");
         
-        // Send initialization message with optional chat mode override
+        // Send a simple initialization message without overrides
+        // Overrides often fail due to agent security settings in ElevenLabs
         const initMessage = {
-          type: "conversation_initiation_client_data",
-          ...(isChatMode ? {
-            conversation_config_override: {
-              conversation: {
-                text_only: true
-              }
-            }
-          } : {})
+          type: "conversation_initiation_client_data"
         };
         
         console.log("Sending init message:", initMessage);
@@ -651,53 +641,6 @@ export default function Playground() {
     return arrayBuffer;
   };
 
-  // Send text message to agent
-  const sendTextMessage = (text: string) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      toast({
-        title: "Not connected",
-        description: "Please start a call first",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!text.trim()) {
-      return;
-    }
-
-    // Add user message to transcript immediately
-    setTranscript(prev => [...prev, {
-      role: "user",
-      message: text.trim(),
-      timestamp: new Date()
-    }]);
-
-    // Send text message via WebSocket
-    const message = {
-      type: "user_message",
-      user_message: text.trim()
-    };
-
-    console.log("Sending text message:", message);
-    wsRef.current.send(JSON.stringify(message));
-  };
-
-  // Handle text input submission
-  const handleTextSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    sendTextMessage(textInput);
-    setTextInput('');
-  };
-
-  // Handle text input key press
-  const handleTextKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendTextMessage(textInput);
-      setTextInput('');
-    }
-  };
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-7xl">
@@ -786,21 +729,19 @@ export default function Playground() {
                     <span className="font-mono text-sm">{formatDuration(callDuration)}</span>
                   </div>
                   
-                  {!isChatMode && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Audio Level</span>
-                      <div className="flex items-center gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <div
-                            key={i}
-                            className={`w-1 h-3 rounded-full transition-colors ${
-                              audioLevel > (i / 5) ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
-                            }`}
-                          />
-                        ))}
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Audio Level</span>
+                    <div className="flex items-center gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <div
+                          key={i}
+                          className={`w-1 h-3 rounded-full transition-colors ${
+                            audioLevel > (i / 5) ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
+                          }`}
+                        />
+                      ))}
                     </div>
-                  )}
+                  </div>
                 </>
               )}
             </div>
@@ -823,31 +764,6 @@ export default function Playground() {
         {/* Voice Call Interface */}
         <div className="lg:col-span-2">
           <Card className="h-[600px] flex flex-col">
-            {/* Mode Toggle */}
-            <div className="p-4 border-b">
-              <div className="flex items-center justify-center gap-2">
-                <Button
-                  onClick={() => setIsChatMode(false)}
-                  variant={!isChatMode ? "default" : "outline"}
-                  size="sm"
-                  disabled={isCallActive}
-                  data-testid="button-voice-mode"
-                >
-                  <Phone className="h-4 w-4 mr-1" />
-                  Voice
-                </Button>
-                <Button
-                  onClick={() => setIsChatMode(true)}
-                  variant={isChatMode ? "default" : "outline"}
-                  size="sm"
-                  disabled={isCallActive}
-                  data-testid="button-chat-mode"
-                >
-                  <MessageSquare className="h-4 w-4 mr-1" />
-                  Chat
-                </Button>
-              </div>
-            </div>
 
             {/* Visualization Area */}
             <div className="flex-1 flex items-center justify-center p-8">
@@ -885,24 +801,15 @@ export default function Playground() {
                       <PhoneOff className="w-8 h-8" />
                     ) : (
                       <div className="text-center">
-                        {isChatMode ? (
-                          <>
-                            <MessageSquare className="w-8 h-8 mx-auto mb-2" />
-                            <span className="text-sm font-medium">Start Chat</span>
-                          </>
-                        ) : (
-                          <>
-                            <Phone className="w-8 h-8 mx-auto mb-2" />
-                            <span className="text-sm font-medium">Try a call</span>
-                          </>
-                        )}
+                        <Phone className="w-8 h-8 mx-auto mb-2" />
+                        <span className="text-sm font-medium">Try a call</span>
                       </div>
                     )}
                   </Button>
                 </div>
 
                 {/* Audio level indicator */}
-                {isCallActive && !isChatMode && (
+                {isCallActive && (
                   <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
                     <Activity className="w-6 h-6 text-green-500" />
                   </div>
@@ -911,7 +818,7 @@ export default function Playground() {
             </div>
 
             {/* Controls */}
-            {isCallActive && !isChatMode && (
+            {isCallActive && (
               <div className="border-t p-4">
                 <div className="flex justify-center gap-4">
                   <Button
@@ -936,15 +843,15 @@ export default function Playground() {
             )}
 
             {/* Transcript */}
-            <div className="border-t flex flex-col">
+            <div className="border-t">
               <div className="p-3 border-b bg-muted/50">
-                <h4 className="text-sm font-medium">{isChatMode ? 'Chat Conversation' : 'Call Transcript'}</h4>
+                <h4 className="text-sm font-medium">Call Transcript</h4>
               </div>
-              <ScrollArea className="h-48 flex-1">
+              <ScrollArea className="h-48">
                 <div className="p-4 space-y-3">
                   {transcript.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      {isChatMode ? 'Messages will appear here when you start chatting' : 'Transcript will appear here when you start a call'}
+                      Transcript will appear here when you start a call
                     </p>
                   ) : (
                     transcript.map((msg, idx) => (
@@ -964,31 +871,6 @@ export default function Playground() {
                   <div ref={transcriptEndRef} />
                 </div>
               </ScrollArea>
-              
-              {/* Text input for chat mode */}
-              {isCallActive && isChatMode && (
-                <div className="p-4 border-t bg-muted/30">
-                  <form onSubmit={handleTextSubmit} className="flex gap-2">
-                    <Input
-                      ref={textInputRef}
-                      value={textInput}
-                      onChange={(e) => setTextInput(e.target.value)}
-                      onKeyPress={handleTextKeyPress}
-                      placeholder="Type your message..."
-                      className="flex-1"
-                      data-testid="input-text-message"
-                    />
-                    <Button
-                      type="submit"
-                      disabled={!textInput.trim()}
-                      size="icon"
-                      data-testid="button-send-message"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </form>
-                </div>
-              )}
             </div>
           </Card>
         </div>
