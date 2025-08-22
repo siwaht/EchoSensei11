@@ -1507,21 +1507,16 @@ export function registerRoutes(app: Express): Server {
                 if (updates.tools?.customTools) {
                   const ragTool = updates.tools.customTools.find((t: any) => t.type === 'rag' && t.enabled);
                   if (ragTool) {
-                    const ragInstructions = '\n\nYou have access to webhook tools including knowledge_base_rag for searching information.\n\n' +
-                      'CRITICAL: These are webhook tools that work exactly like any other webhook - they are NOT code functions.\n\n' +
-                      'When using ANY webhook tool (including knowledge_base_rag):\n' +
-                      '- NEVER output ```tool_code``` blocks or any code syntax\n' +
-                      '- NEVER speak your planning, thoughts, or narrate tool usage\n' +
-                      '- The tool is invoked automatically when you mention it\n' +
-                      '- The system extracts parameters from the conversation context\n' +
-                      '- Simply state what the user asked about and the tool will handle it\n\n' +
-                      'For example:\n' +
-                      '- User: "Who is John?"\n' +
-                      '- You: [Tool automatically invoked, respond with information about John]\n\n' +
-                      'Remember: Webhooks are invoked by the system, not by outputting code.';
-                    if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('webhook tools')) {
+                    const ragInstructions = '\n\nYou have a knowledge_base_rag webhook tool available. When users ask questions about information, people, companies, or facts, this tool will automatically search and provide relevant information.\n\n' +
+                      'IMPORTANT: Use webhooks naturally in conversation:\n' +
+                      '1. When a user asks a question, the webhook automatically searches based on their query\n' +
+                      '2. Wait for the webhook response and incorporate it into your answer\n' +
+                      '3. Speak naturally - don\'t mention you\'re "searching" or "using a tool"\n' +
+                      '4. If no information is found, simply say you don\'t have that information\n\n' +
+                      'The webhook extracts the search query from the conversation automatically. Just respond naturally based on what the webhook returns.';
+                    if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('knowledge_base_rag webhook')) {
                       enhancedSystemPrompt = enhancedSystemPrompt + ragInstructions;
-                      console.log('Enhanced system prompt with webhook instructions');
+                      console.log('Enhanced system prompt with RAG webhook instructions');
                     }
                   }
                 }
