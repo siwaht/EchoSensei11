@@ -3373,13 +3373,15 @@ export function registerRoutes(app: Express): Server {
       
       const text = req.query.text || req.body?.text || '';
       const voiceId = req.query.voice_id || req.body?.voice_id || '21m00Tcm4TlvDq8ikWAM'; // Default voice
-      const modelId = req.query.model_id || req.body?.model_id || 'eleven_monolingual_v1';
+      const modelId = req.query.model_id || req.body?.model_id || 'eleven_v3'; // Default to new v3 model (2025)
       
       if (!text) {
         return res.json({
           error: "No text provided",
           message: "Please provide 'text' parameter",
-          example: "?text=Hello world&voice_id=21m00Tcm4TlvDq8ikWAM"
+          example: "?text=Hello world&voice_id=21m00Tcm4TlvDq8ikWAM&model_id=eleven_v3",
+          available_models: ["eleven_v3", "eleven_flash_v2_5", "eleven_monolingual_v1"],
+          note: "eleven_v3 is the latest high-quality model (2025) supporting 70+ languages"
         });
       }
 
@@ -4091,16 +4093,73 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Playground - Start ElevenLabs session
+  // Generate WebRTC conversation token (new ElevenLabs 2025 feature)
+  app.post("/api/playground/webrtc-token", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { agentId } = req.body;
+      if (!agentId) {
+        return res.status(400).json({ message: "Agent ID is required" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const decryptedKey = decryptApiKey(integration.apiKey);
+
+      try {
+        // Get WebRTC conversation token from ElevenLabs (2025 API)
+        const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get-webrtc-token?agent_id=${agentId}`, {
+          method: "GET",
+          headers: {
+            "xi-api-key": decryptedKey,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+        }
+
+        const tokenData = await response.json();
+        res.json({
+          conversationToken: tokenData.conversation_token,
+          connectionType: "webrtc",
+          message: "WebRTC token generated successfully"
+        });
+      } catch (error: any) {
+        console.error("Error generating WebRTC token:", error);
+        res.status(500).json({ message: `Failed to generate WebRTC token: ${error.message}` });
+      }
+    } catch (error) {
+      console.error("Error in WebRTC token endpoint:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Playground - Start ElevenLabs session (supports both WebSocket and WebRTC)
   app.post("/api/playground/start-session", isAuthenticated, async (req: any, res) => {
     try {
-      const { agentId } = req.body;
+      const { agentId, connectionType = "webrtc" } = req.body; // Default to WebRTC (2025 standard)
       const userId = req.user.id;
       
-      console.log("Starting playground session with agent:", agentId);
+      console.log("Starting playground session with agent:", agentId, "connectionType:", connectionType);
 
       if (!agentId) {
         return res.status(400).json({ message: "Agent ID is required" });
+      }
+
+      // Validate connection type
+      if (!['websocket', 'webrtc'].includes(connectionType)) {
+        return res.status(400).json({ message: "Connection type must be 'websocket' or 'webrtc'" });
       }
 
       // Get user and organization
@@ -4117,9 +4176,17 @@ export function registerRoutes(app: Express): Server {
 
       const apiKey = decryptApiKey(integration.apiKey);
 
-      // Get signed URL from ElevenLabs for WebSocket connection
-      // According to ElevenLabs docs, we need to use the conversation endpoint
-      const url = `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${agentId}`;
+      let url, expectedField;
+      if (connectionType === 'webrtc') {
+        // Use new WebRTC token endpoint (2025)
+        url = `https://api.elevenlabs.io/v1/convai/conversation/get-webrtc-token?agent_id=${agentId}`;
+        expectedField = 'conversation_token';
+      } else {
+        // Use legacy WebSocket signed URL
+        url = `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${agentId}`;
+        expectedField = 'signed_url';
+      }
+      
       console.log("Calling VoiceAI API:", url);
       
       const response = await fetch(url, {
@@ -4176,16 +4243,27 @@ export function registerRoutes(app: Express): Server {
       console.log("ElevenLabs response:", data);
       
       // Validate the response has the required fields
-      if (!data.signed_url) {
-        console.error("No signed_url in response:", data);
-        return res.status(500).json({ message: "Invalid response from ElevenLabs API: missing signed_url" });
+      if (!data[expectedField]) {
+        console.error(`No ${expectedField} in response:`, data);
+        return res.status(500).json({ message: `Invalid response from ElevenLabs API: missing ${expectedField}` });
       }
       
-      // Return the signed URL for WebSocket connection
-      res.json({ 
-        signedUrl: data.signed_url,
-        sessionId: data.conversation_id || null
-      });
+      // Return connection details based on type
+      if (connectionType === 'webrtc') {
+        res.json({ 
+          conversationToken: data.conversation_token,
+          connectionType: 'webrtc',
+          sessionId: data.conversation_id || null,
+          message: "WebRTC session ready"
+        });
+      } else {
+        res.json({ 
+          signedUrl: data.signed_url,
+          connectionType: 'websocket',
+          sessionId: data.conversation_id || null,
+          message: "WebSocket session ready"
+        });
+      }
     } catch (error: any) {
       console.error("Error starting playground session:", error);
       res.status(500).json({ 
