@@ -688,9 +688,9 @@ export default function Playground() {
                   size="sm"
                   disabled={isCallActive}
                   data-testid="button-webrtc-mode"
-                  className="text-xs"
+                  className="text-xs flex-1"
                 >
-                  WebRTC (2025)
+                  WebRTC
                 </Button>
                 <Button
                   onClick={() => setConnectionType('websocket')}
@@ -698,7 +698,7 @@ export default function Playground() {
                   size="sm"
                   disabled={isCallActive}
                   data-testid="button-websocket-mode"
-                  className="text-xs"
+                  className="text-xs flex-1"
                 >
                   WebSocket
                 </Button>
