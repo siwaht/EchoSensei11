@@ -79,14 +79,12 @@ export default function KnowledgeBase() {
 
   // Upload document mutation
   const uploadMutation = useMutation({
-    mutationFn: async (documentData: any) => {
+    mutationFn: async (formData: FormData) => {
       const response = await fetch("/api/convai/knowledge-base", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         credentials: "include",
-        body: JSON.stringify(documentData),
+        body: formData,
+        // Don't set Content-Type header - browser will set it with boundary for multipart/form-data
       });
       
       if (!response.ok) {
@@ -171,42 +169,28 @@ export default function KnowledgeBase() {
     setIsUploading(true);
     
     try {
-      let documentData: any = {
-        name: uploadName,
-        agent_ids: selectedAgentId ? [selectedAgentId] : [],
-      };
+      const formData = new FormData();
+      formData.append('name', uploadName);
+      
+      if (selectedAgentId) {
+        formData.append('agent_ids', JSON.stringify([selectedAgentId]));
+      }
 
       if (uploadType === 'file' && uploadFile) {
-        // Convert file to base64
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          documentData.type = 'file';
-          documentData.content = e.target?.result?.toString().split(',')[1]; // Remove data URL prefix
-          documentData.content_type = uploadFile.type;
-          documentData.filename = uploadFile.name;
-          
-          await uploadMutation.mutateAsync(documentData);
-        };
-        reader.readAsDataURL(uploadFile);
+        // Send the actual file
+        formData.append('file', uploadFile);
+        formData.append('type', 'file');
       } else if (uploadType === 'url') {
-        documentData.type = 'url';
-        documentData.url = uploadUrl;
-        
-        await uploadMutation.mutateAsync(documentData);
+        formData.append('url', uploadUrl);
+        formData.append('type', 'url');
       } else if (uploadType === 'text') {
-        // Convert text to a file format for ElevenLabs API
+        // Convert text to a file for the API
         const textBlob = new Blob([uploadText], { type: 'text/plain' });
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          documentData.type = 'file';
-          documentData.content = e.target?.result?.toString().split(',')[1]; // Remove data URL prefix
-          documentData.content_type = 'text/plain';
-          documentData.filename = `${uploadName.replace(/[^a-z0-9]/gi, '_')}.txt`;
-          
-          await uploadMutation.mutateAsync(documentData);
-        };
-        reader.readAsDataURL(textBlob);
+        formData.append('file', textBlob, `${uploadName.replace(/[^a-z0-9]/gi, '_')}.txt`);
+        formData.append('type', 'file');
       }
+      
+      await uploadMutation.mutateAsync(formData);
     } catch (error) {
       console.error('Upload error:', error);
     } finally {

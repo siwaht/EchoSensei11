@@ -4768,8 +4768,14 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Configure multer for memory storage
+  const kbUpload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit
+  });
+
   // Create knowledge base document
-  app.post("/api/convai/knowledge-base", isAuthenticated, async (req: any, res) => {
+  app.post("/api/convai/knowledge-base", isAuthenticated, kbUpload.single('file'), async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -4783,40 +4789,48 @@ export function registerRoutes(app: Express): Server {
       }
 
       const apiKey = decryptApiKey(integration.apiKey);
-      const documentData = req.body;
-
-      // Format the request for ElevenLabs API
-      let requestBody: any = {
-        name: documentData.name,
-      };
+      const { name, type, url, agent_ids } = req.body;
+      
+      // Prepare FormData for ElevenLabs API
+      const FormData = require('form-data');
+      const formData = new FormData();
+      
+      // Add name if provided
+      if (name) {
+        formData.append('name', name);
+      }
 
       // Add agent_ids if provided
-      if (documentData.agent_ids && documentData.agent_ids.length > 0) {
-        requestBody.agent_ids = documentData.agent_ids;
+      if (agent_ids) {
+        const agentIdsArray = typeof agent_ids === 'string' ? JSON.parse(agent_ids) : agent_ids;
+        agentIdsArray.forEach((id: string) => {
+          formData.append('agent_ids', id);
+        });
       }
 
       // Handle different document types
-      if (documentData.type === 'url' && documentData.url) {
-        requestBody.url = documentData.url;
-      } else if (documentData.type === 'file' && documentData.content) {
-        // For file uploads, ElevenLabs expects the file content in base64
-        requestBody.file = documentData.content;
-        if (documentData.filename) {
-          requestBody.filename = documentData.filename;
-        }
+      if (type === 'url' && url) {
+        formData.append('url', url);
+      } else if (type === 'file' && req.file) {
+        // Add the file
+        formData.append('file', req.file.buffer, {
+          filename: req.file.originalname,
+          contentType: req.file.mimetype
+        });
       } else {
-        return res.status(400).json({ message: "Invalid document type. Please provide either a URL or file content." });
+        return res.status(400).json({ message: "Invalid document type. Please provide either a URL or file." });
       }
 
+      // Send to ElevenLabs API
       const response = await fetch(
         "https://api.elevenlabs.io/v1/convai/knowledge-base",
         {
           method: "POST",
           headers: {
             "xi-api-key": apiKey,
-            "Content-Type": "application/json",
+            ...formData.getHeaders()
           },
-          body: JSON.stringify(requestBody),
+          body: formData
         }
       );
 
