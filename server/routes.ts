@@ -4272,6 +4272,1450 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // ==========================================
+  // CONVERSATIONAL AI ENDPOINTS (FULL SYNC)
+  // ==========================================
+
+  // Conversations API - List all conversations
+  app.get("/api/convai/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { agent_id, user_id, page = 1, limit = 20 } = req.query;
+      
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      if (agent_id) queryParams.append('agent_id', agent_id);
+      if (user_id) queryParams.append('user_id', user_id);
+      queryParams.append('page', page.toString());
+      queryParams.append('limit', limit.toString());
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/conversations?${queryParams}`,
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ message: `Failed to fetch conversations: ${error.message}` });
+    }
+  });
+
+  // Get conversation details
+  app.get("/api/convai/conversations/:conversation_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { conversation_id } = req.params;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/conversations/${conversation_id}`,
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching conversation details:", error);
+      res.status(500).json({ message: `Failed to fetch conversation details: ${error.message}` });
+    }
+  });
+
+  // Send conversation feedback
+  app.post("/api/convai/conversations/:conversation_id/feedback", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { conversation_id } = req.params;
+      const { feedback } = req.body;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/conversations/${conversation_id}/feedback`,
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ feedback }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error sending feedback:", error);
+      res.status(500).json({ message: `Failed to send feedback: ${error.message}` });
+    }
+  });
+
+  // Tools API - Create custom tool
+  app.post("/api/convai/tools", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const toolData = req.body;
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/tools",
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(toolData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error creating tool:", error);
+      res.status(500).json({ message: `Failed to create tool: ${error.message}` });
+    }
+  });
+
+  // List custom tools
+  app.get("/api/convai/tools", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/tools",
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching tools:", error);
+      res.status(500).json({ message: `Failed to fetch tools: ${error.message}` });
+    }
+  });
+
+  // Get tool details
+  app.get("/api/convai/tools/:tool_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { tool_id } = req.params;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/tools/${tool_id}`,
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching tool details:", error);
+      res.status(500).json({ message: `Failed to fetch tool details: ${error.message}` });
+    }
+  });
+
+  // Update tool
+  app.patch("/api/convai/tools/:tool_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { tool_id } = req.params;
+      const updateData = req.body;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/tools/${tool_id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updateData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error updating tool:", error);
+      res.status(500).json({ message: `Failed to update tool: ${error.message}` });
+    }
+  });
+
+  // Delete tool
+  app.delete("/api/convai/tools/:tool_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { tool_id } = req.params;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/tools/${tool_id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      res.json({ message: "Tool deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting tool:", error);
+      res.status(500).json({ message: `Failed to delete tool: ${error.message}` });
+    }
+  });
+
+  // Knowledge Base API - List documents
+  app.get("/api/convai/knowledge-base", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/knowledge-base",
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching knowledge base:", error);
+      res.status(500).json({ message: `Failed to fetch knowledge base: ${error.message}` });
+    }
+  });
+
+  // Create knowledge base document
+  app.post("/api/convai/knowledge-base", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const documentData = req.body;
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/knowledge-base",
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(documentData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error creating knowledge base document:", error);
+      res.status(500).json({ message: `Failed to create document: ${error.message}` });
+    }
+  });
+
+  // Get knowledge base document
+  app.get("/api/convai/knowledge-base/:document_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { document_id } = req.params;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}`,
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching document:", error);
+      res.status(500).json({ message: `Failed to fetch document: ${error.message}` });
+    }
+  });
+
+  // Delete knowledge base document
+  app.delete("/api/convai/knowledge-base/:document_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { document_id } = req.params;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      res.json({ message: "Document deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ message: `Failed to delete document: ${error.message}` });
+    }
+  });
+
+  // Compute RAG index
+  app.post("/api/convai/knowledge-base/compute-rag-index", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { agent_id } = req.body;
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/knowledge-base/compute-rag-index",
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ agent_id }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error computing RAG index:", error);
+      res.status(500).json({ message: `Failed to compute RAG index: ${error.message}` });
+    }
+  });
+
+  // Get document content
+  app.get("/api/convai/knowledge-base/:document_id/content", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { document_id } = req.params;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}/content`,
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching document content:", error);
+      res.status(500).json({ message: `Failed to fetch content: ${error.message}` });
+    }
+  });
+
+  // Get document chunk
+  app.get("/api/convai/knowledge-base/:document_id/chunks/:chunk_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { document_id, chunk_id } = req.params;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}/chunks/${chunk_id}`,
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching chunk:", error);
+      res.status(500).json({ message: `Failed to fetch chunk: ${error.message}` });
+    }
+  });
+
+  // Widget API - Get widget configuration
+  app.get("/api/convai/widget", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/widget",
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching widget configuration:", error);
+      res.status(500).json({ message: `Failed to fetch widget: ${error.message}` });
+    }
+  });
+
+  // Create widget avatar
+  app.post("/api/convai/widget/avatar", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const avatarData = req.body;
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/widget/avatar",
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(avatarData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error creating widget avatar:", error);
+      res.status(500).json({ message: `Failed to create avatar: ${error.message}` });
+    }
+  });
+
+  // Workspace API - Get settings
+  app.get("/api/convai/workspace/settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/workspace/settings",
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching workspace settings:", error);
+      res.status(500).json({ message: `Failed to fetch settings: ${error.message}` });
+    }
+  });
+
+  // Update workspace settings
+  app.patch("/api/convai/workspace/settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const settingsData = req.body;
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/workspace/settings",
+        {
+          method: "PATCH",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(settingsData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error updating workspace settings:", error);
+      res.status(500).json({ message: `Failed to update settings: ${error.message}` });
+    }
+  });
+
+  // Get workspace secrets
+  app.get("/api/convai/workspace/secrets", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/workspace/secrets",
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching workspace secrets:", error);
+      res.status(500).json({ message: `Failed to fetch secrets: ${error.message}` });
+    }
+  });
+
+  // Create workspace secret
+  app.post("/api/convai/workspace/secrets", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const secretData = req.body;
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/workspace/secrets",
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(secretData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error creating workspace secret:", error);
+      res.status(500).json({ message: `Failed to create secret: ${error.message}` });
+    }
+  });
+
+  // Delete workspace secret
+  app.delete("/api/convai/workspace/secrets/:secret_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { secret_id } = req.params;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/workspace/secrets/${secret_id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      res.json({ message: "Secret deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting workspace secret:", error);
+      res.status(500).json({ message: `Failed to delete secret: ${error.message}` });
+    }
+  });
+
+  // Tests API - Create agent test
+  app.post("/api/convai/tests", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const testData = req.body;
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/tests",
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(testData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error creating test:", error);
+      res.status(500).json({ message: `Failed to create test: ${error.message}` });
+    }
+  });
+
+  // List agent tests
+  app.get("/api/convai/tests", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { agent_id } = req.query;
+
+      const queryParams = new URLSearchParams();
+      if (agent_id) queryParams.append('agent_id', agent_id);
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/tests?${queryParams}`,
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching tests:", error);
+      res.status(500).json({ message: `Failed to fetch tests: ${error.message}` });
+    }
+  });
+
+  // Get test details
+  app.get("/api/convai/tests/:test_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { test_id } = req.params;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/tests/${test_id}`,
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching test details:", error);
+      res.status(500).json({ message: `Failed to fetch test details: ${error.message}` });
+    }
+  });
+
+  // Delete test
+  app.delete("/api/convai/tests/:test_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { test_id } = req.params;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/tests/${test_id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      res.json({ message: "Test deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting test:", error);
+      res.status(500).json({ message: `Failed to delete test: ${error.message}` });
+    }
+  });
+
+  // Twilio Integration - Make outbound call
+  app.post("/api/convai/twilio/outbound-call", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const callData = req.body;
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/twilio/outbound-call",
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(callData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error making Twilio outbound call:", error);
+      res.status(500).json({ message: `Failed to make call: ${error.message}` });
+    }
+  });
+
+  // SIP Trunk - List SIP trunks
+  app.get("/api/convai/sip-trunks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/sip-trunks",
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching SIP trunks:", error);
+      res.status(500).json({ message: `Failed to fetch SIP trunks: ${error.message}` });
+    }
+  });
+
+  // Create SIP trunk
+  app.post("/api/convai/sip-trunks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const sipData = req.body;
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/sip-trunks",
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(sipData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error creating SIP trunk:", error);
+      res.status(500).json({ message: `Failed to create SIP trunk: ${error.message}` });
+    }
+  });
+
+  // Get SIP trunk details
+  app.get("/api/convai/sip-trunks/:trunk_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { trunk_id } = req.params;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/sip-trunks/${trunk_id}`,
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching SIP trunk details:", error);
+      res.status(500).json({ message: `Failed to fetch SIP trunk: ${error.message}` });
+    }
+  });
+
+  // Update SIP trunk
+  app.patch("/api/convai/sip-trunks/:trunk_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { trunk_id } = req.params;
+      const updateData = req.body;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/sip-trunks/${trunk_id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updateData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error updating SIP trunk:", error);
+      res.status(500).json({ message: `Failed to update SIP trunk: ${error.message}` });
+    }
+  });
+
+  // Delete SIP trunk
+  app.delete("/api/convai/sip-trunks/:trunk_id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { trunk_id } = req.params;
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/sip-trunks/${trunk_id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      res.json({ message: "SIP trunk deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting SIP trunk:", error);
+      res.status(500).json({ message: `Failed to delete SIP trunk: ${error.message}` });
+    }
+  });
+
+  // LLM Usage API - Get LLM usage statistics
+  app.get("/api/convai/llm-usage", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const { start_date, end_date } = req.query;
+
+      const queryParams = new URLSearchParams();
+      if (start_date) queryParams.append('start_date', start_date);
+      if (end_date) queryParams.append('end_date', end_date);
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/convai/llm-usage?${queryParams}`,
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching LLM usage:", error);
+      res.status(500).json({ message: `Failed to fetch LLM usage: ${error.message}` });
+    }
+  });
+
+  // MCP (Model Context Protocol) API - Get MCP status
+  app.get("/api/convai/mcp/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/mcp/status",
+        {
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching MCP status:", error);
+      res.status(500).json({ message: `Failed to fetch MCP status: ${error.message}` });
+    }
+  });
+
+  // MCP - Configure MCP settings
+  app.post("/api/convai/mcp/configure", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const apiKey = decryptApiKey(integration.apiKey);
+      const configData = req.body;
+
+      const response = await fetch(
+        "https://api.elevenlabs.io/v1/convai/mcp/configure",
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(configData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error configuring MCP:", error);
+      res.status(500).json({ message: `Failed to configure MCP: ${error.message}` });
+    }
+  });
+
+  // ==========================================
+  // END OF CONVERSATIONAL AI ENDPOINTS
+  // ==========================================
+
   // Batch calling routes
   app.get("/api/batch-calls", isAuthenticated, async (req: any, res) => {
     try {
