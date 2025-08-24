@@ -770,7 +770,14 @@ export default function WidgetConfig() {
         <div className="space-y-4">
           <Card className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Widget Preview</h3>
+              <div>
+                <h3 className="font-semibold">Widget Preview</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {previewDevice === 'mobile' ? `${localConfig.size.mobile_width || 320}×${localConfig.size.mobile_height || 500}px` :
+                   previewDevice === 'tablet' ? `${Math.min(localConfig.size.width, 480)}×${Math.min(localConfig.size.height, 550)}px` :
+                   `${localConfig.size.width}×${localConfig.size.height}px`}
+                </p>
+              </div>
               <div className="flex gap-2">
                 <Button
                   size="sm"
@@ -796,23 +803,52 @@ export default function WidgetConfig() {
               </div>
             </div>
 
-            <div className="relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden" style={{ height: '600px' }}>
-              {/* Preview Container */}
-              <div 
-                className="absolute"
-                style={{
-                  [localConfig.position.horizontal]: `${localConfig.position.offset_x}px`,
-                  [localConfig.position.vertical]: `${localConfig.position.offset_y}px`,
-                  width: previewDevice === 'mobile' ? '320px' : 
-                         previewDevice === 'tablet' ? '480px' : 
-                         localConfig.size.width + 'px',
-                  height: previewDevice === 'mobile' ? '500px' : 
-                          previewDevice === 'tablet' ? '550px' : 
-                          localConfig.size.height + 'px',
-                  maxWidth: '90%',
-                  maxHeight: '90%',
-                }}
-              >
+            {/* Device Frame */}
+            <div 
+              className="relative rounded-lg overflow-hidden mx-auto transition-all duration-300"
+              style={{ 
+                height: '600px',
+                width: previewDevice === 'mobile' ? '375px' : 
+                       previewDevice === 'tablet' ? '768px' : 
+                       '100%',
+                backgroundColor: previewDevice !== 'desktop' ? '#1f2937' : 'transparent',
+                padding: previewDevice === 'mobile' ? '30px 15px' : 
+                         previewDevice === 'tablet' ? '30px 20px' : 
+                         '0',
+                boxShadow: previewDevice === 'mobile' ? '0 10px 40px rgba(0,0,0,0.3), inset 0 0 0 2px #374151' : 
+                           previewDevice === 'tablet' ? '0 8px 30px rgba(0,0,0,0.2), inset 0 0 0 2px #374151' : 
+                           'none',
+                borderRadius: previewDevice !== 'desktop' ? '30px' : '8px',
+              }}
+            >
+              {/* Simulated Browser/Device Screen */}
+              <div className="relative bg-white dark:bg-gray-900 h-full rounded-lg overflow-hidden" 
+                   style={{ 
+                     borderRadius: previewDevice !== 'desktop' ? '12px' : '8px',
+                     boxShadow: previewDevice !== 'desktop' ? 'inset 0 0 0 1px rgba(0,0,0,0.1)' : 'none',
+                   }}>
+                {/* Preview Container - Widget positioned as it would be on page */}
+                <div 
+                  className="absolute transition-all duration-300"
+                  style={{
+                    [localConfig.position.horizontal]: `${localConfig.position.offset_x}px`,
+                    [localConfig.position.vertical]: `${localConfig.position.offset_y}px`,
+                    width: previewDevice === 'mobile' ? 
+                           (localConfig.size.mobile_width || 320) + 'px' : 
+                           previewDevice === 'tablet' ? 
+                           Math.min(localConfig.size.width, 480) + 'px' : 
+                           localConfig.size.width + 'px',
+                    height: previewDevice === 'mobile' ? 
+                            (localConfig.size.mobile_height || 500) + 'px' : 
+                            previewDevice === 'tablet' ? 
+                            Math.min(localConfig.size.height, 550) + 'px' : 
+                            localConfig.size.height + 'px',
+                    maxWidth: previewDevice === 'mobile' ? 'calc(100% - 40px)' : 
+                              previewDevice === 'tablet' ? 'calc(100% - 40px)' : 
+                              '90%',
+                    maxHeight: 'calc(100% - 40px)',
+                  }}
+                >
                 <div 
                   className="h-full shadow-2xl flex flex-col"
                   style={{
@@ -886,6 +922,7 @@ export default function WidgetConfig() {
                     </div>
                   </div>
                 </div>
+              </div>
               </div>
             </div>
           </Card>
