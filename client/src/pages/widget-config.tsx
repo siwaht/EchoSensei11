@@ -913,9 +913,9 @@ export default function WidgetConfig() {
 
       {/* Embed Code Dialog */}
       {showEmbedDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="max-w-2xl w-full mx-4 p-6">
-            <div className="space-y-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-6 flex-1 overflow-y-auto space-y-4">
               <div>
                 <h3 className="text-lg font-semibold">Embed Code</h3>
                 <p className="text-sm text-muted-foreground">
@@ -924,7 +924,7 @@ export default function WidgetConfig() {
               </div>
               
               <div className="relative">
-                <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg overflow-x-auto text-sm">
+                <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg overflow-auto text-sm max-h-[50vh]">
                   <code>{embedCode}</code>
                 </pre>
                 <Button
@@ -935,15 +935,15 @@ export default function WidgetConfig() {
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowEmbedDialog(false)}>
-                  Close
-                </Button>
-                <Button onClick={copyToClipboard}>
-                  Copy to Clipboard
-                </Button>
-              </div>
+            </div>
+            
+            <div className="border-t p-6 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowEmbedDialog(false)}>
+                Close
+              </Button>
+              <Button onClick={copyToClipboard}>
+                Copy to Clipboard
+              </Button>
             </div>
           </Card>
         </div>
