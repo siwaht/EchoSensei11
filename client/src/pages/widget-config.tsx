@@ -898,14 +898,6 @@ export default function WidgetConfig() {
                 <Code className="h-4 w-4 mr-2" />
                 Generate Embed Code
               </Button>
-              <Button 
-                className="w-full justify-start" 
-                variant="outline"
-                onClick={() => window.open('https://elevenlabs.io/docs/conversational-ai/widget', '_blank')}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View Documentation
-              </Button>
             </div>
           </Card>
         </div>
