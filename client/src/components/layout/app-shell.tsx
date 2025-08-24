@@ -109,10 +109,10 @@ export default function AppShell({ children }: AppShellProps) {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 lg:w-72 bg-card/95 backdrop-blur border-r border-border transform transition-transform duration-200 ease-in-out shadow-xl",
+        "fixed inset-y-0 left-0 z-50 w-64 lg:w-72 bg-card/95 backdrop-blur border-r border-border transform transition-transform duration-200 ease-in-out shadow-xl flex flex-col",
         sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="flex items-center h-16 px-4 lg:px-6 border-b border-border">
+        <div className="flex items-center h-16 px-4 lg:px-6 border-b border-border flex-shrink-0">
           <div className="flex items-center space-x-2 lg:space-x-3">
             <div className="w-8 h-8 gradient-purple rounded-lg flex items-center justify-center shadow-lg">
               <Mic className="w-4 h-4 text-white" />
@@ -121,7 +121,7 @@ export default function AppShell({ children }: AppShellProps) {
           </div>
         </div>
 
-        <nav className="mt-6 px-3">
+        <nav className="flex-1 overflow-y-auto mt-6 px-3 pb-6">
           <div className="space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
@@ -153,10 +153,10 @@ export default function AppShell({ children }: AppShellProps) {
                   href="/admin"
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all group",
                     location === "/admin"
-                      ? "text-primary bg-primary/10"
-                      : "text-muted-foreground hover:text-card-foreground hover:bg-muted/50"
+                      ? "gradient-purple text-white shadow-lg"
+                      : "text-muted-foreground hover:text-card-foreground hover:bg-muted/50 hover:shadow-md"
                   )}
                   data-testid="nav-admin"
                 >
