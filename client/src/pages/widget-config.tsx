@@ -120,7 +120,7 @@ export default function WidgetConfig() {
 
   const config = widgetData?.config || getDefaultConfig();
   const apiError = widgetData?.error;
-  const [localConfig, setLocalConfig] = useState<WidgetConfig>(config);
+  const [localConfig, setLocalConfig] = useState<WidgetConfig>(getDefaultConfig());
 
   // Save configuration mutation
   const saveMutation = useMutation({
