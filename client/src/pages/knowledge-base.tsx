@@ -437,7 +437,7 @@ export default function KnowledgeBase() {
                 </div>
                 
                 <div className="space-y-1 text-sm text-muted-foreground">
-                  <p className="truncate">ID: {document.document_id.slice(-8)}</p>
+                  <p className="truncate">ID: {document.document_id?.slice(-8) || 'N/A'}</p>
                   {document.chunk_count && (
                     <p>{document.chunk_count} chunks</p>
                   )}
@@ -453,7 +453,7 @@ export default function KnowledgeBase() {
                       const agent = agents.find(a => a.elevenLabsAgentId === agentId);
                       return (
                         <Badge key={agentId} variant="secondary" className="text-xs">
-                          {agent?.name || agentId.slice(-6)}
+                          {agent?.name || agentId?.slice(-6) || 'Unknown'}
                         </Badge>
                       );
                     })}
@@ -579,7 +579,7 @@ export default function KnowledgeBase() {
                   <SelectValue placeholder="Select an agent" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {agents.map((agent) => (
                     <SelectItem key={agent.id} value={agent.elevenLabsAgentId}>
                       {agent.name}

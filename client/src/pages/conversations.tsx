@@ -185,6 +185,12 @@ export default function Conversations() {
   };
 
   const filteredConversations = conversations.filter((conv: Conversation) => {
+    // Filter by agent if selected
+    if (selectedAgentId && selectedAgentId !== 'all' && conv.agent_id !== selectedAgentId) {
+      return false;
+    }
+    
+    // Filter by search term
     const searchLower = searchTerm.toLowerCase();
     const agentName = agents.find(a => a.elevenLabsAgentId === conv.agent_id)?.name || "";
     return (
@@ -240,7 +246,7 @@ export default function Conversations() {
               <SelectValue placeholder="All Agents" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Agents</SelectItem>
+              <SelectItem value="all">All Agents</SelectItem>
               {agents.map((agent) => (
                 <SelectItem key={agent.id} value={agent.elevenLabsAgentId}>
                   {agent.name}
@@ -296,7 +302,7 @@ export default function Conversations() {
                       <Bot className="h-5 w-5 text-primary" />
                       <div>
                         <p className="font-medium">{agent?.name || 'Unknown Agent'}</p>
-                        <p className="text-xs text-muted-foreground">ID: {conversation.conversation_id.slice(-8)}</p>
+                        <p className="text-xs text-muted-foreground">ID: {conversation.conversation_id?.slice(-8) || 'N/A'}</p>
                       </div>
                     </div>
                     
