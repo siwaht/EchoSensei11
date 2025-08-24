@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Phone, Clock, DollarSign, Bot, PhoneCall, MessageSquare, AlertCircle, RefreshCw, BarChart3, TrendingUp, Activity } from "lucide-react";
+import { Phone, Clock, DollarSign, Bot, PhoneCall, MessageSquare, AlertCircle, RefreshCw, BarChart3, TrendingUp, Activity, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { GettingStarted } from "@/components/getting-started";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Success Rate Chart Component
 function SuccessRateChart() {
@@ -782,7 +784,11 @@ export default function Dashboard() {
   const totalCredits = Math.round((stats as any)?.estimatedCost * 10000) || 0;
 
   return (
+    <TooltipProvider>
     <div className="space-y-8">
+      {/* Getting Started Guide */}
+      <GettingStarted />
+      
       {/* Sync Section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
@@ -1020,5 +1026,6 @@ export default function Dashboard() {
         </div>
       </Card>
     </div>
+    </TooltipProvider>
   );
 }

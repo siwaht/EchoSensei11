@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { CheckCircle, XCircle, AlertCircle, Eye, EyeOff, Copy } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, Eye, EyeOff, Copy, ExternalLink, HelpCircle, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const apiKeySchema = z.object({
   apiKey: z.string().min(1, "API key is required"),
@@ -128,15 +129,63 @@ export default function Integrations() {
   }
 
   return (
+    <TooltipProvider>
     <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8 px-4 sm:px-0">
       <div className="text-center">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2" data-testid="text-page-title">
           API Configuration
         </h2>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400" data-testid="text-page-description">
-          Configure your API credentials to enable voice agent monitoring and management
+          Connect your ElevenLabs account to manage voice agents
         </p>
       </div>
+      
+      {/* Step-by-step Guide */}
+      {!(integration as any)?.status || (integration as any)?.status !== "ACTIVE" ? (
+        <Card className="p-4 sm:p-6 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+          <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
+            <HelpCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            Quick Setup Guide
+          </h3>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-semibold">1</div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Get your ElevenLabs API Key</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Sign up at ElevenLabs and find your API key in Profile Settings
+                </p>
+                <a 
+                  href="https://elevenlabs.io" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 mt-1"
+                >
+                  Go to ElevenLabs <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-semibold">2</div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Enter your API key below</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Paste your API key in the form and click "Update API Key"
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-semibold">3</div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Test the connection</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Click "Test Connection" to verify your API key works
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       {/* Integration Status */}
       <Card className="p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
@@ -188,13 +237,23 @@ export default function Integrations() {
               name="apiKey"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>VoiceAI API Key</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    ElevenLabs API Key
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Your API key from ElevenLabs Profile → API Keys</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input
                         {...field}
                         type={showApiKey ? "text" : "password"}
-                        placeholder="Enter your VoiceAI API key"
+                        placeholder="xi_abc123..." 
                         data-testid="input-api-key"
                       />
                       <Button
@@ -210,7 +269,7 @@ export default function Integrations() {
                     </div>
                   </FormControl>
                   <FormDescription>
-                    Your API key is encrypted and stored securely. We never share or expose your credentials.
+                    Your API key is encrypted with AES-256 and stored securely. We never share or expose your credentials.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -272,5 +331,6 @@ export default function Integrations() {
         </div>
       </Card>
     </div>
+    </TooltipProvider>
   );
 }

@@ -4,11 +4,12 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Plus, Trash2, Eye, Play, RefreshCw } from "lucide-react";
+import { Bot, Plus, Trash2, Eye, Play, RefreshCw, ExternalLink, HelpCircle } from "lucide-react";
 import { AddAgentModal } from "@/components/modals/add-agent-modal";
 import { AgentDetailModal } from "@/components/modals/agent-detail-modal";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -129,6 +130,7 @@ export default function Agents() {
   }
 
   return (
+    <TooltipProvider>
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
@@ -136,7 +138,7 @@ export default function Agents() {
             Voice Agents
           </h2>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400" data-testid="text-page-description">
-            Manage your ElevenLabs voice agents
+            Manage your ElevenLabs conversational AI agents
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -160,19 +162,57 @@ export default function Agents() {
       {/* Agents Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {!agents || agents.length === 0 ? (
-          <div className="col-span-full text-center py-12">
-            <Bot className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2" data-testid="text-no-agents-title">
-              No agents configured
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4" data-testid="text-no-agents-description">
-              Add your first ElevenLabs agent to start monitoring voice interactions.
-            </p>
-            <Button onClick={() => setShowAddModal(true)} data-testid="button-add-first-agent">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Your First Agent
-            </Button>
-          </div>
+          <Card className="col-span-full p-12">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                <Bot className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2" data-testid="text-no-agents-title">
+                No agents configured yet
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto" data-testid="text-no-agents-description">
+                Connect your ElevenLabs voice agents to monitor conversations, manage settings, and track performance.
+              </p>
+              
+              {/* Quick Setup Steps */}
+              <div className="max-w-md mx-auto mb-6 text-left space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-semibold">1</div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Create an agent in ElevenLabs</p>
+                    <p className="text-xs text-muted-foreground">Set up your conversational AI in ElevenLabs</p>
+                    <a 
+                      href="https://elevenlabs.io/conversational-ai" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs text-purple-600 dark:text-purple-400 hover:underline inline-flex items-center gap-1 mt-1"
+                    >
+                      Go to ElevenLabs <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-semibold">2</div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Get your Agent ID</p>
+                    <p className="text-xs text-muted-foreground">Find it in your agent's settings page</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-semibold">3</div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Add to your dashboard</p>
+                    <p className="text-xs text-muted-foreground">Click below and enter your Agent ID</p>
+                  </div>
+                </div>
+              </div>
+              
+              <Button onClick={() => setShowAddModal(true)} data-testid="button-add-first-agent" size="lg">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Your First Agent
+              </Button>
+            </div>
+          </Card>
         ) : (
           agents.map((agent) => (
             <Card 
@@ -219,19 +259,26 @@ export default function Agents() {
               {/* Action Buttons */}
               <div className="flex flex-col gap-2 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLocation(`/playground?agentId=${agent.id}`);
-                    }}
-                    data-testid={`button-test-${agent.id}`}
-                  >
-                    <Play className="w-4 h-4 mr-1" />
-                    Test
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocation(`/playground?agentId=${agent.id}`);
+                        }}
+                        data-testid={`button-test-${agent.id}`}
+                      >
+                        <Play className="w-4 h-4 mr-1" />
+                        Test
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Test this agent in the playground</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <Button
                     variant="outline"
                     size="sm"
@@ -300,5 +347,6 @@ export default function Agents() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </TooltipProvider>
   );
 }

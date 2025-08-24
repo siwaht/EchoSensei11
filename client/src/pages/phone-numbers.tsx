@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Phone, Plus, ChevronDown, Trash2, Edit, Globe, Server, User, RefreshCw } from "lucide-react";
+import { Phone, Plus, ChevronDown, Trash2, Edit, Globe, Server, User, RefreshCw, HelpCircle, ArrowRight } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { PhoneNumber, InsertPhoneNumber } from "@shared/schema";
 
 const countryCodes = [
@@ -258,6 +259,7 @@ export default function PhoneNumbers() {
   }
 
   return (
+    <TooltipProvider>
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
@@ -265,7 +267,7 @@ export default function PhoneNumbers() {
             Phone numbers
           </h2>
           <p className="text-gray-600 dark:text-gray-400" data-testid="text-page-description">
-            Import and manage your phone numbers
+            Connect phone numbers to your voice AI agents
           </p>
         </div>
         <DropdownMenu>
@@ -304,13 +306,40 @@ export default function PhoneNumbers() {
       {phoneNumbers.length === 0 ? (
         <Card className="p-12">
           <div className="text-center">
-            <Phone className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-medium mb-2" data-testid="text-no-numbers">
-              No phone numbers
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+              <Phone className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2" data-testid="text-no-numbers">
+              No phone numbers yet
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              You don't have any phone numbers yet.
+            <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
+              Import phone numbers from Twilio or connect SIP trunks to enable voice calling for your AI agents.
             </p>
+            
+            {/* Quick Setup Steps */}
+            <div className="max-w-md mx-auto mb-6 text-left space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-semibold">1</div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Choose your provider</p>
+                  <p className="text-xs text-muted-foreground">Import from Twilio or configure SIP trunk</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-semibold">2</div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Connect your number</p>
+                  <p className="text-xs text-muted-foreground">Enter phone number and credentials</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-semibold">3</div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Assign to an agent</p>
+                  <p className="text-xs text-muted-foreground">Link the number to your AI voice agent</p>
+                </div>
+              </div>
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button data-testid="button-import-first">
@@ -817,5 +846,6 @@ export default function PhoneNumbers() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </TooltipProvider>
   );
 }
