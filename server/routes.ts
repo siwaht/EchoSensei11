@@ -19,7 +19,7 @@ const isAuthenticated: RequestHandler = (req, res, next) => {
 };
 
 // ElevenLabs API helper
-async function callElevenLabsAPI(apiKey: string, endpoint: string, method = "GET", body?: any) {
+async function callElevenLabsAPI(apiKey: string, endpoint: string, method = "GET", body?: any, integrationId?: string) {
   const headers: any = {
     "xi-api-key": apiKey,
     "Content-Type": "application/json",
@@ -40,6 +40,16 @@ async function callElevenLabsAPI(apiKey: string, endpoint: string, method = "GET
     console.error(`ElevenLabs API error: ${response.status} ${response.statusText}`);
     console.error(`Response body: ${responseText}`);
     
+    // Check for authentication errors and mark integration as disconnected
+    if ((response.status === 401 || response.status === 403) && integrationId) {
+      console.log(`Authentication failed for integration ${integrationId}, marking as disconnected`);
+      try {
+        await storage.updateIntegrationStatus(integrationId, "ERROR", new Date());
+      } catch (updateError) {
+        console.error("Failed to update integration status:", updateError);
+      }
+    }
+    
     // Try to parse error message from response
     let errorMessage = `ElevenLabs API error: ${response.status}`;
     try {
@@ -54,6 +64,13 @@ async function callElevenLabsAPI(apiKey: string, endpoint: string, method = "GET
     } catch (e) {
       // If response is not JSON, use the status text
       errorMessage = responseText || response.statusText;
+    }
+    
+    // Add authentication-specific error messages
+    if (response.status === 401) {
+      errorMessage = "Authentication failed: Invalid API key. Please update your API key in Integrations.";
+    } else if (response.status === 403) {
+      errorMessage = "Access forbidden: Your API key may not have the required permissions.";
     }
     
     throw new Error(errorMessage);
@@ -730,7 +747,7 @@ export function registerRoutes(app: Express): Server {
       try {
         console.log("Testing ElevenLabs API connection...");
         // Use the /v1/user endpoint to validate the API key
-        const userData = await callElevenLabsAPI(apiKey, "/v1/user");
+        const userData = await callElevenLabsAPI(apiKey, "/v1/user", "GET", undefined, integration.id);
         console.log("ElevenLabs user data retrieved:", userData);
         
         await storage.updateIntegrationStatus(integration.id, "ACTIVE", new Date());
@@ -816,7 +833,7 @@ export function registerRoutes(app: Express): Server {
       
       try {
         console.log("Validating agent with ID:", elevenLabsAgentId);
-        const agentData = await callElevenLabsAPI(apiKey, `/v1/convai/agents/${elevenLabsAgentId}`);
+        const agentData = await callElevenLabsAPI(apiKey, `/v1/convai/agents/${elevenLabsAgentId}`, "GET", undefined, integration.id);
         console.log("Agent validation successful:", agentData);
         res.json({ 
           message: "Agent validated successfully", 
@@ -1001,7 +1018,8 @@ export function registerRoutes(app: Express): Server {
         apiKey,
         "/v1/convai/agents/create",
         "POST",
-        agentPayload
+        agentPayload,
+        integration.id
       );
 
       console.log("ElevenLabs agent created:", elevenLabsResponse);
@@ -1231,7 +1249,9 @@ export function registerRoutes(app: Express): Server {
           const elevenLabsResponse = await callElevenLabsAPI(
             decryptedKey,
             "/v1/convai/agents",
-            "GET"
+            "GET",
+            undefined,
+            integration.id
           );
           
           // Handle the response - ElevenLabs returns an object with agents array
@@ -1883,7 +1903,8 @@ export function registerRoutes(app: Express): Server {
                 decryptedKey,
                 `/v1/convai/agents/${agent.elevenLabsAgentId}`,
                 "PATCH",
-                elevenLabsPayload
+                elevenLabsPayload,
+                integration.id
               );
               
               console.log(`ElevenLabs update response:`, response);
@@ -1986,7 +2007,9 @@ export function registerRoutes(app: Express): Server {
       const elevenLabsResponse = await callElevenLabsAPI(
         decryptedKey,
         "/v1/convai/agents",
-        "GET"
+        "GET",
+        undefined,
+        integration.id
       );
       
       // Handle the response - ElevenLabs returns an object with agents array
@@ -2407,7 +2430,8 @@ export function registerRoutes(app: Express): Server {
             decryptedKey,
             "/v1/convai/phone-numbers",
             "POST",
-            elevenLabsPayload
+            elevenLabsPayload,
+            integration.id
           );
 
           console.log("ElevenLabs phone creation response:", JSON.stringify(response, null, 2));
@@ -2556,7 +2580,8 @@ export function registerRoutes(app: Express): Server {
           decryptedKey,
           "/v1/convai/phone-numbers",
           "POST",
-          elevenLabsPayload
+          elevenLabsPayload,
+          integration.id
         );
 
         if (response.phone_id) {
@@ -2672,7 +2697,8 @@ export function registerRoutes(app: Express): Server {
                 decryptedKey,
                 `/v1/convai/phone-numbers/${phoneNumber.elevenLabsPhoneId}`,
                 "PATCH",
-                payload
+                payload,
+                integration.id
               );
               console.log("ElevenLabs PATCH response:", response);
             } catch (patchError: any) {
@@ -2681,7 +2707,8 @@ export function registerRoutes(app: Express): Server {
                 decryptedKey,
                 `/v1/convai/phone-numbers/${phoneNumber.elevenLabsPhoneId}`,
                 "PUT",
-                payload
+                payload,
+                integration.id
               );
               console.log("ElevenLabs PUT response:", response);
             }
@@ -2732,7 +2759,9 @@ export function registerRoutes(app: Express): Server {
         const elevenLabsPhones = await callElevenLabsAPI(
           decryptedKey,
           "/v1/convai/phone-numbers",
-          "GET"
+          "GET",
+          undefined,
+          integration.id
         );
         
         console.log("ElevenLabs phone numbers:", JSON.stringify(elevenLabsPhones, null, 2));
@@ -2809,7 +2838,9 @@ export function registerRoutes(app: Express): Server {
             await callElevenLabsAPI(
               decryptedKey,
               `/v1/convai/phone-numbers/${phoneNumber.elevenLabsPhoneId}`,
-              "DELETE"
+              "DELETE",
+              undefined,
+              integration.id
             );
           } catch (elevenLabsError) {
             console.error("Error deleting phone number from ElevenLabs:", elevenLabsError);
@@ -3878,7 +3909,10 @@ export function registerRoutes(app: Express): Server {
           // Get conversations for this agent
           const conversations = await callElevenLabsAPI(
             apiKey, 
-            `/v1/convai/conversations?agent_id=${agent.elevenLabsAgentId}&page_size=100`
+            `/v1/convai/conversations?agent_id=${agent.elevenLabsAgentId}&page_size=100`,
+            "GET",
+            undefined,
+            integration.id
           );
           
           console.log(`API response:`, conversations);
@@ -3900,7 +3934,10 @@ export function registerRoutes(app: Express): Server {
               // Get detailed conversation data
               const details = await callElevenLabsAPI(
                 apiKey,
-                `/v1/convai/conversations/${conversation.conversation_id}`
+                `/v1/convai/conversations/${conversation.conversation_id}`,
+                "GET",
+                undefined,
+                integration.id
               );
               
               console.log(`  Conversation details received:`, {
@@ -5995,7 +6032,8 @@ export function registerRoutes(app: Express): Server {
         apiKey,
         "/v1/convai/conversations",
         "POST",
-        payload
+        payload,
+        integration.id
       );
 
       res.json({ 
@@ -6070,7 +6108,8 @@ export function registerRoutes(app: Express): Server {
         apiKey,
         "/v1/convai/batch-calling",
         "POST",
-        payload
+        payload,
+        integration.id
       );
 
       // Update batch call with ElevenLabs ID and status

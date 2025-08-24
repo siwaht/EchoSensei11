@@ -104,16 +104,23 @@ export default function Integrations() {
         );
       case "ERROR":
         return (
-          <Badge className="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200" data-testid="badge-status-error">
+          <Badge className="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200" data-testid="badge-status-disconnected">
             <XCircle className="w-4 h-4 mr-2" />
-            Error
+            Disconnected
+          </Badge>
+        );
+      case "INACTIVE":
+        return (
+          <Badge className="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200" data-testid="badge-status-inactive">
+            <AlertCircle className="w-4 h-4 mr-2" />
+            Not Connected
           </Badge>
         );
       default:
         return (
-          <Badge className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200" data-testid="badge-status-inactive">
+          <Badge className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200" data-testid="badge-status-not-configured">
             <AlertCircle className="w-4 h-4 mr-2" />
-            Not Connected
+            Not Configured
           </Badge>
         );
     }
@@ -140,8 +147,48 @@ export default function Integrations() {
         </p>
       </div>
       
-      {/* Step-by-step Guide */}
-      {!(integration as any)?.status || (integration as any)?.status !== "ACTIVE" ? (
+      {/* Disconnection Alert - Show when connection is lost */}
+      {(integration as any)?.status === "ERROR" && (
+        <Card className="p-4 sm:p-6 bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
+          <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
+            <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            Connection Lost - Reconnection Required
+          </h3>
+          <p className="text-sm text-muted-foreground mb-3">
+            Your connection to ElevenLabs has been lost. This could be due to:
+          </p>
+          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 mb-4">
+            <li>Invalid or expired API key</li>
+            <li>API key permissions changed</li>
+            <li>Network connectivity issues</li>
+            <li>ElevenLabs service interruption</li>
+          </ul>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={() => testConnectionMutation.mutate()}
+              disabled={testConnectionMutation.isPending}
+              data-testid="button-reconnect"
+            >
+              {testConnectionMutation.isPending ? "Reconnecting..." : "Reconnect Now"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => form.setFocus("apiKey")}
+              data-testid="button-update-key"
+            >
+              Update API Key
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Step-by-step Guide - Show guide when not configured or inactive */}
+      {(!(integration as any)?.status || ((integration as any)?.status !== "ACTIVE" && (integration as any)?.status !== "ERROR")) ? (
         <Card className="p-4 sm:p-6 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
           <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
             <HelpCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -197,7 +244,9 @@ export default function Integrations() {
           <div>
             <p className="text-gray-600 dark:text-gray-400">API Key Status:</p>
             <p className="font-medium" data-testid="text-api-key-status">
-              {(integration as any)?.status === "ACTIVE" ? "Active" : "Inactive"}
+              {(integration as any)?.status === "ACTIVE" ? "Active" : 
+               (integration as any)?.status === "ERROR" ? "Disconnected - Reconnect Required" : 
+               (integration as any)?.status === "INACTIVE" ? "Inactive" : "Not Configured"}
             </p>
           </div>
           <div>
@@ -212,16 +261,18 @@ export default function Integrations() {
           <div>
             <p className="text-gray-600 dark:text-gray-400">Connected Since:</p>
             <p className="font-medium" data-testid="text-connected-since">
-              {(integration as any)?.createdAt 
+              {(integration as any)?.status === "ACTIVE" && (integration as any)?.createdAt 
                 ? new Date((integration as any).createdAt).toLocaleDateString()
+                : (integration as any)?.status === "ERROR" ? "Disconnected" 
                 : "Not connected"
               }
             </p>
           </div>
           <div>
             <p className="text-gray-600 dark:text-gray-400">Webhook Status:</p>
-            <p className="font-medium text-green-600" data-testid="text-webhook-status">
-              {(integration as any)?.status === "ACTIVE" ? "Receiving data" : "Not configured"}
+            <p className={`font-medium ${(integration as any)?.status === "ACTIVE" ? "text-green-600" : (integration as any)?.status === "ERROR" ? "text-red-600" : "text-gray-600"}`} data-testid="text-webhook-status">
+              {(integration as any)?.status === "ACTIVE" ? "Receiving data" : 
+               (integration as any)?.status === "ERROR" ? "Connection lost" : "Not configured"}
             </p>
           </div>
         </div>
