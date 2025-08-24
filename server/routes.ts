@@ -2118,7 +2118,7 @@ export function registerRoutes(app: Express): Server {
   });
 
 
-  // Get available VoiceAI voices (new endpoint)
+  // Get available VoiceAI voices - Updated with latest ElevenLabs API
   app.get("/api/voiceai/voices", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -2129,12 +2129,12 @@ export function registerRoutes(app: Express): Server {
 
       const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
       if (!integration || !integration.apiKey) {
-        return res.status(400).json({ message: "VoiceAI API key not configured" });
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
       }
 
       const decryptedKey = decryptApiKey(integration.apiKey);
       
-      // Fetch voices from API
+      // Fetch voices from ElevenLabs API v1
       const response = await fetch("https://api.elevenlabs.io/v1/voices", {
         headers: {
           "xi-api-key": decryptedKey,
@@ -2151,6 +2151,125 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching voices:", error);
       res.status(500).json({ message: "Failed to fetch voices" });
+    }
+  });
+
+  // Create voice clone - Latest ElevenLabs API endpoint
+  app.post("/api/voiceai/voices/clone", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const decryptedKey = decryptApiKey(integration.apiKey);
+      const { name, description, files, remove_background_noise } = req.body;
+
+      // Note: For actual implementation, files would need to be handled as multipart/form-data
+      // This is a placeholder that shows the endpoint structure
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('description', description || '');
+      formData.append('remove_background_noise', String(remove_background_noise || false));
+      
+      // In a real implementation, files would be appended here
+      // files.forEach((file: any) => formData.append('files', file));
+
+      const response = await fetch("https://api.elevenlabs.io/v1/voices/add", {
+        method: "POST",
+        headers: {
+          "xi-api-key": decryptedKey,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error cloning voice:", error);
+      res.status(500).json({ message: "Failed to clone voice" });
+    }
+  });
+
+  // Get single voice details - Latest ElevenLabs API endpoint
+  app.get("/api/voiceai/voices/:voiceId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const decryptedKey = decryptApiKey(integration.apiKey);
+      const { voiceId } = req.params;
+      
+      const response = await fetch(`https://api.elevenlabs.io/v1/voices/${voiceId}`, {
+        headers: {
+          "xi-api-key": decryptedKey,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching voice details:", error);
+      res.status(500).json({ message: "Failed to fetch voice details" });
+    }
+  });
+
+  // Delete voice - Latest ElevenLabs API endpoint
+  app.delete("/api/voiceai/voices/:voiceId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      }
+
+      const decryptedKey = decryptApiKey(integration.apiKey);
+      const { voiceId } = req.params;
+      
+      const response = await fetch(`https://api.elevenlabs.io/v1/voices/${voiceId}`, {
+        method: "DELETE",
+        headers: {
+          "xi-api-key": decryptedKey,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      res.json({ success: true, message: "Voice deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting voice:", error);
+      res.status(500).json({ message: "Failed to delete voice" });
     }
   });
   
