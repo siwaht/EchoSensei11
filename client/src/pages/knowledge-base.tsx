@@ -98,7 +98,7 @@ export default function KnowledgeBase() {
     onSuccess: () => {
       toast({
         title: "Document Uploaded",
-        description: "The document has been added to the knowledge base.",
+        description: "The document has been added and will be automatically indexed.",
       });
       setShowUpload(false);
       resetUploadForm();
@@ -141,39 +141,8 @@ export default function KnowledgeBase() {
     },
   });
 
-  // Compute RAG index mutation
-  const computeRAGMutation = useMutation({
-    mutationFn: async (agentId: string) => {
-      const response = await fetch("/api/convai/knowledge-base/compute-rag-index", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ agent_id: agentId }),
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to compute RAG index");
-      }
-      
-      return await response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "RAG Index Updated",
-        description: "The knowledge base index has been recomputed successfully.",
-      });
-      refetch();
-    },
-    onError: (error) => {
-      toast({
-        title: "Index Update Failed",
-        description: "Failed to compute RAG index. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
+  // Note: RAG indexing happens automatically in ElevenLabs when documents are added
+  // No manual index computation is needed
 
   // Fetch document details
   const fetchDocumentDetails = async (documentId: string) => {
@@ -323,25 +292,6 @@ export default function KnowledgeBase() {
           <p className="text-muted-foreground">Manage documents and information for your AI agents</p>
         </div>
         <div className="flex gap-2">
-          {agents.length > 0 && (
-            <Select value={selectedAgentId} onValueChange={(value) => {
-              setSelectedAgentId(value);
-              if (value) {
-                computeRAGMutation.mutate(value);
-              }
-            }}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Reindex for Agent" />
-              </SelectTrigger>
-              <SelectContent>
-                {agents.map((agent) => (
-                  <SelectItem key={agent.id} value={agent.elevenLabsAgentId}>
-                    {agent.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
           <Button onClick={() => setShowUpload(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Document

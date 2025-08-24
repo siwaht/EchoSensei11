@@ -4890,47 +4890,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Compute RAG index
-  app.post("/api/convai/knowledge-base/compute-rag-index", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
-      if (!integration || !integration.apiKey) {
-        return res.status(400).json({ message: "ElevenLabs API key not configured" });
-      }
-
-      const apiKey = decryptApiKey(integration.apiKey);
-      const { agent_id } = req.body;
-
-      const response = await fetch(
-        "https://api.elevenlabs.io/v1/convai/knowledge-base/compute-rag-index",
-        {
-          method: "POST",
-          headers: {
-            "xi-api-key": apiKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ agent_id }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      res.json(data);
-    } catch (error: any) {
-      console.error("Error computing RAG index:", error);
-      res.status(500).json({ message: `Failed to compute RAG index: ${error.message}` });
-    }
-  });
+  // Note: RAG indexing happens automatically in ElevenLabs when documents are added
+  // No manual endpoint needed for computing RAG index
 
   // Get document content
   app.get("/api/convai/knowledge-base/:document_id/content", isAuthenticated, async (req: any, res) => {
