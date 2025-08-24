@@ -10,6 +10,7 @@ import { AgentDetailModal } from "@/components/modals/agent-detail-modal";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -217,14 +218,19 @@ export default function Agents() {
           agents.map((agent) => (
             <Card 
               key={agent.id} 
-              className="group relative flex flex-col h-full p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-primary-500 dark:hover:border-primary-400 transition-all cursor-pointer overflow-hidden"
+              className="group relative flex flex-col h-full p-6 border-0 shadow-lg card-hover hover:shadow-2xl transition-all cursor-pointer overflow-hidden"
               onClick={() => setLocation(`/agents/${agent.id}/settings`)}
             >
               <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-6 h-6 text-primary-600" />
+                <div className="w-12 h-12 gradient-purple rounded-xl flex items-center justify-center flex-shrink-0 shadow-md group-hover:scale-110 transition-transform">
+                  <Bot className="w-6 h-6 text-white" />
                 </div>
-                <Badge className={getStatusColor(agent.isActive)} data-testid={`badge-status-${agent.id}`}>
+                <Badge className={cn(
+                  "shadow-sm",
+                  agent.isActive 
+                    ? "bg-gradient-to-r from-green-500/20 to-green-600/20 text-green-700 dark:text-green-300 border-green-500/30" 
+                    : "bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30"
+                )} data-testid={`badge-status-${agent.id}`}>
                   {getStatusText(agent.isActive)}
                 </Badge>
               </div>
@@ -264,7 +270,7 @@ export default function Agents() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1"
+                        className="flex-1 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all"
                         onClick={(e) => {
                           e.stopPropagation();
                           setLocation(`/playground?agentId=${agent.id}`);
@@ -282,7 +288,7 @@ export default function Agents() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all"
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedAgent(agent);

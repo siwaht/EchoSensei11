@@ -209,7 +209,7 @@ export default function Conversations() {
           <p className="text-muted-foreground">View and manage all agent conversations</p>
         </div>
         
-        <Card className="p-6">
+        <Card className="p-6 shadow-lg border-0">
           <div className="text-center py-8">
             <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-lg font-medium mb-2">API Key Required</p>
@@ -228,7 +228,7 @@ export default function Conversations() {
       </div>
 
       {/* Filters */}
-      <Card className="p-4">
+      <Card className="p-4 shadow-lg border-0">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
@@ -293,13 +293,15 @@ export default function Conversations() {
             return (
               <Card 
                 key={conversation.conversation_id} 
-                className="p-4 hover:shadow-lg transition-shadow cursor-pointer"
+                className="p-4 shadow-md hover:shadow-xl transition-all cursor-pointer border-0 card-hover"
                 onClick={() => fetchConversationDetails(conversation.conversation_id)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-3">
-                      <Bot className="h-5 w-5 text-primary" />
+                      <div className="w-10 h-10 gradient-purple rounded-lg flex items-center justify-center shadow-md">
+                        <Bot className="h-5 w-5 text-white" />
+                      </div>
                       <div>
                         <p className="font-medium">{agent?.name || 'Unknown Agent'}</p>
                         <p className="text-xs text-muted-foreground">ID: {conversation.conversation_id?.slice(-8) || 'N/A'}</p>

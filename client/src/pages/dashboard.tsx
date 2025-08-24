@@ -806,7 +806,7 @@ export default function Dashboard() {
           onClick={() => syncMutation.mutate()}
           disabled={syncMutation.isPending}
           size="sm"
-          className="gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+          className="gap-2 gradient-purple text-white btn-premium shadow-lg hover:shadow-xl hover:scale-105 transition-all"
           data-testid="button-sync-data"
         >
           <RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
@@ -832,12 +832,12 @@ export default function Dashboard() {
       )}
       
       {/* ElevenLabs-style Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 fade-in">
         {/* Total calls */}
-        <Card className="p-4 bg-gradient-to-br from-blue-500/10 to-blue-600/10 dark:from-blue-500/20 dark:to-blue-600/20 border-blue-500/20 dark:border-blue-400/30 backdrop-blur hover:from-blue-500/15 hover:to-blue-600/15 transition-all">
+        <Card className="p-4 bg-gradient-to-br from-blue-500/10 to-blue-600/10 dark:from-blue-500/20 dark:to-blue-600/20 border-blue-500/20 dark:border-blue-400/30 backdrop-blur hover:from-blue-500/15 hover:to-blue-600/15 transition-all card-hover group">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-blue-500/20 dark:bg-blue-400/20">
+              <div className="p-1.5 rounded-lg bg-blue-500/20 dark:bg-blue-400/20 group-hover:scale-110 transition-transform">
                 <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Total Calls</p>
@@ -848,10 +848,10 @@ export default function Dashboard() {
         </Card>
 
         {/* Total duration */}
-        <Card className="p-4 bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 dark:from-emerald-500/20 dark:to-emerald-600/20 border-emerald-500/20 dark:border-emerald-400/30 backdrop-blur hover:from-emerald-500/15 hover:to-emerald-600/15 transition-all">
+        <Card className="p-4 bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 dark:from-emerald-500/20 dark:to-emerald-600/20 border-emerald-500/20 dark:border-emerald-400/30 backdrop-blur hover:from-emerald-500/15 hover:to-emerald-600/15 transition-all card-hover group">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-emerald-500/20 dark:bg-emerald-400/20">
+              <div className="p-1.5 rounded-lg bg-emerald-500/20 dark:bg-emerald-400/20 group-hover:scale-110 transition-transform">
                 <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Total Duration</p>
@@ -862,10 +862,10 @@ export default function Dashboard() {
         </Card>
 
         {/* Total spending */}
-        <Card className="p-4 bg-gradient-to-br from-amber-500/10 to-amber-600/10 dark:from-amber-500/20 dark:to-amber-600/20 border-amber-500/20 dark:border-amber-400/30 backdrop-blur hover:from-amber-500/15 hover:to-amber-600/15 transition-all">
+        <Card className="p-4 bg-gradient-to-br from-amber-500/10 to-amber-600/10 dark:from-amber-500/20 dark:to-amber-600/20 border-amber-500/20 dark:border-amber-400/30 backdrop-blur hover:from-amber-500/15 hover:to-amber-600/15 transition-all card-hover group">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-amber-500/20 dark:bg-amber-400/20">
+              <div className="p-1.5 rounded-lg bg-amber-500/20 dark:bg-amber-400/20 group-hover:scale-110 transition-transform">
                 <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Total Spending</p>
@@ -876,10 +876,10 @@ export default function Dashboard() {
         </Card>
 
         {/* Average cost per call */}
-        <Card className="p-4 bg-gradient-to-br from-orange-500/10 to-orange-600/10 dark:from-orange-500/20 dark:to-orange-600/20 border-orange-500/20 dark:border-orange-400/30 backdrop-blur hover:from-orange-500/15 hover:to-orange-600/15 transition-all">
+        <Card className="p-4 bg-gradient-to-br from-orange-500/10 to-orange-600/10 dark:from-orange-500/20 dark:to-orange-600/20 border-orange-500/20 dark:border-orange-400/30 backdrop-blur hover:from-orange-500/15 hover:to-orange-600/15 transition-all card-hover group">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-orange-500/20 dark:bg-orange-400/20">
+              <div className="p-1.5 rounded-lg bg-orange-500/20 dark:bg-orange-400/20 group-hover:scale-110 transition-transform">
                 <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Avg Cost per Call</p>
@@ -890,10 +890,10 @@ export default function Dashboard() {
         </Card>
 
         {/* Average duration */}
-        <Card className="p-4 bg-gradient-to-br from-purple-500/10 to-purple-600/10 dark:from-purple-500/20 dark:to-purple-600/20 border-purple-500/20 dark:border-purple-400/30 backdrop-blur hover:from-purple-500/15 hover:to-purple-600/15 transition-all">
+        <Card className="p-4 bg-gradient-to-br from-purple-500/10 to-purple-600/10 dark:from-purple-500/20 dark:to-purple-600/20 border-purple-500/20 dark:border-purple-400/30 backdrop-blur hover:from-purple-500/15 hover:to-purple-600/15 transition-all card-hover group">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-purple-500/20 dark:bg-purple-400/20">
+              <div className="p-1.5 rounded-lg bg-purple-500/20 dark:bg-purple-400/20 group-hover:scale-110 transition-transform">
                 <Activity className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Avg Call Duration</p>
@@ -904,10 +904,10 @@ export default function Dashboard() {
         </Card>
 
         {/* Active agents */}
-        <Card className="p-4 bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 dark:from-cyan-500/20 dark:to-cyan-600/20 border-cyan-500/20 dark:border-cyan-400/30 backdrop-blur hover:from-cyan-500/15 hover:to-cyan-600/15 transition-all">
+        <Card className="p-4 bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 dark:from-cyan-500/20 dark:to-cyan-600/20 border-cyan-500/20 dark:border-cyan-400/30 backdrop-blur hover:from-cyan-500/15 hover:to-cyan-600/15 transition-all card-hover group">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-cyan-500/20 dark:bg-cyan-400/20">
+              <div className="p-1.5 rounded-lg bg-cyan-500/20 dark:bg-cyan-400/20 group-hover:scale-110 transition-transform">
                 <Bot className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Active Agents</p>
@@ -918,10 +918,10 @@ export default function Dashboard() {
         </Card>
 
         {/* Credits used (if available) */}
-        <Card className="p-4 bg-gradient-to-br from-pink-500/10 to-pink-600/10 dark:from-pink-500/20 dark:to-pink-600/20 border-pink-500/20 dark:border-pink-400/30 backdrop-blur hover:from-pink-500/15 hover:to-pink-600/15 transition-all">
+        <Card className="p-4 bg-gradient-to-br from-pink-500/10 to-pink-600/10 dark:from-pink-500/20 dark:to-pink-600/20 border-pink-500/20 dark:border-pink-400/30 backdrop-blur hover:from-pink-500/15 hover:to-pink-600/15 transition-all card-hover group">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-pink-500/20 dark:bg-pink-400/20">
+              <div className="p-1.5 rounded-lg bg-pink-500/20 dark:bg-pink-400/20 group-hover:scale-110 transition-transform">
                 <BarChart3 className="h-4 w-4 text-pink-600 dark:text-pink-400" />
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Credits Used</p>
@@ -934,10 +934,10 @@ export default function Dashboard() {
         </Card>
 
         {/* Success rate */}
-        <Card className="p-4 bg-gradient-to-br from-green-500/10 to-green-600/10 dark:from-green-500/20 dark:to-green-600/20 border-green-500/20 dark:border-green-400/30 backdrop-blur hover:from-green-500/15 hover:to-green-600/15 transition-all">
+        <Card className="p-4 bg-gradient-to-br from-green-500/10 to-green-600/10 dark:from-green-500/20 dark:to-green-600/20 border-green-500/20 dark:border-green-400/30 backdrop-blur hover:from-green-500/15 hover:to-green-600/15 transition-all card-hover group">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-green-500/20 dark:bg-green-400/20">
+              <div className="p-1.5 rounded-lg bg-green-500/20 dark:bg-green-400/20 group-hover:scale-110 transition-transform">
                 <MessageSquare className="h-4 w-4 text-green-600 dark:text-green-400" />
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Success Rate</p>
@@ -956,7 +956,7 @@ export default function Dashboard() {
       </div>
 
       {/* Call Volume Line Chart */}
-      <Card className="p-6 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur">
+      <Card className="p-6 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur shadow-xl border-0">
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={(() => {
@@ -1010,7 +1010,7 @@ export default function Dashboard() {
                 <h3 className="text-lg font-semibold text-card-foreground">Most called agents</h3>
                 <button 
                   onClick={() => setLocation('/agents')}
-                  className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                  className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-500 dark:hover:text-purple-300 transition-colors font-medium"
                 >
                   See all {Array.isArray(agents) ? agents.length : 0} agents
                 </button>

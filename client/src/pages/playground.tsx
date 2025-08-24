@@ -675,7 +675,7 @@ export default function Playground() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Agent Selection */}
         <div className="lg:col-span-1 space-y-4">
-          <Card className="p-4">
+          <Card className="p-4 shadow-lg border-0">
             <h3 className="font-semibold mb-3">Select Agent</h3>
             
             {/* Connection Type Toggle */}
@@ -756,13 +756,13 @@ export default function Playground() {
           </Card>
 
           {/* Call Status */}
-          <Card className="p-4">
+          <Card className="p-4 shadow-lg border-0">
             <h3 className="font-semibold mb-3">Call Status</h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Status</span>
                 {isCallActive ? (
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  <Badge className="bg-gradient-to-r from-green-500/20 to-green-600/20 text-green-700 dark:text-green-300 shadow-sm">
                     <Circle className="w-2 h-2 fill-current mr-1 animate-pulse" />
                     Active
                   </Badge>
@@ -802,7 +802,7 @@ export default function Playground() {
           </Card>
 
           {/* Notice */}
-          <Card className="p-4 border-amber-200 bg-amber-50 dark:bg-amber-900/20">
+          <Card className="p-4 bg-gradient-to-br from-amber-500/10 to-amber-600/10 dark:from-amber-500/20 dark:to-amber-600/20 border-amber-500/20 dark:border-amber-400/30 shadow-lg">
             <div className="flex gap-3">
               <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
               <div className="space-y-1">
@@ -817,7 +817,7 @@ export default function Playground() {
 
         {/* Voice Call Interface */}
         <div className="lg:col-span-2">
-          <Card className="h-[600px] flex flex-col">
+          <Card className="h-[600px] flex flex-col shadow-xl border-0 dark:bg-slate-800/50 backdrop-blur">
 
             {/* Visualization Area */}
             <div className="flex-1 flex items-center justify-center p-8">
@@ -827,9 +827,9 @@ export default function Playground() {
                   {/* Animated rings when active */}
                   {isCallActive && (
                     <>
-                      <div className="absolute inset-0 rounded-full border-2 border-green-500 animate-ping opacity-20" />
-                      <div className="absolute inset-4 rounded-full border-2 border-green-500 animate-ping animation-delay-200 opacity-15" />
-                      <div className="absolute inset-8 rounded-full border-2 border-green-500 animate-ping animation-delay-400 opacity-10" />
+                      <div className="absolute inset-0 rounded-full border-2 border-primary animate-ping opacity-30" />
+                      <div className="absolute inset-4 rounded-full border-2 border-primary animate-ping animation-delay-200 opacity-20" />
+                      <div className="absolute inset-8 rounded-full border-2 border-primary animate-ping animation-delay-400 opacity-15" />
                     </>
                   )}
                   
@@ -842,9 +842,9 @@ export default function Playground() {
                   <Button
                     size="lg"
                     variant={isCallActive ? "destructive" : "default"}
-                    className={`relative z-10 rounded-full w-32 h-32 transition-all duration-200 ${
+                    className={`relative z-10 rounded-full w-32 h-32 transition-all duration-200 hover:scale-105 shadow-2xl ${
                       isConnecting || !selectedAgent ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
+                    } ${!isCallActive ? "gradient-purple hover:opacity-90" : ""}`}
                     onClick={isCallActive ? endCall : startCall}
                     disabled={isConnecting || !selectedAgent}
                     data-testid="button-call"
@@ -898,7 +898,7 @@ export default function Playground() {
 
             {/* Transcript */}
             <div className="border-t">
-              <div className="p-3 border-b bg-muted/50">
+              <div className="p-3 border-b bg-gradient-to-r from-muted/30 to-muted/50">
                 <h4 className="text-sm font-medium">Call Transcript</h4>
               </div>
               <ScrollArea className="h-48">

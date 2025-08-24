@@ -109,15 +109,15 @@ export default function AppShell({ children }: AppShellProps) {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 lg:w-72 bg-card border-r border-border transform transition-transform duration-200 ease-in-out",
+        "fixed inset-y-0 left-0 z-50 w-64 lg:w-72 bg-card/95 backdrop-blur border-r border-border transform transition-transform duration-200 ease-in-out shadow-xl",
         sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         <div className="flex items-center h-16 px-4 lg:px-6 border-b border-border">
           <div className="flex items-center space-x-2 lg:space-x-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Mic className="w-4 h-4 text-primary-foreground" />
+            <div className="w-8 h-8 gradient-purple rounded-lg flex items-center justify-center shadow-lg">
+              <Mic className="w-4 h-4 text-white" />
             </div>
-            <span className="text-base lg:text-lg font-semibold text-card-foreground truncate" data-testid="text-app-title">VoiceAI</span>
+            <span className="text-base lg:text-lg font-bold gradient-text truncate" data-testid="text-app-title">VoiceAI</span>
           </div>
         </div>
 
@@ -132,10 +132,10 @@ export default function AppShell({ children }: AppShellProps) {
                   href={item.href}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all group",
                     isActive
-                      ? "text-primary bg-primary/10"
-                      : "text-muted-foreground hover:text-card-foreground hover:bg-muted/50"
+                      ? "gradient-purple text-white shadow-lg"
+                      : "text-muted-foreground hover:text-card-foreground hover:bg-muted/50 hover:shadow-md"
                   )}
                   data-testid={`nav-${item.name.toLowerCase().replace(' ', '-')}`}
                 >
@@ -187,7 +187,7 @@ export default function AppShell({ children }: AppShellProps) {
       {/* Main Content */}
       <div className="lg:pl-64">
         {/* Header */}
-        <header className="bg-card border-b border-border px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <header className="bg-card/95 backdrop-blur border-b border-border px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between shadow-sm">
           <div className="flex items-center">
             <Button
               variant="ghost"
@@ -214,8 +214,8 @@ export default function AppShell({ children }: AppShellProps) {
             </Button>
             
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-primary-foreground text-sm font-medium" data-testid="text-user-initials">
+              <div className="w-8 h-8 gradient-purple rounded-full flex items-center justify-center shadow-md ring-2 ring-primary/20">
+                <span className="text-white text-sm font-medium" data-testid="text-user-initials">
                   {(user as any)?.firstName?.[0]}{(user as any)?.lastName?.[0]}
                 </span>
               </div>
@@ -242,7 +242,7 @@ export default function AppShell({ children }: AppShellProps) {
         </header>
 
         {/* Page Content */}
-        <main className="p-4 sm:p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8 fade-in">
           {children}
         </main>
       </div>
