@@ -803,8 +803,12 @@ export default function WidgetConfig() {
                 style={{
                   [localConfig.position.horizontal]: `${localConfig.position.offset_x}px`,
                   [localConfig.position.vertical]: `${localConfig.position.offset_y}px`,
-                  width: previewDevice === 'mobile' ? '320px' : localConfig.size.width + 'px',
-                  height: previewDevice === 'mobile' ? '500px' : localConfig.size.height + 'px',
+                  width: previewDevice === 'mobile' ? '320px' : 
+                         previewDevice === 'tablet' ? '480px' : 
+                         localConfig.size.width + 'px',
+                  height: previewDevice === 'mobile' ? '500px' : 
+                          previewDevice === 'tablet' ? '550px' : 
+                          localConfig.size.height + 'px',
                   maxWidth: '90%',
                   maxHeight: '90%',
                 }}
