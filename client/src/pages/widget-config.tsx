@@ -805,27 +805,29 @@ export default function WidgetConfig() {
 
             {/* Device Frame */}
             <div 
-              className="relative rounded-lg overflow-hidden mx-auto transition-all duration-300"
+              className={`relative rounded-lg overflow-hidden mx-auto transition-all duration-300 ${
+                previewDevice !== 'desktop' ? 'bg-slate-800 dark:bg-slate-950' : ''
+              }`}
               style={{ 
                 height: '600px',
                 width: previewDevice === 'mobile' ? '375px' : 
                        previewDevice === 'tablet' ? '768px' : 
                        '100%',
-                backgroundColor: previewDevice !== 'desktop' ? '#1f2937' : 'transparent',
                 padding: previewDevice === 'mobile' ? '30px 15px' : 
                          previewDevice === 'tablet' ? '30px 20px' : 
                          '0',
-                boxShadow: previewDevice === 'mobile' ? '0 10px 40px rgba(0,0,0,0.3), inset 0 0 0 2px #374151' : 
-                           previewDevice === 'tablet' ? '0 8px 30px rgba(0,0,0,0.2), inset 0 0 0 2px #374151' : 
-                           'none',
                 borderRadius: previewDevice !== 'desktop' ? '30px' : '8px',
               }}
             >
+              {/* Device bezel effect */}
+              {previewDevice !== 'desktop' && (
+                <div className="absolute inset-0 rounded-[30px] ring-2 ring-slate-600 dark:ring-slate-700 shadow-2xl" />
+              )}
+              
               {/* Simulated Browser/Device Screen */}
-              <div className="relative bg-white dark:bg-gray-900 h-full rounded-lg overflow-hidden" 
+              <div className="relative bg-white dark:bg-gray-900 h-full rounded-lg overflow-hidden ring-1 ring-black/5 dark:ring-white/5" 
                    style={{ 
                      borderRadius: previewDevice !== 'desktop' ? '12px' : '8px',
-                     boxShadow: previewDevice !== 'desktop' ? 'inset 0 0 0 1px rgba(0,0,0,0.1)' : 'none',
                    }}>
                 {/* Preview Container - Widget positioned as it would be on page */}
                 <div 
