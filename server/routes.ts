@@ -4785,6 +4785,29 @@ export function registerRoutes(app: Express): Server {
       const apiKey = decryptApiKey(integration.apiKey);
       const documentData = req.body;
 
+      // Format the request for ElevenLabs API
+      let requestBody: any = {
+        name: documentData.name,
+      };
+
+      // Add agent_ids if provided
+      if (documentData.agent_ids && documentData.agent_ids.length > 0) {
+        requestBody.agent_ids = documentData.agent_ids;
+      }
+
+      // Handle different document types
+      if (documentData.type === 'url' && documentData.url) {
+        requestBody.url = documentData.url;
+      } else if (documentData.type === 'file' && documentData.content) {
+        // For file uploads, ElevenLabs expects the file content in base64
+        requestBody.file = documentData.content;
+        if (documentData.filename) {
+          requestBody.filename = documentData.filename;
+        }
+      } else {
+        return res.status(400).json({ message: "Invalid document type. Please provide either a URL or file content." });
+      }
+
       const response = await fetch(
         "https://api.elevenlabs.io/v1/convai/knowledge-base",
         {
@@ -4793,7 +4816,7 @@ export function registerRoutes(app: Express): Server {
             "xi-api-key": apiKey,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(documentData),
+          body: JSON.stringify(requestBody),
         }
       );
 

@@ -194,10 +194,18 @@ export default function KnowledgeBase() {
         
         await uploadMutation.mutateAsync(documentData);
       } else if (uploadType === 'text') {
-        documentData.type = 'text';
-        documentData.content = uploadText;
-        
-        await uploadMutation.mutateAsync(documentData);
+        // Convert text to a file format for ElevenLabs API
+        const textBlob = new Blob([uploadText], { type: 'text/plain' });
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          documentData.type = 'file';
+          documentData.content = e.target?.result?.toString().split(',')[1]; // Remove data URL prefix
+          documentData.content_type = 'text/plain';
+          documentData.filename = `${uploadName.replace(/[^a-z0-9]/gi, '_')}.txt`;
+          
+          await uploadMutation.mutateAsync(documentData);
+        };
+        reader.readAsDataURL(textBlob);
       }
     } catch (error) {
       console.error('Upload error:', error);
