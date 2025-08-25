@@ -7,16 +7,30 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX,
-  Loader2, Activity, Circle, AlertCircle
+  Loader2, Activity, Circle, AlertCircle, Send, MessageSquare, 
+  Bot, User, Sparkles, RefreshCw, Trash2, FileText
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Agent, Integration } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 
 interface ConversationMessage {
   role: "assistant" | "user";
   message: string;
   timestamp: Date;
+}
+
+interface ChatMessage {
+  id: string;
+  content: string;
+  role: 'user' | 'assistant';
+  timestamp: Date;
+  sources?: Array<{ document: string; relevance: number }>;
+  mode?: 'llm_augmented' | 'search_only';
 }
 
 export default function Playground() {
@@ -29,6 +43,14 @@ export default function Playground() {
   const [transcript, setTranscript] = useState<ConversationMessage[]>([]);
   const [audioLevel, setAudioLevel] = useState(0);
   const [connectionType, setConnectionType] = useState<'websocket' | 'webrtc'>('webrtc');
+  
+  // Chat state for RAG testing
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [chatTopK, setChatTopK] = useState(5);
+  const [chatTemperature, setChatTemperature] = useState(0.7);
+  const [chatMaxTokens, setChatMaxTokens] = useState(500);
   
   const wsRef = useRef<WebSocket | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
