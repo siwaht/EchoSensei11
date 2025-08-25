@@ -18,7 +18,8 @@ import {
   FileText, Upload, Link, Plus, Trash2, Search, 
   Brain, Database, Book, Globe, File, RefreshCw,
   CheckCircle, XCircle, Clock, AlertCircle, Download,
-  Save, Info, Send, MessageSquare, Bot, User, Sparkles
+  Save, Info, Send, MessageSquare, Bot, User, Sparkles,
+  Webhook, Copy
 } from "lucide-react";
 
 interface KnowledgeDocument {
@@ -946,6 +947,67 @@ export default function KnowledgeBase() {
                   </ol>
                 </AlertDescription>
               </Alert>
+
+              {/* Webhook Configuration */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Webhook className="h-5 w-5" />
+                  <h3 className="font-semibold">Agent Webhook Configuration</h3>
+                </div>
+                
+                <Card className="p-4 border-2 border-primary/20 bg-primary/5">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-sm mb-1 flex items-center gap-2">
+                      Connect RAG to Voice Agents
+                    </h4>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Allow your voice agents to search your custom knowledge base during conversations.
+                    </p>
+                    
+                    <div className="space-y-2">
+                      <div className="bg-background rounded-lg p-3 border">
+                        <p className="text-xs font-medium mb-2">Add this webhook to your agent in ElevenLabs:</p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono break-all">
+                            {window.location.origin}/api/public/rag
+                          </code>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/api/public/rag`);
+                              toast({
+                                title: "Copied!",
+                                description: "Webhook URL copied to clipboard",
+                              });
+                            }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-xs font-medium mb-2">Configuration in ElevenLabs:</p>
+                        <ul className="text-xs space-y-1 text-muted-foreground">
+                          <li>• Type: <span className="font-mono">Webhook</span></li>
+                          <li>• Method: <span className="font-mono">GET</span></li>
+                          <li>• Query Parameter: <span className="font-mono">query</span> (type: String)</li>
+                          <li>• Description: "Search the knowledge base for relevant information"</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+                
+                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-900">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    <strong>How to connect:</strong> Copy the webhook URL above, go to your agent in ElevenLabs, 
+                    add a new "Webhook" tool, paste the URL, set method to GET, and add a query parameter named "query". 
+                    Save the agent, and it will be able to search your knowledge base during conversations.
+                  </p>
+                </div>
+              </div>
 
               {/* Save Button for RAG Config */}
               <div className="flex justify-end">
