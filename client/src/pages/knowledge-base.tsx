@@ -8,12 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { 
   FileText, Upload, Link, Plus, Trash2, Search, 
   Brain, Database, Book, Globe, File, RefreshCw,
-  CheckCircle, XCircle, Clock, AlertCircle, Download
+  CheckCircle, XCircle, Clock, AlertCircle, Download,
+  Save, Info
 } from "lucide-react";
 
 interface KnowledgeDocument {
@@ -36,6 +41,20 @@ export default function KnowledgeBase() {
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeDocument | null>(null);
   const [showDocumentDetails, setShowDocumentDetails] = useState(false);
   const { toast } = useToast();
+
+  // RAG Knowledge Base state
+  const [ragEnabled, setRagEnabled] = useState(true);
+  const [ragToolName, setRagToolName] = useState("Knowledge Base RAG");
+  const [ragToolDescription, setRagToolDescription] = useState("check the knowledge base for more information");
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
+  const [topK, setTopK] = useState(5);
+  const [maxResponseTokens, setMaxResponseTokens] = useState(2000);
+  const [ragTemperature, setRagTemperature] = useState(0.7);
+  const [chunkSize, setChunkSize] = useState(1000);
+  const [chunkOverlap, setChunkOverlap] = useState(200);
+  const [ragSystemPrompt, setRagSystemPrompt] = useState(
+    "reference the most relevant entries when providing facts about a person's background, preferences, or company information. If the user inquires about a person's location, what they like to eat, or a company's services, cite the related knowledge base entry in your answer. Respond concisely, truthfully, and in a helpful manner based on the provided information."
+  );
 
   // Fetch agents
   const { data: agents = [] } = useQuery<any[]>({
@@ -194,6 +213,53 @@ export default function KnowledgeBase() {
     setUploadType('file');
   };
 
+  // Save RAG configuration
+  const saveRagConfig = async () => {
+    const config = {
+      name: ragToolName,
+      description: ragToolDescription,
+      enabled: ragEnabled,
+      type: 'rag',
+      config: {
+        vectorDatabase: 'lancedb',
+        openaiApiKey: openaiApiKey,
+        topK,
+        maxResponseTokens,
+        temperature: ragTemperature,
+        chunkSize,
+        chunkOverlap,
+        systemPrompt: ragSystemPrompt,
+        embedModel: openaiApiKey ? 'text-embedding-3-small' : 'local',
+      },
+    };
+
+    try {
+      const response = await fetch('/api/tools/rag-config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(config),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Configuration Saved",
+          description: "RAG configuration has been saved successfully.",
+        });
+      } else {
+        throw new Error('Failed to save configuration');
+      }
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: "Failed to save RAG configuration.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const filteredDocuments = documents.filter((doc: KnowledgeDocument) =>
     doc.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -238,19 +304,31 @@ export default function KnowledgeBase() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Knowledge Base</h1>
+          <h1 className="text-3xl font-bold">RAG Knowledge Base</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your local knowledge base documents for AI agents
+            Manage documents and configure Retrieval-Augmented Generation settings
           </p>
         </div>
-        <Button onClick={() => setShowUpload(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Document
-        </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Tabs */}
+      <Tabs defaultValue="documents" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="configuration">RAG Configuration</TabsTrigger>
+        </TabsList>
+
+        {/* Documents Tab */}
+        <TabsContent value="documents" className="space-y-4">
+          <div className="flex justify-end mb-4">
+            <Button onClick={() => setShowUpload(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Document
+            </Button>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="flex items-center space-x-3">
             <Database className="h-8 w-8 text-blue-500" />
@@ -292,23 +370,23 @@ export default function KnowledgeBase() {
             </div>
           </div>
         </Card>
-      </div>
+          </div>
 
-      {/* Search Bar */}
-      <Card className="p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search documents..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </Card>
+          {/* Search Bar */}
+          <Card className="p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search documents..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </Card>
 
-      {/* Documents Grid */}
-      {isLoading ? (
+          {/* Documents Grid */}
+          {isLoading ? (
         <Card className="p-8">
           <div className="flex items-center justify-center space-x-2">
             <RefreshCw className="h-5 w-5 animate-spin" />
@@ -389,6 +467,208 @@ export default function KnowledgeBase() {
           ))}
         </div>
       )}
+        </TabsContent>
+
+        {/* RAG Configuration Tab */}
+        <TabsContent value="configuration" className="space-y-4">
+          <Card className="p-6">
+            <div className="space-y-6">
+              {/* RAG Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <Database className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold">RAG Configuration</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Configure Retrieval-Augmented Generation settings
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={ragEnabled}
+                  onCheckedChange={setRagEnabled}
+                  className="scale-125"
+                />
+              </div>
+
+              {/* Tool Configuration */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="tool-name">Tool Name</Label>
+                  <Input
+                    id="tool-name"
+                    value={ragToolName}
+                    onChange={(e) => setRagToolName(e.target.value)}
+                    placeholder="Knowledge Base RAG"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="tool-desc">Description</Label>
+                  <Input
+                    id="tool-desc"
+                    value={ragToolDescription}
+                    onChange={(e) => setRagToolDescription(e.target.value)}
+                    placeholder="check the knowledge base for more information"
+                  />
+                </div>
+              </div>
+
+              {/* Vector Database Configuration */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Database className="h-5 w-5" />
+                  <h3 className="font-semibold">Vector Database Configuration</h3>
+                </div>
+                
+                <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    <strong>Open Source LanceDB (Free)</strong>
+                    <br />
+                    No external services required - runs locally on your server
+                  </AlertDescription>
+                </Alert>
+
+                <div>
+                  <Label htmlFor="openai-key">
+                    OpenAI API Key (Optional - for better embeddings)
+                  </Label>
+                  <Input
+                    id="openai-key"
+                    type="password"
+                    value={openaiApiKey}
+                    onChange={(e) => setOpenaiApiKey(e.target.value)}
+                    placeholder="sk-... (Leave empty to use free local embeddings)"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    If provided, OpenAI embeddings will be used for better search accuracy
+                  </p>
+                </div>
+              </div>
+
+              {/* Retrieval Settings */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Search className="h-5 w-5" />
+                  <h3 className="font-semibold">Retrieval Settings</h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>Top K Results</Label>
+                      <span className="text-sm text-muted-foreground">{topK}</span>
+                    </div>
+                    <Slider
+                      value={[topK]}
+                      onValueChange={(v) => setTopK(v[0])}
+                      min={1}
+                      max={20}
+                      step={1}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>Max Response Tokens</Label>
+                      <span className="text-sm text-muted-foreground">{maxResponseTokens}</span>
+                    </div>
+                    <Slider
+                      value={[maxResponseTokens]}
+                      onValueChange={(v) => setMaxResponseTokens(v[0])}
+                      min={100}
+                      max={4000}
+                      step={100}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>Temperature</Label>
+                      <span className="text-sm text-muted-foreground">{ragTemperature.toFixed(2)}</span>
+                    </div>
+                    <Slider
+                      value={[ragTemperature]}
+                      onValueChange={(v) => setRagTemperature(v[0])}
+                      min={0}
+                      max={1}
+                      step={0.01}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>Chunk Size</Label>
+                      <span className="text-sm text-muted-foreground">{chunkSize}</span>
+                    </div>
+                    <Slider
+                      value={[chunkSize]}
+                      onValueChange={(v) => setChunkSize(v[0])}
+                      min={100}
+                      max={2000}
+                      step={50}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label>Chunk Overlap</Label>
+                    <span className="text-sm text-muted-foreground">{chunkOverlap}</span>
+                  </div>
+                  <Slider
+                    value={[chunkOverlap]}
+                    onValueChange={(v) => setChunkOverlap(v[0])}
+                    min={0}
+                    max={500}
+                    step={10}
+                  />
+                </div>
+              </div>
+
+              {/* System Prompt */}
+              <div className="space-y-2">
+                <Label htmlFor="system-prompt">System Prompt for RAG</Label>
+                <Textarea
+                  id="system-prompt"
+                  value={ragSystemPrompt}
+                  onChange={(e) => setRagSystemPrompt(e.target.value)}
+                  rows={5}
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Instructions for how the agent should use retrieved knowledge
+                </p>
+              </div>
+
+              {/* Quick Start Guide */}
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Quick Start Guide</strong>
+                  <ol className="mt-2 ml-2 space-y-1 text-sm">
+                    <li>1. Upload your documents in the Documents tab</li>
+                    <li>2. Documents are automatically processed and indexed</li>
+                    <li>3. Optionally add an OpenAI API key for better search accuracy</li>
+                    <li>4. Configure retrieval settings for optimal performance</li>
+                    <li>5. Your agent can now answer questions using the knowledge base</li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
+
+              {/* Save Button for RAG Config */}
+              <div className="flex justify-end">
+                <Button onClick={saveRagConfig}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save RAG Configuration
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Upload Dialog */}
       <Dialog open={showUpload} onOpenChange={setShowUpload}>
