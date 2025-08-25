@@ -1065,9 +1065,9 @@ export default function Tools() {
                 ) : (
                   toolsConfig.webhooks.map((webhook, index) => (
                     <div key={webhook.id} className="p-4 border rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-medium">{webhook.name || 'Unnamed Webhook'}</p>
                             <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded">
                               {webhook.method}
@@ -1090,7 +1090,7 @@ export default function Tools() {
                             </p>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           <Switch
                             checked={webhook.enabled !== false}
                             onCheckedChange={(checked) => {
