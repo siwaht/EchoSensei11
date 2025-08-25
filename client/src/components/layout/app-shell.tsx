@@ -33,7 +33,6 @@ const navigation = [
   { name: "Phone Numbers", href: "/phone-numbers", icon: Phone },
   { name: "Outbound Calling", href: "/outbound-calling", icon: PhoneOutgoing },
   { name: "Tools", href: "/tools", icon: Wrench },
-  { name: "Conversations", href: "/conversations", icon: MessageSquare },
   { name: "RAG System", href: "/knowledge-base", icon: Brain },
   { name: "Widget", href: "/widget", icon: AppWindow },
   { name: "Playground", href: "/playground", icon: FlaskConical },
