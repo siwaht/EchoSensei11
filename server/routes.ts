@@ -1831,14 +1831,16 @@ Generate the complete prompt now:`;
                       if (customTool.enabled) {
                         if (customTool.type === 'rag') {
                           // Add RAG tool as a webhook
-                          const webhookUrl = process.env.REPLIT_DEV_DOMAIN 
-                            ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/webhooks/rag-search`
+                          // Use the current application's domain for the webhook URL
+                          const currentDomain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
+                          const webhookUrl = currentDomain 
+                            ? `https://${currentDomain}/api/webhooks/rag-search`
                             : 'https://voiceai-dashboard.replit.app/api/webhooks/rag-search';
                           
                           const ragTool: any = {
                             type: "webhook",
-                            name: customTool.name || "knowledge_base_rag",
-                            description: "Searches the knowledge base for information about people, companies, facts, or documents. Automatically invoked when users ask questions.",
+                            name: (customTool.configuration?.name || customTool.name || "knowledge_base_rag").replace(/\s+/g, '_').toLowerCase(),
+                            description: customTool.configuration?.description || customTool.description || "Searches the knowledge base for information. Use this when users ask questions about stored information, documents, people, or company data.",
                             url: webhookUrl,
                             method: "GET",
                             headers: {},
@@ -1848,11 +1850,17 @@ Generate the complete prompt now:`;
                                 data_type: "String",
                                 required: true,
                                 value_type: "LLM Prompt",
-                                description: "Extract what the user is asking about. Examples: 'Who is John?' -> 'John', 'Tell me about company policy' -> 'company policy', 'What products do you sell?' -> 'products'"
+                                description: "Extract what the user is asking about. Be specific and include key terms from their question."
                               }
-                            ]
+                            ],
+                            body_parameters: []
                           };
-                          console.log('Adding RAG tool to agent with URL:', webhookUrl);
+                          console.log('Adding RAG tool to ElevenLabs with URL:', webhookUrl);
+                          console.log('RAG tool configuration:', {
+                            name: ragTool.name,
+                            description: ragTool.description,
+                            url: ragTool.url
+                          });
                           elevenLabsTools.push(ragTool);
                         } else if (customTool.type === 'webhook' && customTool.url) {
                           // Add regular webhooks with proper ElevenLabs format
