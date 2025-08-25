@@ -5,10 +5,9 @@ import { setupAuth } from "./auth";
 import { insertIntegrationSchema, insertAgentSchema, insertCallLogSchema, insertPhoneNumberSchema, insertBatchCallSchema, insertBatchCallRecipientSchema } from "@shared/schema";
 import { z } from "zod";
 import crypto from "crypto";
+import multer from "multer";
 import type { RequestHandler } from "express";
 import { seedAdminUser } from "./seedAdmin";
-import multer from "multer";
-import { getVectorDatabaseService } from "./vectorDatabase";
 
 // Authentication middleware
 const isAuthenticated: RequestHandler = (req, res, next) => {
@@ -3565,83 +3564,6 @@ Generate the complete prompt now:`;
     }
   };
 
-  // According to ElevenLabs docs, webhook tools use GET with query parameters
-  const handleRagSearch = async (req: any, res: any) => {
-    try {
-      console.log("=== RAG WEBHOOK CALLED ===");
-      console.log("Method:", req.method);
-      console.log("Headers:", req.headers);
-      console.log("Query Parameters:", req.query);
-      console.log("Body:", req.body);
-      
-      // Get vector database service
-      const vectorDb = getVectorDatabaseService();
-      
-      // Handle both GET (query params) and POST (body) for compatibility
-      let searchQuery: string;
-      let top_k: number = 5;
-      
-      if (req.method === 'GET') {
-        // ElevenLabs standard: query parameters
-        searchQuery = req.query.query as string;
-        top_k = parseInt(req.query.top_k as string) || 5;
-      } else {
-        // Fallback for POST requests
-        const { message, query } = req.body;
-        searchQuery = message || query;
-        top_k = req.body.top_k || 5;
-      }
-      
-      console.log("Search query:", searchQuery);
-      console.log("Top K:", top_k);
-      
-      if (!searchQuery) {
-        console.log("No search query provided, returning help message");
-        return res.json({ 
-          content: "I need a specific question to search the knowledge base. Please provide more details about what you'd like to know."
-        });
-      }
-
-      // Initialize vector database
-      console.log("Initializing vector database...");
-      await vectorDb.initialize();
-      
-      // Search the vector database
-      console.log("Searching documents with query:", searchQuery);
-      const results = await vectorDb.searchDocuments(searchQuery, top_k);
-      console.log("Search returned", results.length, "results");
-      
-      if (results.length === 0) {
-        console.log("No results found for query");
-        return res.json({ 
-          content: "I couldn't find any relevant information in the knowledge base about that topic. The knowledge base may be empty or the query didn't match any stored documents."
-        });
-      }
-
-      // Format the response for the agent
-      const formattedResults = results.map((result: any, index: number) => {
-        return `[Source ${index + 1}]: ${result.content}`;
-      }).join('\n\n');
-
-      // ElevenLabs expects a 'content' field in the response
-      const response = {
-        content: formattedResults
-      };
-
-      console.log(`RAG search found ${results.length} results`);
-      res.json(response);
-      
-    } catch (error) {
-      console.error("Error in RAG search webhook:", error);
-      res.json({ 
-        content: "I'm having trouble accessing the knowledge base right now. Please try again in a moment."
-      });
-    }
-  };
-
-  // Support both GET (ElevenLabs standard) and POST (backward compatibility)
-  app.get("/api/webhooks/rag-search", handleRagSearch);
-  app.post("/api/webhooks/rag-search", handleRagSearch);
 
   // Server Tools test endpoints for ElevenLabs webhook tools
   app.get("/api/tools/search", handleSearchTool);
@@ -4940,7 +4862,7 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Configure multer for memory storage
+  // Configure multer for memory storage (for ElevenLabs knowledge base uploads)
   const kbUpload = multer({ 
     storage: multer.memoryStorage(),
     limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit
@@ -6286,170 +6208,6 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Vector Database Document Routes
-  const upload = multer({ 
-    storage: multer.memoryStorage(),
-    limits: {
-      fileSize: 10 * 1024 * 1024 // 10MB limit
-    }
-  });
-
-  // Initialize vector database endpoint
-  app.post("/api/vector-db/initialize", isAuthenticated, async (req: any, res) => {
-    try {
-      const { apiKey } = req.body;
-      const { getVectorDatabaseService } = await import('./vectorDatabase');
-      const vectorDb = getVectorDatabaseService();
-      
-      await vectorDb.initialize(apiKey);
-      
-      res.json({ message: "Vector database initialized successfully" });
-    } catch (error: any) {
-      console.error("Error initializing vector database:", error);
-      res.status(500).json({ error: error.message || "Failed to initialize vector database" });
-    }
-  });
-
-  // Upload documents endpoint
-  app.post("/api/documents/upload", isAuthenticated, upload.array('files', 10), async (req: any, res) => {
-    try {
-      const files = req.files as Express.Multer.File[];
-      const { agentId } = req.body;
-      
-      if (!files || files.length === 0) {
-        return res.status(400).json({ error: "No files uploaded" });
-      }
-
-      const { getDocumentProcessor } = await import('./documentProcessor');
-      const { getVectorDatabaseService } = await import('./vectorDatabase');
-      
-      const processor = getDocumentProcessor();
-      const vectorDb = getVectorDatabaseService();
-
-      const results = [];
-      
-      for (const file of files) {
-        // Check if file type is supported
-        if (!processor.isFileTypeSupported(file.originalname)) {
-          results.push({
-            fileName: file.originalname,
-            success: false,
-            error: `File type not supported. Supported types: ${processor.getSupportedFileTypes().join(', ')}`
-          });
-          continue;
-        }
-
-        try {
-          // Process the document
-          const processed = await processor.processBuffer(file.buffer, file.originalname);
-          
-          // Add chunks to vector database
-          const documents = processed.chunks.map((chunk, index) => ({
-            content: chunk,
-            metadata: {
-              source: file.originalname,
-              fileType: processed.metadata.fileType,
-              pageNumber: index + 1,
-              agentId
-            }
-          }));
-
-          const ids = await vectorDb.addDocuments(documents);
-          
-          results.push({
-            fileName: file.originalname,
-            success: true,
-            metadata: processed.metadata,
-            chunksCreated: ids.length
-          });
-        } catch (error: any) {
-          console.error(`Error processing ${file.originalname}:`, error);
-          results.push({
-            fileName: file.originalname,
-            success: false,
-            error: error.message
-          });
-        }
-      }
-
-      res.json({ results });
-    } catch (error: any) {
-      console.error("Error uploading documents:", error);
-      res.status(500).json({ error: error.message || "Failed to upload documents" });
-    }
-  });
-
-  // Search documents endpoint
-  app.post("/api/documents/search", isAuthenticated, async (req: any, res) => {
-    try {
-      const { query, agentId, limit = 5 } = req.body;
-      
-      if (!query) {
-        return res.status(400).json({ error: "Query is required" });
-      }
-
-      const { getVectorDatabaseService } = await import('./vectorDatabase');
-      const vectorDb = getVectorDatabaseService();
-      
-      const results = await vectorDb.searchDocuments(query, limit, agentId);
-      
-      res.json({ results });
-    } catch (error: any) {
-      console.error("Error searching documents:", error);
-      res.status(500).json({ error: error.message || "Failed to search documents" });
-    }
-  });
-
-  // Get document statistics endpoint
-  app.get("/api/documents/stats", isAuthenticated, async (req: any, res) => {
-    try {
-      const { agentId } = req.query;
-      
-      const { getVectorDatabaseService } = await import('./vectorDatabase');
-      const vectorDb = getVectorDatabaseService();
-      
-      const stats = await vectorDb.getDocumentStats(agentId as string);
-      
-      res.json(stats);
-    } catch (error: any) {
-      console.error("Error getting document stats:", error);
-      res.status(500).json({ error: error.message || "Failed to get document statistics" });
-    }
-  });
-
-  // Delete documents by source endpoint
-  app.delete("/api/documents/source/:source", isAuthenticated, async (req: any, res) => {
-    try {
-      const { source } = req.params;
-      
-      const { getVectorDatabaseService } = await import('./vectorDatabase');
-      const vectorDb = getVectorDatabaseService();
-      
-      await vectorDb.deleteDocumentsBySource(source);
-      
-      res.json({ message: `Documents from source '${source}' deleted successfully` });
-    } catch (error: any) {
-      console.error("Error deleting documents:", error);
-      res.status(500).json({ error: error.message || "Failed to delete documents" });
-    }
-  });
-
-  // Delete documents by agent endpoint
-  app.delete("/api/documents/agent/:agentId", isAuthenticated, async (req: any, res) => {
-    try {
-      const { agentId } = req.params;
-      
-      const { getVectorDatabaseService } = await import('./vectorDatabase');
-      const vectorDb = getVectorDatabaseService();
-      
-      await vectorDb.deleteDocumentsByAgent(agentId);
-      
-      res.json({ message: `Documents for agent '${agentId}' deleted successfully` });
-    } catch (error: any) {
-      console.error("Error deleting documents:", error);
-      res.status(500).json({ error: error.message || "Failed to delete documents" });
-    }
-  });
 
   const httpServer = createServer(app);
   return httpServer;
