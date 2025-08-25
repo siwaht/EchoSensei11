@@ -1901,26 +1901,31 @@ Generate the complete prompt now:`;
                           description: webhook.description || "",
                           url: webhook.url,
                           method: webhook.method || "POST",
-                          headers: webhook.headers || {},
-                          query_parameters: webhook.queryParameters?.map((param: any) => ({
-                            identifier: param.name,
-                            data_type: param.type || "String",
+                          headers: webhook.webhookConfig?.headers?.reduce((acc: any, header: any) => {
+                            if (header.enabled && header.key) {
+                              acc[header.key] = header.value || "";
+                            }
+                            return acc;
+                          }, {}) || {},
+                          query_parameters: webhook.webhookConfig?.queryParameters?.map((param: any) => ({
+                            identifier: param.key,
+                            data_type: "String",
+                            required: param.required || false,
+                            value_type: "LLM Prompt",
+                            description: param.description || ""
+                          })) || [],
+                          body_parameters: webhook.webhookConfig?.bodyParameters?.map((param: any) => ({
+                            identifier: param.identifier,
+                            data_type: param.dataType || "String",
                             required: param.required || false,
                             value_type: param.valueType || "LLM Prompt",
                             description: param.description || ""
                           })) || [],
-                          body_parameters: webhook.bodyParameters?.map((param: any) => ({
-                            identifier: param.name,
-                            data_type: param.type || "String",
-                            required: param.required || false,
-                            value_type: param.valueType || "LLM Prompt",
-                            description: param.description || ""
-                          })) || [],
-                          path_parameters: webhook.pathParameters?.map((param: any) => ({
-                            identifier: param.name,
-                            data_type: param.type || "String",
-                            required: param.required || false,
-                            value_type: param.valueType || "LLM Prompt",
+                          path_parameters: webhook.webhookConfig?.pathParameters?.map((param: any) => ({
+                            identifier: param.key,
+                            data_type: "String",
+                            required: false,
+                            value_type: "LLM Prompt",
                             description: param.description || ""
                           })) || []
                         };

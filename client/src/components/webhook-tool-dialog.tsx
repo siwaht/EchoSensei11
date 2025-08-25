@@ -41,6 +41,13 @@ interface WebhookTool {
       description?: string;
       required?: boolean;
     }>;
+    bodyParameters?: Array<{
+      identifier: string;
+      dataType: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array';
+      description?: string;
+      required?: boolean;
+      valueType: 'LLM Prompt' | 'Static' | 'Dynamic Variable';
+    }>;
     dynamicVariables?: Record<string, string>;
     dynamicVariableAssignments?: Array<{
       variable: string;
@@ -75,6 +82,7 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
       headers: webhook?.webhookConfig?.headers || [],
       pathParameters: webhook?.webhookConfig?.pathParameters || [],
       queryParameters: webhook?.webhookConfig?.queryParameters || [],
+      bodyParameters: webhook?.webhookConfig?.bodyParameters || [],
       dynamicVariables: webhook?.webhookConfig?.dynamicVariables || {},
       dynamicVariableAssignments: webhook?.webhookConfig?.dynamicVariableAssignments || [],
     },
@@ -92,6 +100,7 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
           headers: webhook.webhookConfig?.headers || [],
           pathParameters: webhook.webhookConfig?.pathParameters || [],
           queryParameters: webhook.webhookConfig?.queryParameters || [],
+          bodyParameters: webhook.webhookConfig?.bodyParameters || [],
           dynamicVariables: webhook.webhookConfig?.dynamicVariables || {},
           dynamicVariableAssignments: webhook.webhookConfig?.dynamicVariableAssignments || [],
         },
@@ -157,6 +166,25 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
     });
   };
 
+  const addBodyParameter = () => {
+    setFormData({
+      ...formData,
+      webhookConfig: {
+        ...formData.webhookConfig,
+        bodyParameters: [
+          ...(formData.webhookConfig?.bodyParameters || []),
+          { 
+            identifier: '', 
+            dataType: 'String' as const, 
+            description: '', 
+            required: false,
+            valueType: 'LLM Prompt' as const
+          }
+        ],
+      },
+    });
+  };
+
   const updateQueryParameter = (index: number, field: 'key' | 'description' | 'required', value: any) => {
     const params = [...(formData.webhookConfig?.queryParameters || [])];
     params[index] = { ...params[index], [field]: value };
@@ -172,6 +200,28 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
     setFormData({
       ...formData,
       webhookConfig: { ...formData.webhookConfig, queryParameters: params },
+    });
+  };
+
+  const updateBodyParameter = (index: number, field: string, value: any) => {
+    const updatedParams = [...(formData.webhookConfig?.bodyParameters || [])];
+    updatedParams[index] = { ...updatedParams[index], [field]: value };
+    setFormData({
+      ...formData,
+      webhookConfig: {
+        ...formData.webhookConfig,
+        bodyParameters: updatedParams,
+      },
+    });
+  };
+
+  const deleteBodyParameter = (index: number) => {
+    setFormData({
+      ...formData,
+      webhookConfig: {
+        ...formData.webhookConfig,
+        bodyParameters: formData.webhookConfig?.bodyParameters?.filter((_, i) => i !== index) || [],
+      },
     });
   };
 
@@ -463,6 +513,108 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
                 </div>
               ))}
             </div>
+
+            {/* Body Parameters Section */}
+            {(formData.method === 'POST' || formData.method === 'PUT' || formData.method === 'PATCH') && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h3 className="text-sm font-semibold">Body parameters</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Define parameters that will be collected by the LLM and sent as the body of the request.
+                    </p>
+                  </div>
+                  <Button onClick={addBodyParameter} size="sm" variant="outline">
+                    Add property
+                  </Button>
+                </div>
+                {formData.webhookConfig?.bodyParameters?.map((param, index) => (
+                  <div key={index} className="border rounded-lg p-4 mt-3 space-y-3 bg-muted/20">
+                    <div>
+                      <Label className="text-xs">Description</Label>
+                      <Textarea
+                        placeholder="Extract the search query the user in looking to find more information on"
+                        value={param.description}
+                        onChange={(e) => updateBodyParameter(index, 'description', e.target.value)}
+                        className="mt-1 min-h-[60px]"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        This field will be passed to the LLM and should describe in detail how to extract the data from the transcript.
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-xs font-semibold">Properties</Label>
+                      <div className="grid grid-cols-2 gap-3 mt-2">
+                        <div>
+                          <Label className="text-xs">Data type</Label>
+                          <Select
+                            value={param.dataType}
+                            onValueChange={(value) => updateBodyParameter(index, 'dataType', value)}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="String">String</SelectItem>
+                              <SelectItem value="Number">Number</SelectItem>
+                              <SelectItem value="Boolean">Boolean</SelectItem>
+                              <SelectItem value="Object">Object</SelectItem>
+                              <SelectItem value="Array">Array</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Identifier</Label>
+                          <Input
+                            placeholder="searchQuery"
+                            value={param.identifier}
+                            onChange={(e) => updateBodyParameter(index, 'identifier', e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-3">
+                        <Switch
+                          checked={param.required}
+                          onCheckedChange={(checked) => updateBodyParameter(index, 'required', checked)}
+                        />
+                        <Label className="text-xs">Required</Label>
+                      </div>
+                      <div className="mt-3">
+                        <Label className="text-xs">Value Type</Label>
+                        <Select
+                          value={param.valueType}
+                          onValueChange={(value) => updateBodyParameter(index, 'valueType', value)}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="LLM Prompt">LLM Prompt</SelectItem>
+                            <SelectItem value="Static">Static</SelectItem>
+                            <SelectItem value="Dynamic Variable">Dynamic Variable</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          How the value will be determined (e.g., LLM will extract it from conversation)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={() => deleteBodyParameter(index)}
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}              </div>
+            )}
 
             {/* Dynamic Variables Section */}
             <div>
