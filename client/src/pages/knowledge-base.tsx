@@ -4,9 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,30 +17,21 @@ import {
 } from "lucide-react";
 
 interface KnowledgeDocument {
-  id: string;  // ElevenLabs API uses 'id' not 'document_id'
-  document_id?: string;  // Keep for backwards compatibility
+  id: string;
   name: string;
-  type: 'file' | 'url' | 'text';
-  source?: string;
-  content_type?: string;
-  file_size_bytes?: number;
-  size_bytes?: number;  // Keep for backwards compatibility
-  chunk_count?: number;
-  created_at?: string;
-  updated_at?: string;
-  status?: 'processing' | 'ready' | 'failed';
-  agents?: string[];
+  agentIds: string[];
+  chunks: number;
+  createdAt: string;
 }
 
 export default function KnowledgeBase() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showUpload, setShowUpload] = useState(false);
-  const [uploadType, setUploadType] = useState<'file' | 'url' | 'text'>('file');
+  const [uploadType, setUploadType] = useState<'file' | 'url'>('file');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadUrl, setUploadUrl] = useState("");
-  const [uploadText, setUploadText] = useState("");
   const [uploadName, setUploadName] = useState("");
-  const [selectedAgentId, setSelectedAgentId] = useState("");
+  const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeDocument | null>(null);
   const [showDocumentDetails, setShowDocumentDetails] = useState(false);
@@ -65,7 +54,7 @@ export default function KnowledgeBase() {
         if (response.status === 400) {
           const error = await response.json();
           if (error.message?.includes("API key not configured")) {
-            return { documents: [], error: "Please configure your ElevenLabs API key in Integrations" };
+            return { documents: [], error: "Please configure your OpenAI API key for knowledge base embeddings" };
           }
         }
         throw new Error("Failed to fetch knowledge base");
@@ -86,7 +75,6 @@ export default function KnowledgeBase() {
         method: "POST",
         credentials: "include",
         body: formData,
-        // Don't set Content-Type header - browser will set it with boundary for multipart/form-data
       });
       
       if (!response.ok) {
@@ -99,7 +87,7 @@ export default function KnowledgeBase() {
     onSuccess: () => {
       toast({
         title: "Document Uploaded",
-        description: "The document has been added and will be automatically indexed.",
+        description: "The document has been added to the local knowledge base and indexed.",
       });
       setShowUpload(false);
       resetUploadForm();
@@ -126,6 +114,8 @@ export default function KnowledgeBase() {
       if (!response.ok) {
         throw new Error("Failed to delete document");
       }
+      
+      return await response.json();
     },
     onSuccess: () => {
       toast({
@@ -134,7 +124,7 @@ export default function KnowledgeBase() {
       });
       refetch();
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Delete Failed",
         description: "Failed to delete document. Please try again.",
@@ -143,72 +133,54 @@ export default function KnowledgeBase() {
     },
   });
 
-  // Note: RAG indexing happens automatically in ElevenLabs when documents are added
-  // No manual index computation is needed
-
-  // Fetch document details
   const fetchDocumentDetails = async (documentId: string) => {
     try {
       const response = await fetch(`/api/convai/knowledge-base/${documentId}`, {
         credentials: "include",
       });
       
-      if (!response.ok) {
-        throw new Error("Failed to fetch document details");
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedDocument(data);
+        setShowDocumentDetails(true);
       }
-      
-      const data = await response.json();
-      setSelectedDocument(data);
-      setShowDocumentDetails(true);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch document details",
-        variant: "destructive",
-      });
+      console.error('Error fetching document details:', error);
     }
   };
 
   const handleUpload = async () => {
-    setIsUploading(true);
-    
-    try {
-      const formData = new FormData();
-      
-      // Add name if provided
-      if (uploadName) {
-        formData.append('name', uploadName);
-      }
-      
-      // Add agent_ids if selected (but not if it's "none")
-      if (selectedAgentId && selectedAgentId !== 'none') {
-        formData.append('agent_ids', JSON.stringify([selectedAgentId]));
-      }
+    if (!uploadName) {
+      toast({
+        title: "Name Required",
+        description: "Please provide a name for the document.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-      if (uploadType === 'file' && uploadFile) {
-        // Send the actual file
-        formData.append('file', uploadFile);
-        formData.append('type', 'file');
-        console.log('Uploading file:', uploadFile.name, 'size:', uploadFile.size);
-      } else if (uploadType === 'url' && uploadUrl) {
-        formData.append('url', uploadUrl);
-        formData.append('type', 'url');
-        console.log('Uploading URL:', uploadUrl);
-      } else if (uploadType === 'text' && uploadText) {
-        // Convert text to a file for the API
-        const textBlob = new Blob([uploadText], { type: 'text/plain' });
-        // Check if the name already ends with .txt to avoid double extension
-        const fileName = uploadName.endsWith('.txt') 
-          ? uploadName.replace(/[^a-z0-9._-]/gi, '_')
-          : `${uploadName.replace(/[^a-z0-9._-]/gi, '_')}.txt`;
-        formData.append('file', textBlob, fileName);
-        formData.append('type', 'file');
-        console.log('Uploading text as file:', fileName);
-      }
-      
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('name', uploadName);
+    formData.append('type', uploadType);
+    formData.append('agent_ids', JSON.stringify(selectedAgentIds));
+
+    if (uploadType === 'file' && uploadFile) {
+      formData.append('file', uploadFile);
+    } else if (uploadType === 'url' && uploadUrl) {
+      formData.append('url', uploadUrl);
+    } else {
+      setIsUploading(false);
+      toast({
+        title: "Invalid Input",
+        description: "Please provide a file or URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
       await uploadMutation.mutateAsync(formData);
-    } catch (error) {
-      console.error('Upload error:', error);
     } finally {
       setIsUploading(false);
     }
@@ -217,80 +189,44 @@ export default function KnowledgeBase() {
   const resetUploadForm = () => {
     setUploadFile(null);
     setUploadUrl("");
-    setUploadText("");
     setUploadName("");
-    setSelectedAgentId("");
+    setSelectedAgentIds([]);
     setUploadType('file');
   };
 
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return "0 B";
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
-  };
+  const filteredDocuments = documents.filter((doc: KnowledgeDocument) =>
+    doc.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-    } catch {
-      return 'Invalid Date';
-    }
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'ready':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'processing':
-        return <Clock className="h-4 w-4 text-yellow-500 animate-spin" />;
-      case 'failed':
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <AlertCircle className="h-4 w-4 text-gray-500" />;
-    }
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'file':
-        return <File className="h-4 w-4" />;
-      case 'url':
-        return <Globe className="h-4 w-4" />;
-      case 'text':
-        return <FileText className="h-4 w-4" />;
-      default:
-        return <Book className="h-4 w-4" />;
-    }
-  };
-
-  const filteredDocuments = documents.filter((doc: KnowledgeDocument) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      doc.name.toLowerCase().includes(searchLower) ||
-      doc.document_id.toLowerCase().includes(searchLower) ||
-      doc.source?.toLowerCase().includes(searchLower)
-    );
-  });
 
   if (apiError) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Knowledge Base</h1>
-          <p className="text-muted-foreground">Manage documents and information for your AI agents</p>
-        </div>
-        
-        <Card className="p-6">
-          <div className="text-center py-8">
-            <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg font-medium mb-2">API Key Required</p>
+      <div className="flex items-center justify-center h-[60vh]">
+        <Card className="p-8 max-w-md w-full">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <AlertCircle className="h-12 w-12 text-yellow-500" />
+            <h3 className="text-lg font-semibold">Configuration Required</h3>
             <p className="text-muted-foreground">{apiError}</p>
+            <Button variant="outline" onClick={() => window.location.href = '/integrations'}>
+              Go to Settings
+            </Button>
           </div>
         </Card>
       </div>
@@ -298,129 +234,137 @@ export default function KnowledgeBase() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-start">
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">Knowledge Base</h1>
-          <p className="text-muted-foreground">Manage documents and information for your AI agents</p>
+          <p className="text-muted-foreground mt-1">
+            Manage your local knowledge base documents for AI agents
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowUpload(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Document
-          </Button>
-        </div>
+        <Button onClick={() => setShowUpload(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Document
+        </Button>
       </div>
 
-      {/* Search and Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="md:col-span-1 p-4">
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Total Documents</p>
-            <p className="text-2xl font-bold">{documents.length}</p>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center space-x-3">
+            <Database className="h-8 w-8 text-blue-500" />
+            <div>
+              <p className="text-sm text-muted-foreground">Total Documents</p>
+              <p className="text-2xl font-bold">{documents.length}</p>
+            </div>
           </div>
         </Card>
-        <Card className="md:col-span-1 p-4">
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Total Chunks</p>
-            <p className="text-2xl font-bold">
-              {documents.reduce((acc: number, doc: KnowledgeDocument) => acc + (doc.chunk_count || 0), 0)}
-            </p>
+        
+        <Card className="p-4">
+          <div className="flex items-center space-x-3">
+            <Brain className="h-8 w-8 text-purple-500" />
+            <div>
+              <p className="text-sm text-muted-foreground">Total Chunks</p>
+              <p className="text-2xl font-bold">
+                {documents.reduce((sum: number, doc: KnowledgeDocument) => sum + (doc.chunks || 0), 0)}
+              </p>
+            </div>
           </div>
         </Card>
-        <Card className="md:col-span-1 p-4">
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Storage Used</p>
-            <p className="text-2xl font-bold">
-              {formatFileSize(documents.reduce((acc: number, doc: KnowledgeDocument) => acc + (doc.file_size_bytes || doc.size_bytes || 0), 0))}
-            </p>
+        
+        <Card className="p-4">
+          <div className="flex items-center space-x-3">
+            <CheckCircle className="h-8 w-8 text-green-500" />
+            <div>
+              <p className="text-sm text-muted-foreground">Storage Type</p>
+              <p className="text-xl font-bold">Local Vector DB</p>
+            </div>
           </div>
         </Card>
-        <Card className="md:col-span-1 p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Search documents..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+        
+        <Card className="p-4">
+          <div className="flex items-center space-x-3">
+            <Book className="h-8 w-8 text-orange-500" />
+            <div>
+              <p className="text-sm text-muted-foreground">Active Agents</p>
+              <p className="text-2xl font-bold">{agents.length}</p>
+            </div>
           </div>
         </Card>
       </div>
+
+      {/* Search Bar */}
+      <Card className="p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search documents..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </Card>
 
       {/* Documents Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="p-4">
-              <div className="animate-pulse space-y-3">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <Card className="p-8">
+          <div className="flex items-center justify-center space-x-2">
+            <RefreshCw className="h-5 w-5 animate-spin" />
+            <p className="text-muted-foreground">Loading documents...</p>
+          </div>
+        </Card>
       ) : filteredDocuments.length === 0 ? (
-        <Card className="p-6">
-          <div className="text-center py-8">
-            <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg font-medium mb-2">No Documents Found</p>
-            <p className="text-muted-foreground">
+        <Card className="p-12">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <Database className="h-16 w-16 text-muted-foreground" />
+            <h3 className="text-xl font-semibold">No Documents Found</h3>
+            <p className="text-muted-foreground max-w-md">
               {searchTerm 
-                ? "Try adjusting your search" 
-                : "Add documents to enhance your agents' knowledge"}
+                ? "No documents match your search criteria."
+                : "Your knowledge base is empty. Add documents to enhance your agents' capabilities."}
             </p>
-            <Button 
-              onClick={() => setShowUpload(true)} 
-              className="mt-4"
-              variant="outline"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Your First Document
-            </Button>
+            {!searchTerm && (
+              <Button onClick={() => setShowUpload(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload First Document
+              </Button>
+            )}
           </div>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDocuments.map((document: KnowledgeDocument) => {
-            const docId = document.id || document.document_id || '';
-            return (
+          {filteredDocuments.map((document: KnowledgeDocument) => (
             <Card 
-              key={docId} 
+              key={document.id} 
               className="p-4 hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => fetchDocumentDetails(docId)}
+              onClick={() => fetchDocumentDetails(document.id)}
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    {getTypeIcon(document.type)}
+                    <FileText className="h-5 w-5 text-blue-500" />
                     <p className="font-medium truncate flex-1">{document.name}</p>
                   </div>
-                  {getStatusIcon(document.status || 'ready')}
+                  <CheckCircle className="h-5 w-5 text-green-500" />
                 </div>
                 
                 <div className="space-y-1 text-sm text-muted-foreground">
-                  <p className="truncate">ID: {(document.id || document.document_id)?.slice(-8) || 'N/A'}</p>
-                  {document.chunk_count && (
-                    <p>{document.chunk_count} chunks</p>
-                  )}
-                  {(document.file_size_bytes || document.size_bytes) && (
-                    <p>{formatFileSize(document.file_size_bytes || document.size_bytes || 0)}</p>
-                  )}
-                  {document.created_at && (
-                    <p>{formatDate(document.created_at)}</p>
+                  <p className="truncate">ID: {document.id.slice(-8)}</p>
+                  <p>{document.chunks} chunks</p>
+                  {document.createdAt && (
+                    <p>{formatDate(document.createdAt)}</p>
                   )}
                 </div>
                 
-                {document.agents && document.agents.length > 0 && (
+                {document.agentIds && document.agentIds.length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    {document.agents.map((agentId) => {
-                      const agent = agents.find(a => a.elevenLabsAgentId === agentId);
+                    {document.agentIds.map((agentId) => {
+                      const agent = agents.find((a: any) => a.elevenLabsAgentId === agentId);
                       return (
                         <Badge key={agentId} variant="secondary" className="text-xs">
-                          {agent?.name || agentId?.slice(-6) || 'Unknown'}
+                          {agent?.name || agentId.slice(-6)}
                         </Badge>
                       );
                     })}
@@ -433,7 +377,7 @@ export default function KnowledgeBase() {
                     variant="outline"
                     onClick={(e) => {
                       e.stopPropagation();
-                      deleteMutation.mutate(docId);
+                      deleteMutation.mutate(document.id);
                     }}
                     disabled={deleteMutation.isPending}
                   >
@@ -442,8 +386,7 @@ export default function KnowledgeBase() {
                 </div>
               </div>
             </Card>
-            );
-          })}
+          ))}
         </div>
       )}
 
@@ -453,12 +396,12 @@ export default function KnowledgeBase() {
           <DialogHeader>
             <DialogTitle>Add Document to Knowledge Base</DialogTitle>
             <DialogDescription>
-              Upload files, add URLs, or paste text to enhance your agents' knowledge
+              Upload files or add URLs to your local knowledge base for semantic search
             </DialogDescription>
           </DialogHeader>
           
           <Tabs value={uploadType} onValueChange={(v) => setUploadType(v as any)}>
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="file">
                 <File className="h-4 w-4 mr-2" />
                 File Upload
@@ -466,10 +409,6 @@ export default function KnowledgeBase() {
               <TabsTrigger value="url">
                 <Globe className="h-4 w-4 mr-2" />
                 URL Import
-              </TabsTrigger>
-              <TabsTrigger value="text">
-                <FileText className="h-4 w-4 mr-2" />
-                Text Content
               </TabsTrigger>
             </TabsList>
             
@@ -479,7 +418,7 @@ export default function KnowledgeBase() {
                 <Input
                   id="file-upload"
                   type="file"
-                  accept=".pdf,.txt,.docx,.html,.epub,.md"
+                  accept=".pdf,.txt,.docx"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
@@ -491,7 +430,7 @@ export default function KnowledgeBase() {
                   }}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Supported formats: PDF, TXT, DOCX, HTML, EPUB, Markdown
+                  Supported formats: PDF, TXT, DOCX
                 </p>
               </div>
             </TabsContent>
@@ -507,23 +446,7 @@ export default function KnowledgeBase() {
                   onChange={(e) => setUploadUrl(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Enter a URL to import content from websites, documentation, or articles
-                </p>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="text" className="space-y-4">
-              <div>
-                <Label htmlFor="text-input">Text Content</Label>
-                <Textarea
-                  id="text-input"
-                  placeholder="Paste or type your content here..."
-                  value={uploadText}
-                  onChange={(e) => setUploadText(e.target.value)}
-                  rows={8}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Directly input text content for the knowledge base
+                  Note: URL content extraction is not yet implemented. Please upload files for now.
                 </p>
               </div>
             </TabsContent>
@@ -541,20 +464,30 @@ export default function KnowledgeBase() {
             </div>
             
             <div>
-              <Label htmlFor="agent-select">Associate with Agent (Optional)</Label>
-              <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                <SelectTrigger id="agent-select">
-                  <SelectValue placeholder="Select an agent" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {agents.map((agent) => (
-                    <SelectItem key={agent.id} value={agent.elevenLabsAgentId}>
-                      {agent.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Associate with Agents (Optional)</Label>
+              <div className="space-y-2 mt-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                {agents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground p-2">No agents available</p>
+                ) : (
+                  agents.map((agent: any) => (
+                    <label key={agent.id} className="flex items-center space-x-2 cursor-pointer p-1 hover:bg-muted rounded">
+                      <input
+                        type="checkbox"
+                        checked={selectedAgentIds.includes(agent.elevenLabsAgentId)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedAgentIds([...selectedAgentIds, agent.elevenLabsAgentId]);
+                          } else {
+                            setSelectedAgentIds(selectedAgentIds.filter(id => id !== agent.elevenLabsAgentId));
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-sm">{agent.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
             </div>
           </div>
           
@@ -571,8 +504,7 @@ export default function KnowledgeBase() {
                 isUploading || 
                 !uploadName ||
                 (uploadType === 'file' && !uploadFile) ||
-                (uploadType === 'url' && !uploadUrl) ||
-                (uploadType === 'text' && !uploadText)
+                (uploadType === 'url' && !uploadUrl)
               }
             >
               {isUploading ? (
@@ -606,59 +538,28 @@ export default function KnowledgeBase() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm text-muted-foreground">Document ID</Label>
-                  <p className="font-mono text-sm">{selectedDocument.id || selectedDocument.document_id}</p>
+                  <p className="font-mono text-sm">{selectedDocument.id}</p>
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">Name</Label>
                   <p className="text-sm">{selectedDocument.name}</p>
                 </div>
                 <div>
-                  <Label className="text-sm text-muted-foreground">Type</Label>
-                  <div className="flex items-center gap-2">
-                    {getTypeIcon(selectedDocument.type)}
-                    <p className="text-sm capitalize">{selectedDocument.type}</p>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm text-muted-foreground">Status</Label>
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(selectedDocument.status || 'ready')}
-                    <p className="text-sm capitalize">{selectedDocument.status || 'ready'}</p>
-                  </div>
-                </div>
-                <div>
                   <Label className="text-sm text-muted-foreground">Chunks</Label>
-                  <p className="text-sm">{selectedDocument.chunk_count || 0}</p>
-                </div>
-                <div>
-                  <Label className="text-sm text-muted-foreground">Size</Label>
-                  <p className="text-sm">{formatFileSize(selectedDocument.file_size_bytes || selectedDocument.size_bytes || 0)}</p>
+                  <p className="text-sm">{selectedDocument.chunks}</p>
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">Created</Label>
-                  <p className="text-sm">{selectedDocument.created_at ? formatDate(selectedDocument.created_at) : 'N/A'}</p>
+                  <p className="text-sm">{formatDate(selectedDocument.createdAt)}</p>
                 </div>
-                {selectedDocument.updated_at && (
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Updated</Label>
-                    <p className="text-sm">{formatDate(selectedDocument.updated_at)}</p>
-                  </div>
-                )}
               </div>
               
-              {selectedDocument.source && (
-                <div>
-                  <Label className="text-sm text-muted-foreground">Source</Label>
-                  <p className="text-sm font-mono break-all">{selectedDocument.source}</p>
-                </div>
-              )}
-              
-              {selectedDocument.agents && selectedDocument.agents.length > 0 && (
+              {selectedDocument.agentIds && selectedDocument.agentIds.length > 0 && (
                 <div>
                   <Label className="text-sm text-muted-foreground">Associated Agents</Label>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedDocument.agents.map((agentId) => {
-                      const agent = agents.find(a => a.elevenLabsAgentId === agentId);
+                    {selectedDocument.agentIds.map((agentId) => {
+                      const agent = agents.find((a: any) => a.elevenLabsAgentId === agentId);
                       return (
                         <Badge key={agentId} variant="secondary">
                           {agent?.name || agentId}

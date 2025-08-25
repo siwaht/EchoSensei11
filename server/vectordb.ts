@@ -167,6 +167,12 @@ class VectorDatabase {
     }
 
     try {
+      // Check if table exists first
+      const tables = await this.db!.tableNames();
+      if (!tables.includes(this.documentsTableName)) {
+        return [];
+      }
+      
       const table = await this.db!.openTable(this.documentsTableName);
       
       // Generate embedding for the query
@@ -219,6 +225,13 @@ class VectorDatabase {
     }
 
     try {
+      // Check if table exists first
+      const tables = await this.db!.tableNames();
+      if (!tables.includes(this.documentsTableName)) {
+        // Table doesn't exist yet, return empty array
+        return [];
+      }
+      
       const table = await this.db!.openTable(this.documentsTableName);
       
       // Get all documents for the organization - scan full table
@@ -263,6 +276,12 @@ class VectorDatabase {
     }
 
     try {
+      // Check if table exists first
+      const tables = await this.db!.tableNames();
+      if (!tables.includes(this.documentsTableName)) {
+        return; // Nothing to delete if table doesn't exist
+      }
+      
       const table = await this.db!.openTable(this.documentsTableName);
       
       // Delete all chunks for this document - need to find and delete manually
@@ -296,6 +315,12 @@ class VectorDatabase {
     }
 
     try {
+      // Check if table exists first
+      const tables = await this.db!.tableNames();
+      if (!tables.includes(this.documentsTableName)) {
+        return "";
+      }
+      
       const table = await this.db!.openTable(this.documentsTableName);
       
       // Get all chunks for this document
