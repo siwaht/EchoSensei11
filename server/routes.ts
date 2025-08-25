@@ -1670,6 +1670,7 @@ Generate the complete prompt now:`;
                 
                 // Convert tools to ElevenLabs format
                 if (updates.tools) {
+                  console.log('Received tools update from client:', JSON.stringify(updates.tools, null, 2));
                   const elevenLabsTools: any[] = [];
                   const systemTools = updates.tools.systemTools || {};
                   
@@ -1895,10 +1896,15 @@ Generate the complete prompt now:`;
                   if (updates.tools.webhooks && Array.isArray(updates.tools.webhooks)) {
                     for (const webhook of updates.tools.webhooks) {
                       if (webhook.enabled && webhook.url) {
+                        // Ensure webhook has a valid name (required by ElevenLabs)
+                        const webhookName = webhook.name && webhook.name.trim() 
+                          ? webhook.name.replace(/\s+/g, '_').toLowerCase()
+                          : `webhook_${Date.now()}`;
+                        
                         const webhookTool: any = {
                           type: "webhook",
-                          name: webhook.name,
-                          description: webhook.description || "",
+                          name: webhookName,
+                          description: webhook.description || `Webhook tool ${webhookName}`,
                           url: webhook.url,
                           method: webhook.method || "POST",
                           headers: webhook.webhookConfig?.headers?.reduce((acc: any, header: any) => {
@@ -1935,9 +1941,24 @@ Generate the complete prompt now:`;
                     }
                   }
                   
+                  // Add a test webhook to verify the API works
+                  // Uncomment this to test webhook functionality
+                  if (updates.tools.webhooks && updates.tools.webhooks.length > 0) {
+                    // Force add a simple test webhook to verify API accepts it
+                    elevenLabsTools.push({
+                      type: "webhook",
+                      name: "simple_test",
+                      description: "Simple test webhook",
+                      url: "https://webhook.site/test123",
+                      method: "GET"
+                    });
+                  }
+                  
                   // Always send the tools array to ElevenLabs to ensure proper sync
                   // An empty array will clear all tools in ElevenLabs
                   elevenLabsPayload.conversation_config.agent.tools = elevenLabsTools;
+                  
+                  console.log('Final tools array being sent to ElevenLabs:', JSON.stringify(elevenLabsTools, null, 2));
                 }
               }
               
@@ -2018,7 +2039,7 @@ Generate the complete prompt now:`;
                 integration.id
               );
               
-              console.log(`ElevenLabs update response:`, response);
+              console.log(`ElevenLabs update response:`, JSON.stringify(response, null, 2));
             }
           } catch (elevenLabsError) {
             console.error("Error updating agent in ElevenLabs:", elevenLabsError);
