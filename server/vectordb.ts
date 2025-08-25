@@ -212,6 +212,11 @@ class VectorDatabase {
             const metadata = typeof result.metadata === 'string' 
               ? JSON.parse(result.metadata) 
               : result.metadata;
+            // If no agentId provided, search all documents for the organization
+            if (!agentId) {
+              return metadata.organizationId === organizationId;
+            }
+            // Otherwise, filter by both organizationId and agentId
             return (
               metadata.organizationId === organizationId &&
               metadata.agentIds.includes(agentId)
