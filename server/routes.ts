@@ -853,6 +853,97 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Generate AI-powered system prompt from description
+  app.post("/api/agents/generate-prompt", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { description } = req.body;
+      if (!description || description.trim().length < 10) {
+        return res.status(400).json({ message: "Please provide a more detailed description (at least 10 characters)" });
+      }
+
+      // Check if OpenAI API key is available
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ message: "OpenAI API key not configured" });
+      }
+
+      // Generate system prompt using OpenAI
+      const promptGenerationPrompt = `You are an expert AI prompt engineer specializing in conversational AI agents, following ElevenLabs' best practices. 
+
+Generate a comprehensive system prompt based on this user description: "${description}"
+
+Follow the ElevenLabs 6-component framework:
+
+1. **Base Personality**: Define the agent's identity, role, and core traits
+2. **Conversational Style**: Natural speech patterns and authentic dialogue markers
+3. **TTS Compatibility**: Format content for optimal voice synthesis
+4. **Guardrails**: Safety boundaries and error handling
+5. **Tools Integration**: Mention available capabilities
+6. **Knowledge Base**: Instructions for accurate, grounded responses
+
+Requirements:
+- Create a natural, engaging conversational AI personality
+- Include specific speech patterns and markers for realistic dialogue
+- Add clear guardrails and boundaries
+- Format for text-to-speech optimization
+- Keep responses concise and user-focused
+- Be professional yet personable
+- Include instructions to never verbalize tool usage
+
+Generate ONLY the system prompt text - no additional explanation or formatting. The output should be ready to use directly as a system prompt.`;
+
+      console.log("Generating prompt for description:", description);
+
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4",
+          messages: [
+            {
+              role: "system",
+              content: promptGenerationPrompt
+            }
+          ],
+          max_tokens: 1000,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("OpenAI API error:", errorData);
+        return res.status(500).json({ message: "Failed to generate prompt" });
+      }
+
+      const data = await response.json();
+      const generatedPrompt = data.choices[0]?.message?.content?.trim();
+
+      if (!generatedPrompt) {
+        return res.status(500).json({ message: "Failed to generate prompt" });
+      }
+
+      console.log("Prompt generated successfully");
+
+      res.json({ 
+        systemPrompt: generatedPrompt,
+        description: description 
+      });
+
+    } catch (error) {
+      console.error("Error generating prompt:", error);
+      res.status(500).json({ message: "Failed to generate prompt" });
+    }
+  });
+
   // Create a new agent on ElevenLabs
   app.post("/api/agents/create", isAuthenticated, async (req: any, res) => {
     try {

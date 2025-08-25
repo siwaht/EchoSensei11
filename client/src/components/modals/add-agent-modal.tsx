@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Bot, Upload } from "lucide-react";
+import { Bot, Upload, Sparkles, Wand2 } from "lucide-react";
 
 const importAgentSchema = z.object({
   elevenLabsAgentId: z.string().min(1, "ElevenLabs Agent ID is required"),
@@ -39,6 +39,8 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
   const [isValidating, setIsValidating] = useState(false);
   const [validatedData, setValidatedData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("import");
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+  const [promptDescription, setPromptDescription] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -134,11 +136,50 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
     },
   });
 
+  const generatePromptMutation = useMutation({
+    mutationFn: async (description: string) => {
+      setIsGeneratingPrompt(true);
+      const response = await apiRequest("POST", "/api/agents/generate-prompt", { description });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      createForm.setValue("systemPrompt", data.systemPrompt);
+      toast({
+        title: "Prompt Generated",
+        description: "AI has generated a comprehensive system prompt based on your description",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Generation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setIsGeneratingPrompt(false);
+    },
+  });
+
+  const handleGeneratePrompt = () => {
+    if (!promptDescription.trim() || promptDescription.trim().length < 10) {
+      toast({
+        title: "Description Too Short",
+        description: "Please provide a more detailed description (at least 10 characters)",
+        variant: "destructive",
+      });
+      return;
+    }
+    generatePromptMutation.mutate(promptDescription);
+  };
+
   const handleClose = () => {
     importForm.reset();
     createForm.reset();
     setValidatedData(null);
     setActiveTab("import");
+    setPromptDescription("");
+    setIsGeneratingPrompt(false);
     onOpenChange(false);
   };
 
@@ -337,18 +378,65 @@ export function AddAgentModal({ open, onOpenChange }: AddAgentModalProps) {
                   name="systemPrompt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>System Prompt</FormLabel>
+                      <FormLabel className="flex items-center gap-2">
+                        System Prompt
+                        <Sparkles className="w-4 h-4 text-purple-500" />
+                      </FormLabel>
+                      
+                      {/* AI Prompt Generator */}
+                      <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3 mb-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Wand2 className="w-4 h-4 text-purple-600" />
+                          <span className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                            AI Prompt Generator
+                          </span>
+                        </div>
+                        <p className="text-xs text-purple-700 dark:text-purple-300 mb-2">
+                          Describe your desired agent and we'll generate a comprehensive system prompt for you
+                        </p>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="e.g., a customer support agent for ElevenLabs"
+                            value={promptDescription}
+                            onChange={(e) => setPromptDescription(e.target.value)}
+                            disabled={isGeneratingPrompt || createAgentMutation.isPending}
+                            className="flex-1 text-xs"
+                            data-testid="input-prompt-description"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleGeneratePrompt}
+                            disabled={isGeneratingPrompt || !promptDescription.trim() || createAgentMutation.isPending}
+                            className="bg-purple-600 hover:bg-purple-700 text-white px-3"
+                            data-testid="button-generate-prompt"
+                          >
+                            {isGeneratingPrompt ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                                <span className="text-xs">Generating...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-3 h-3 mr-1" />
+                                <span className="text-xs">Generate</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
                       <FormControl>
                         <Textarea
                           {...field}
                           placeholder="You are a helpful AI assistant..."
-                          disabled={createAgentMutation.isPending}
+                          disabled={createAgentMutation.isPending || isGeneratingPrompt}
                           data-testid="input-system-prompt"
-                          rows={4}
+                          rows={6}
                         />
                       </FormControl>
                       <FormDescription>
-                        Define your agent's personality and behavior
+                        Define your agent's personality and behavior. Use the AI generator above for assistance.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
