@@ -75,7 +75,7 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
     description: webhook?.description || '',
     enabled: webhook?.enabled !== false,
     url: webhook?.url || '',
-    method: webhook?.method || 'GET',
+    method: webhook?.method || 'POST',
     webhookConfig: {
       responseTimeout: webhook?.webhookConfig?.responseTimeout || 20,
       disableInterruptions: webhook?.webhookConfig?.disableInterruptions || false,

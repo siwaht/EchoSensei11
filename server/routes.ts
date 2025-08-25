@@ -1913,21 +1913,24 @@ Generate the complete prompt now:`;
                             }
                             return acc;
                           }, {}) || {},
-                          query_parameters: webhook.webhookConfig?.queryParameters?.map((param: any) => ({
+                          // Query parameters that will be appended to URL
+                          query_parameters: webhook.webhookConfig?.queryParameters?.filter((param: any) => param.key || param.identifier).map((param: any) => ({
                             identifier: param.key || param.identifier,
                             data_type: param.dataType || "String",
                             required: param.required || false,
                             value_type: param.valueType || "LLM Prompt",
                             description: param.description || ""
                           })) || [],
-                          body_parameters: webhook.webhookConfig?.bodyParameters?.map((param: any) => ({
+                          // Body parameters for POST/PUT/PATCH requests
+                          body_parameters: webhook.webhookConfig?.bodyParameters?.filter((param: any) => param.identifier).map((param: any) => ({
                             identifier: param.identifier,
                             data_type: param.dataType || "String",
                             required: param.required || false,
                             value_type: param.valueType || "LLM Prompt",
                             description: param.description || ""
                           })) || [],
-                          path_parameters: webhook.webhookConfig?.pathParameters?.map((param: any) => ({
+                          // Path parameters for URL variables like /api/users/{id}
+                          path_parameters: webhook.webhookConfig?.pathParameters?.filter((param: any) => param.key || param.identifier).map((param: any) => ({
                             identifier: param.key || param.identifier,
                             data_type: param.dataType || "String",
                             required: param.required || false,
@@ -1941,18 +1944,6 @@ Generate the complete prompt now:`;
                     }
                   }
                   
-                  // Add a test webhook to verify the API works
-                  // Uncomment this to test webhook functionality
-                  if (updates.tools.webhooks && updates.tools.webhooks.length > 0) {
-                    // Force add a simple test webhook to verify API accepts it
-                    elevenLabsTools.push({
-                      type: "webhook",
-                      name: "simple_test",
-                      description: "Simple test webhook",
-                      url: "https://webhook.site/test123",
-                      method: "GET"
-                    });
-                  }
                   
                   // Always send the tools array to ElevenLabs to ensure proper sync
                   // An empty array will clear all tools in ElevenLabs

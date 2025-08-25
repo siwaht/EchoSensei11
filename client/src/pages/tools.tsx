@@ -38,13 +38,47 @@ interface WebhookConfig {
   id: string;
   name: string;
   url: string;
-  method: string;
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   description?: string;
-  headers?: Record<string, string>;
-  queryParameters?: WebhookParameter[];
-  bodyParameters?: WebhookParameter[];
-  pathParameters?: WebhookParameter[];
   enabled?: boolean;
+  type?: 'webhook';
+  webhookConfig?: {
+    responseTimeout?: number;
+    disableInterruptions?: boolean;
+    preToolSpeech?: 'auto' | 'force' | 'none';
+    authentication?: {
+      type?: string;
+      credentials?: any;
+    };
+    headers?: Array<{
+      key: string;
+      value: string;
+      enabled: boolean;
+    }>;
+    pathParameters?: Array<{
+      key: string;
+      description?: string;
+    }>;
+    queryParameters?: Array<{
+      key: string;
+      description?: string;
+      required?: boolean;
+      dataType?: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array';
+      valueType?: 'LLM Prompt' | 'Static' | 'Dynamic Variable';
+    }>;
+    bodyParameters?: Array<{
+      identifier: string;
+      dataType: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array';
+      description?: string;
+      required?: boolean;
+      valueType: 'LLM Prompt' | 'Static' | 'Dynamic Variable';
+    }>;
+    dynamicVariables?: Record<string, string>;
+    dynamicVariableAssignments?: Array<{
+      variable: string;
+      jsonPath: string;
+    }>;
+  };
 }
 
 interface ToolConfig {
@@ -1070,7 +1104,7 @@ export default function Tools() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-medium">{webhook.name || 'Unnamed Webhook'}</p>
                             <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded">
-                              {webhook.method}
+                              {webhook.method || 'GET'}
                             </span>
                             {webhook.enabled && (
                               <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded">
