@@ -99,6 +99,7 @@ export default function AgentSettings() {
     evaluation: false,
     collection: false,
     templates: false,
+    webhooks: false,
   });
   
   const [newTemplateName, setNewTemplateName] = useState("");
@@ -1151,6 +1152,116 @@ export default function AgentSettings() {
               <h3 className="text-base font-semibold mb-4">Advanced Settings</h3>
               
               <div className="space-y-4">
+                {/* Webhook Tools Configuration */}
+                <div>
+                  <button
+                    onClick={() => toggleSection('webhooks')}
+                    className="flex items-center justify-between w-full py-2 text-left hover:bg-muted/50 rounded-lg px-2 transition-colors"
+                  >
+                    <span className="text-sm font-medium flex items-center gap-2">
+                      <Webhook className="w-4 h-4" />
+                      Webhook Tools
+                    </span>
+                    {expandedSections.webhooks ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </button>
+                  
+                  {expandedSections.webhooks && (
+                    <div className="mt-3 space-y-3 pl-2">
+                      {/* RAG System Webhook */}
+                      <Card className="p-4 border-2 border-primary/20 bg-primary/5">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm mb-1 flex items-center gap-2">
+                              <Database className="w-4 h-4" />
+                              RAG System (Knowledge Base)
+                            </h4>
+                            <p className="text-xs text-muted-foreground mb-3">
+                              Allow your voice agent to search your custom knowledge base during conversations.
+                            </p>
+                            
+                            <div className="space-y-2">
+                              <div className="bg-background rounded-lg p-3 border">
+                                <p className="text-xs font-medium mb-2">Add this webhook to your agent in ElevenLabs:</p>
+                                <div className="flex items-center gap-2">
+                                  <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono break-all">
+                                    {window.location.origin}/api/public/rag
+                                  </code>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(`${window.location.origin}/api/public/rag`);
+                                      toast({
+                                        title: "Copied!",
+                                        description: "Webhook URL copied to clipboard",
+                                      });
+                                    }}
+                                  >
+                                    Copy
+                                  </Button>
+                                </div>
+                              </div>
+                              
+                              <div className="bg-muted/50 rounded-lg p-3">
+                                <p className="text-xs font-medium mb-2">Configuration in ElevenLabs:</p>
+                                <ul className="text-xs space-y-1 text-muted-foreground">
+                                  <li>• Type: <span className="font-mono">Webhook</span></li>
+                                  <li>• Method: <span className="font-mono">GET</span></li>
+                                  <li>• Query Parameter: <span className="font-mono">query</span> (type: String)</li>
+                                  <li>• Description: "Search the knowledge base for relevant information"</li>
+                                </ul>
+                              </div>
+                              
+                              <div className="flex items-center justify-between pt-2">
+                                <span className="text-xs text-muted-foreground">
+                                  Status: {settings.tools?.customTools?.find((t: any) => t.name === 'rag_search')?.enabled ? 
+                                    <span className="text-green-600 font-medium">Active</span> : 
+                                    <span className="text-yellow-600 font-medium">Not configured</span>
+                                  }
+                                </span>
+                                <Switch
+                                  checked={settings.tools?.customTools?.find((t: any) => t.name === 'rag_search')?.enabled || false}
+                                  onCheckedChange={(checked) => {
+                                    const newTools = { ...settings.tools };
+                                    if (!newTools.customTools) newTools.customTools = [];
+                                    const ragToolIndex = newTools.customTools.findIndex((t: any) => t.name === 'rag_search');
+                                    if (ragToolIndex >= 0) {
+                                      newTools.customTools[ragToolIndex].enabled = checked;
+                                    } else {
+                                      newTools.customTools.push({
+                                        id: 'rag-webhook',
+                                        name: 'rag_search',
+                                        type: 'webhook',
+                                        url: `${window.location.origin}/api/public/rag`,
+                                        enabled: checked
+                                      });
+                                    }
+                                    setSettings({ ...settings, tools: newTools });
+                                    setHasUnsavedChanges(true);
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                      
+                      <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-900">
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          <strong>How to connect:</strong> Copy the webhook URL above, go to your agent in ElevenLabs, 
+                          add a new "Webhook" tool, paste the URL, set method to GET, and add a query parameter named "query". 
+                          Save the agent, and it will be able to search your knowledge base during conversations.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+
                 {/* Dynamic Variables */}
                 <div>
                   <button
