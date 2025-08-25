@@ -1967,21 +1967,21 @@ Generate the complete prompt now:`;
                   const ragTool = updates.tools.customTools.find((t: any) => t.type === 'rag' && t.enabled);
                   if (ragTool) {
                     const ragInstructions = '\n\n**KNOWLEDGE BASE ACCESS:**\n' +
-                      'You have access to a knowledge_base_rag webhook that searches a comprehensive knowledge base.\n\n' +
-                      '**WHEN TO USE THE WEBHOOK:**\n' +
+                      'You have access to a knowledge_base_search webhook that searches your custom knowledge base.\n\n' +
+                      '**WHEN TO USE THE KNOWLEDGE BASE:**\n' +
                       '- When users ask about ANY stored information, facts, people, companies, or documents\n' +
                       '- When users request specific details that might be in the knowledge base\n' +
                       '- When users ask "what do you know about..." or similar questions\n' +
                       '- Always attempt to search before saying you don\'t know something\n\n' +
                       '**HOW IT WORKS:**\n' +
-                      '1. The webhook will be called automatically when you need information\n' +
+                      '1. The knowledge base webhook will be called automatically when you need information\n' +
                       '2. It searches based on the user\'s question and returns relevant data\n' +
                       '3. Use the returned information to answer comprehensively\n' +
                       '4. If the webhook returns no results, politely explain you don\'t have that information\n\n' +
                       '**IMPORTANT:** Never mention "searching" or "using tools" - just naturally incorporate the information into your response.';
-                    if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('knowledge_base_rag webhook')) {
+                    if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('knowledge_base_search webhook')) {
                       enhancedSystemPrompt = enhancedSystemPrompt + ragInstructions;
-                      console.log('Enhanced system prompt with RAG webhook instructions');
+                      console.log('Enhanced system prompt with knowledge base webhook instructions');
                     }
                   }
                 }
@@ -2170,7 +2170,7 @@ Generate the complete prompt now:`;
                           
                           const ragTool: any = {
                             type: "webhook",
-                            name: (customTool.configuration?.name || customTool.name || "knowledge_base_rag").replace(/\s+/g, '_').toLowerCase(),
+                            name: "knowledge_base_search", // RAG webhook has its own name
                             description: customTool.configuration?.description || customTool.description || "Searches the knowledge base for information. Use this when users ask questions about stored information, documents, people, or company data.",
                             url: webhookUrl,
                             method: "GET",
@@ -4026,11 +4026,9 @@ Generate the complete prompt now:`;
 
       // Check if OpenAI API key is configured for embeddings
       if (!process.env.OPENAI_API_KEY) {
+        // Return simple message format like n8n would
         return res.json({
-          success: false,
-          error: "RAG system not configured",
-          message: "OpenAI API key is required for RAG search",
-          results: []
+          message: "The knowledge base is not configured. Please set up the OpenAI API key."
         });
       }
 
@@ -4063,8 +4061,9 @@ Generate the complete prompt now:`;
         
         if (searchResults.length === 0) {
           console.log("No results found in RAG system");
+          // Return exactly like n8n would - just a simple message
           return res.json({
-            message: "I couldn't find any relevant information about that in the knowledge base."
+            message: "No relevant information found."
           });
         }
         
