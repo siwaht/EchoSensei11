@@ -21,7 +21,7 @@ import {
   Brain, FileText, Upload, Search, Phone, Languages,
   SkipForward, UserPlus, Voicemail, Hash, Server,
   Mic, AudioLines, Bot, Key, Shield, ShieldAlert, ShieldOff, Sparkles, Settings,
-  Info, RefreshCw, File
+  Info, RefreshCw, File, PlayCircle, Loader2
 } from "lucide-react";
 import type { Agent, CustomTool } from "@shared/schema";
 import { SystemToolConfigModal } from "@/components/tools/system-tool-config-modal";
@@ -139,6 +139,8 @@ export default function Tools() {
     isOpen: boolean;
     webhook?: any;
   }>({ isOpen: false });
+  const [testingWebhook, setTestingWebhook] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
 
   // Fetch agents
   const { data: agents = [], isLoading: agentsLoading } = useQuery<Agent[]>({
@@ -353,6 +355,113 @@ export default function Tools() {
       webhooks: toolsConfig.webhooks.filter((_, i) => i !== index),
     });
     setHasUnsavedChanges(true);
+  };
+
+  const testWebhook = async (webhook: any) => {
+    if (!webhook.url) {
+      toast({
+        title: "Error",
+        description: "Webhook URL is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTestingWebhook(webhook.id);
+    setTestResults({});
+
+    try {
+      // Prepare test data based on webhook method
+      const testData = {
+        test: true,
+        timestamp: new Date().toISOString(),
+        agent_id: selectedAgentId,
+        message: "This is a test request from VoiceAI Dashboard",
+      };
+
+      const requestOptions: RequestInit = {
+        method: webhook.method || 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(webhook.webhookConfig?.headers?.reduce((acc: any, header: any) => {
+            if (header.key && header.value) {
+              acc[header.key] = header.value;
+            }
+            return acc;
+          }, {}) || {}),
+        },
+      };
+
+      // Add body for POST/PUT/PATCH methods
+      if (['POST', 'PUT', 'PATCH'].includes(webhook.method || 'POST')) {
+        requestOptions.body = JSON.stringify(testData);
+      }
+
+      // For GET requests, add query parameters
+      let testUrl = webhook.url;
+      if (webhook.method === 'GET') {
+        const params = new URLSearchParams();
+        params.append('test', 'true');
+        params.append('query', 'test query');
+        testUrl = `${webhook.url}${webhook.url.includes('?') ? '&' : '?'}${params.toString()}`;
+      }
+
+      const response = await fetch(testUrl, {
+        ...requestOptions,
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      });
+
+      const responseText = await response.text();
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch {
+        responseData = responseText;
+      }
+
+      if (response.ok) {
+        setTestResults({
+          ...testResults,
+          [webhook.id]: {
+            success: true,
+            message: `Success (${response.status}): ${typeof responseData === 'object' ? JSON.stringify(responseData, null, 2) : responseData}`,
+          },
+        });
+        toast({
+          title: "Test Successful",
+          description: `Webhook responded with status ${response.status}`,
+        });
+      } else {
+        setTestResults({
+          ...testResults,
+          [webhook.id]: {
+            success: false,
+            message: `Error (${response.status}): ${typeof responseData === 'object' ? JSON.stringify(responseData, null, 2) : responseData}`,
+          },
+        });
+        toast({
+          title: "Test Failed",
+          description: `Webhook responded with status ${response.status}`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setTestResults({
+        ...testResults,
+        [webhook.id]: {
+          success: false,
+          message: `Connection error: ${errorMessage}`,
+        },
+      });
+      toast({
+        title: "Test Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setTestingWebhook(null);
+    }
   };
 
 
@@ -754,20 +863,44 @@ export default function Tools() {
                         If enabled, the conversation initiation client data will be fetched from the webhook defined in the settings when receiving Twilio or SIP trunk calls
                       </p>
                     </div>
-                    <Switch
-                      checked={toolsConfig.conversationInitiationWebhook?.enabled || false}
-                      onCheckedChange={(checked) => {
-                        setToolsConfig({
-                          ...toolsConfig,
-                          conversationInitiationWebhook: {
-                            ...toolsConfig.conversationInitiationWebhook,
-                            enabled: checked,
-                          },
-                        });
-                        setHasUnsavedChanges(true);
-                      }}
-                      data-testid="switch-conversation-initiation-webhook"
-                    />
+                    <div className="flex items-center gap-2">
+                      {toolsConfig.conversationInitiationWebhook?.enabled && toolsConfig.conversationInitiationWebhook?.url && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => testWebhook({
+                            id: 'conversation-initiation',
+                            name: 'Conversation Initiation Webhook',
+                            url: toolsConfig.conversationInitiationWebhook.url,
+                            method: 'POST',
+                            enabled: true,
+                          })}
+                          disabled={testingWebhook === 'conversation-initiation'}
+                          title="Test webhook"
+                          data-testid="button-test-conversation-webhook"
+                        >
+                          {testingWebhook === 'conversation-initiation' ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <PlayCircle className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
+                      <Switch
+                        checked={toolsConfig.conversationInitiationWebhook?.enabled || false}
+                        onCheckedChange={(checked) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            conversationInitiationWebhook: {
+                              ...toolsConfig.conversationInitiationWebhook,
+                              enabled: checked,
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        data-testid="switch-conversation-initiation-webhook"
+                      />
+                    </div>
                   </div>
                   {toolsConfig.conversationInitiationWebhook?.enabled && (
                     <Input
@@ -787,6 +920,20 @@ export default function Tools() {
                       data-testid="input-conversation-initiation-webhook-url"
                     />
                   )}
+                  {testResults['conversation-initiation'] && (
+                    <div className={`mt-3 p-3 rounded-md text-xs ${
+                      testResults['conversation-initiation'].success 
+                        ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
+                        : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+                    }`}>
+                      <p className="font-medium mb-1">
+                        {testResults['conversation-initiation'].success ? '✓ Test Passed' : '✗ Test Failed'}
+                      </p>
+                      <pre className="whitespace-pre-wrap break-all font-mono text-xs opacity-90">
+                        {testResults['conversation-initiation'].message}
+                      </pre>
+                    </div>
+                  )}
                 </div>
 
                 {/* Post-Call Webhook */}
@@ -798,20 +945,44 @@ export default function Tools() {
                         Override the post-call webhook configured in settings for this agent
                       </p>
                     </div>
-                    <Switch
-                      checked={toolsConfig.postCallWebhook?.enabled || false}
-                      onCheckedChange={(checked) => {
-                        setToolsConfig({
-                          ...toolsConfig,
-                          postCallWebhook: {
-                            ...toolsConfig.postCallWebhook,
-                            enabled: checked,
-                          },
-                        });
-                        setHasUnsavedChanges(true);
-                      }}
-                      data-testid="switch-post-call-webhook"
-                    />
+                    <div className="flex items-center gap-2">
+                      {toolsConfig.postCallWebhook?.enabled && toolsConfig.postCallWebhook?.url && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => testWebhook({
+                            id: 'post-call',
+                            name: 'Post-Call Webhook',
+                            url: toolsConfig.postCallWebhook.url,
+                            method: 'POST',
+                            enabled: true,
+                          })}
+                          disabled={testingWebhook === 'post-call'}
+                          title="Test webhook"
+                          data-testid="button-test-postcall-webhook"
+                        >
+                          {testingWebhook === 'post-call' ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <PlayCircle className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
+                      <Switch
+                        checked={toolsConfig.postCallWebhook?.enabled || false}
+                        onCheckedChange={(checked) => {
+                          setToolsConfig({
+                            ...toolsConfig,
+                            postCallWebhook: {
+                              ...toolsConfig.postCallWebhook,
+                              enabled: checked,
+                            },
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                        data-testid="switch-post-call-webhook"
+                      />
+                    </div>
                   </div>
                   {toolsConfig.postCallWebhook?.enabled && (
                     <div className="space-y-3">
@@ -845,6 +1016,20 @@ export default function Tools() {
                       >
                         Create Webhook
                       </Button>
+                    </div>
+                  )}
+                  {testResults['post-call'] && (
+                    <div className={`mt-3 p-3 rounded-md text-xs ${
+                      testResults['post-call'].success 
+                        ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
+                        : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+                    }`}>
+                      <p className="font-medium mb-1">
+                        {testResults['post-call'].success ? '✓ Test Passed' : '✗ Test Failed'}
+                      </p>
+                      <pre className="whitespace-pre-wrap break-all font-mono text-xs opacity-90">
+                        {testResults['post-call'].message}
+                      </pre>
                     </div>
                   )}
                 </div>
@@ -924,6 +1109,20 @@ export default function Tools() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => testWebhook(webhook)}
+                            disabled={testingWebhook === webhook.id}
+                            title="Test webhook"
+                            data-testid={`button-test-webhook-${index}`}
+                          >
+                            {testingWebhook === webhook.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <PlayCircle className="w-4 h-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setWebhookDialog({ isOpen: true, webhook })}
                             data-testid={`button-edit-webhook-${index}`}
                           >
@@ -939,6 +1138,20 @@ export default function Tools() {
                           </Button>
                         </div>
                       </div>
+                      {testResults[webhook.id] && (
+                        <div className={`mt-3 p-3 rounded-md text-xs ${
+                          testResults[webhook.id].success 
+                            ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
+                            : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+                        }`}>
+                          <p className="font-medium mb-1">
+                            {testResults[webhook.id].success ? '✓ Test Passed' : '✗ Test Failed'}
+                          </p>
+                          <pre className="whitespace-pre-wrap break-all font-mono text-xs opacity-90">
+                            {testResults[webhook.id].message}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
@@ -1028,6 +1241,20 @@ export default function Tools() {
                           data-testid="input-sheets-sheet-name"
                         />
                       </div>
+                      {testResults[webhook.id] && (
+                        <div className={`mt-3 p-3 rounded-md text-xs ${
+                          testResults[webhook.id].success 
+                            ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
+                            : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+                        }`}>
+                          <p className="font-medium mb-1">
+                            {testResults[webhook.id].success ? '✓ Test Passed' : '✗ Test Failed'}
+                          </p>
+                          <pre className="whitespace-pre-wrap break-all font-mono text-xs opacity-90">
+                            {testResults[webhook.id].message}
+                          </pre>
+                        </div>
+                      )}
                     </div>
 
                     <GoogleAuthButton
@@ -1211,6 +1438,20 @@ export default function Tools() {
                           </ol>
                         </div>
                       </div>
+                      {testResults[webhook.id] && (
+                        <div className={`mt-3 p-3 rounded-md text-xs ${
+                          testResults[webhook.id].success 
+                            ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
+                            : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+                        }`}>
+                          <p className="font-medium mb-1">
+                            {testResults[webhook.id].success ? '✓ Test Passed' : '✗ Test Failed'}
+                          </p>
+                          <pre className="whitespace-pre-wrap break-all font-mono text-xs opacity-90">
+                            {testResults[webhook.id].message}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1342,6 +1583,20 @@ export default function Tools() {
                           </ol>
                         </div>
                       </div>
+                      {testResults[webhook.id] && (
+                        <div className={`mt-3 p-3 rounded-md text-xs ${
+                          testResults[webhook.id].success 
+                            ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
+                            : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+                        }`}>
+                          <p className="font-medium mb-1">
+                            {testResults[webhook.id].success ? '✓ Test Passed' : '✗ Test Failed'}
+                          </p>
+                          <pre className="whitespace-pre-wrap break-all font-mono text-xs opacity-90">
+                            {testResults[webhook.id].message}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
