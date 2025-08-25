@@ -7,6 +7,8 @@ VoiceAI Dashboard is a white-label, multi-tenant SaaS platform for managing and 
 ### Recent Updates (August 25, 2025)
 - **Custom RAG Tool**: Implemented custom Retrieval-Augmented Generation (RAG) system as a webhook-based tool for voice agents
 - **RAG Webhook Endpoints**: Created multiple webhook endpoints (/api/public/rag, /api/webhooks/rag, /api/tools/rag) for ElevenLabs agent integration
+- **Simplified Webhook Response**: Updated webhook to return simple JSON with just a "message" field for better ElevenLabs compatibility
+- **Manual Setup Instructions**: Added clear instructions for manually adding webhook to ElevenLabs agents (automatic sync not supported for custom tools)
 - **Renamed to RAG System**: Changed naming from "Knowledge Base" to "RAG System" to clarify this is a custom tool, not ElevenLabs' built-in knowledge base
 - **Vector Database Integration**: Integrated LanceDB for efficient semantic search with OpenAI embeddings
 - **Document Management**: Added ability to upload and manage documents for the RAG system with chunking and indexing

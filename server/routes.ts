@@ -3993,8 +3993,14 @@ Generate the complete prompt now:`;
       console.log("Query Parameters:", req.query);
       console.log("Body:", req.body);
       
-      // Get the search query from request
-      const query = req.query.query || req.query.q || req.body?.query || req.body?.question || '';
+      // Get the search query from request - support both query params and body
+      // ElevenLabs might send as searchQuery in body based on the configuration
+      const query = req.query.query || 
+                   req.query.q || 
+                   req.body?.query || 
+                   req.body?.searchQuery || 
+                   req.body?.question || 
+                   req.body?.search_query || '';
       const agentId = req.query.agent_id || req.body?.agent_id || req.headers['x-agent-id'] || '';
       const organizationId = req.query.organization_id || req.body?.organization_id || req.headers['x-organization-id'] || '';
       const limit = parseInt(req.query.limit || req.body?.limit || '5');
@@ -4004,11 +4010,11 @@ Generate the complete prompt now:`;
       console.log("Organization ID:", organizationId);
       
       if (!query) {
+        console.log("No query provided, returning help message");
+        // Return a response that ElevenLabs can understand
         return res.json({
-          success: false,
-          error: "No query provided",
-          message: "Please provide a 'query' parameter to search the RAG system",
-          example: "?query=John Smith location preferences"
+          message: "I need more information to search the knowledge base. Please ask a specific question.",
+          success: false
         });
       }
 
@@ -4050,12 +4056,9 @@ Generate the complete prompt now:`;
         console.log(`Found ${searchResults.length} results in RAG system`);
         
         if (searchResults.length === 0) {
+          console.log("No results found in RAG system");
           return res.json({
-            success: true,
-            query: query,
-            message: "No relevant information found in the RAG system",
-            results: [],
-            timestamp: new Date().toISOString()
+            message: "I couldn't find any relevant information about that in the knowledge base."
           });
         }
         
@@ -4069,15 +4072,12 @@ Generate the complete prompt now:`;
         }));
         
         // Create a summary for the agent to easily understand
-        const summary = formattedResults.map(r => r.content).join("\n\n---\n\n");
+        const summary = formattedResults.map(r => r.content).join(" ");
         
+        // Return a simple response that ElevenLabs can use directly
+        console.log("Returning RAG results to agent");
         return res.json({
-          success: true,
-          query: query,
-          results_count: formattedResults.length,
-          results: formattedResults,
-          summary: summary,
-          timestamp: new Date().toISOString()
+          message: summary  // ElevenLabs agents expect a 'message' field
         });
         
       } catch (searchError) {

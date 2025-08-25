@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { 
@@ -1000,13 +1000,27 @@ export default function KnowledgeBase() {
                   </div>
                 </Card>
                 
-                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-900">
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    <strong>How to connect:</strong> Copy the webhook URL above, go to your agent in ElevenLabs, 
-                    add a new "Webhook" tool, paste the URL, set method to GET, and add a query parameter named "query". 
-                    Save the agent, and it will be able to search your knowledge base during conversations.
-                  </p>
-                </div>
+                <Alert className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50">
+                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <AlertDescription className="text-amber-800 dark:text-amber-200">
+                    <p className="font-medium mb-2">Manual Setup Required:</p>
+                    <ol className="list-decimal list-inside space-y-1 text-xs">
+                      <li>Copy the webhook URL above</li>
+                      <li>Go to your ElevenLabs Agent settings</li>
+                      <li>Navigate to "Custom tools" or "Tools" section</li>
+                      <li>Click "Add Tool" and select "Webhook"</li>
+                      <li>Configure with:
+                        <ul className="list-disc list-inside ml-4 mt-1">
+                          <li>Name: "Search Knowledge Base"</li>
+                          <li>URL: Paste the copied webhook URL</li>
+                          <li>Method: GET</li>
+                          <li>Query Parameters: Add "query" (type: String)</li>
+                        </ul>
+                      </li>
+                      <li>Save your agent settings</li>
+                    </ol>
+                  </AlertDescription>
+                </Alert>
               </div>
 
               {/* Save Button for RAG Config */}
