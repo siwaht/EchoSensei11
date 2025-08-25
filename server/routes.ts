@@ -1908,10 +1908,10 @@ Generate the complete prompt now:`;
                             return acc;
                           }, {}) || {},
                           query_parameters: webhook.webhookConfig?.queryParameters?.map((param: any) => ({
-                            identifier: param.key,
-                            data_type: "String",
+                            identifier: param.key || param.identifier,
+                            data_type: param.dataType || "String",
                             required: param.required || false,
-                            value_type: "LLM Prompt",
+                            value_type: param.valueType || "LLM Prompt",
                             description: param.description || ""
                           })) || [],
                           body_parameters: webhook.webhookConfig?.bodyParameters?.map((param: any) => ({
@@ -1922,13 +1922,14 @@ Generate the complete prompt now:`;
                             description: param.description || ""
                           })) || [],
                           path_parameters: webhook.webhookConfig?.pathParameters?.map((param: any) => ({
-                            identifier: param.key,
-                            data_type: "String",
-                            required: false,
-                            value_type: "LLM Prompt",
+                            identifier: param.key || param.identifier,
+                            data_type: param.dataType || "String",
+                            required: param.required || false,
+                            value_type: param.valueType || "LLM Prompt",
                             description: param.description || ""
                           })) || []
                         };
+                        console.log('Adding webhook tool to ElevenLabs:', JSON.stringify(webhookTool, null, 2));
                         elevenLabsTools.push(webhookTool);
                       }
                     }

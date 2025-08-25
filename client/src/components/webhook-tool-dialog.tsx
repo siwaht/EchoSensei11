@@ -40,6 +40,8 @@ interface WebhookTool {
       key: string;
       description?: string;
       required?: boolean;
+      dataType?: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array';
+      valueType?: 'LLM Prompt' | 'Static' | 'Dynamic Variable';
     }>;
     bodyParameters?: Array<{
       identifier: string;
@@ -160,7 +162,7 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
         ...formData.webhookConfig,
         queryParameters: [
           ...(formData.webhookConfig?.queryParameters || []),
-          { key: '', description: '', required: false }
+          { key: '', description: '', required: false, dataType: 'String', valueType: 'LLM Prompt' }
         ],
       },
     });
@@ -185,7 +187,7 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
     });
   };
 
-  const updateQueryParameter = (index: number, field: 'key' | 'description' | 'required', value: any) => {
+  const updateQueryParameter = (index: number, field: 'key' | 'description' | 'required' | 'dataType' | 'valueType', value: any) => {
     const params = [...(formData.webhookConfig?.queryParameters || [])];
     params[index] = { ...params[index], [field]: value };
     setFormData({
@@ -485,31 +487,80 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
                 </Button>
               </div>
               {formData.webhookConfig?.queryParameters?.map((param, index) => (
-                <div key={index} className="flex gap-2 items-center mt-2">
-                  <Input
-                    placeholder="Key"
-                    value={param.key}
-                    onChange={(e) => updateQueryParameter(index, 'key', e.target.value)}
-                    className="w-32"
-                  />
-                  <Input
-                    placeholder="Description"
-                    value={param.description}
-                    onChange={(e) => updateQueryParameter(index, 'description', e.target.value)}
-                    className="flex-1"
-                  />
-                  <Switch
-                    checked={param.required}
-                    onCheckedChange={(checked) => updateQueryParameter(index, 'required', checked)}
-                  />
-                  <span className="text-xs text-muted-foreground">Required</span>
-                  <Button
-                    onClick={() => deleteQueryParameter(index)}
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                <div key={index} className="border rounded-lg p-3 mt-2 space-y-2 bg-muted/20">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Identifier</Label>
+                      <Input
+                        placeholder="e.g., searchQuery"
+                        value={param.key}
+                        onChange={(e) => updateQueryParameter(index, 'key', e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Data Type</Label>
+                      <Select
+                        value={param.dataType || 'String'}
+                        onValueChange={(value) => updateQueryParameter(index, 'dataType', value)}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="String">String</SelectItem>
+                          <SelectItem value="Number">Number</SelectItem>
+                          <SelectItem value="Boolean">Boolean</SelectItem>
+                          <SelectItem value="Object">Object</SelectItem>
+                          <SelectItem value="Array">Array</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Description</Label>
+                    <Input
+                      placeholder="Describe how to extract this parameter"
+                      value={param.description}
+                      onChange={(e) => updateQueryParameter(index, 'description', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Value Type</Label>
+                      <Select
+                        value={param.valueType || 'LLM Prompt'}
+                        onValueChange={(value) => updateQueryParameter(index, 'valueType', value)}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="LLM Prompt">LLM Prompt</SelectItem>
+                          <SelectItem value="Static">Static</SelectItem>
+                          <SelectItem value="Dynamic Variable">Dynamic Variable</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2 mt-6">
+                      <Switch
+                        checked={param.required}
+                        onCheckedChange={(checked) => updateQueryParameter(index, 'required', checked)}
+                      />
+                      <Label className="text-xs">Required</Label>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => deleteQueryParameter(index)}
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
