@@ -1441,8 +1441,8 @@ Generate the complete prompt now:`;
               enabled: true,
               description: 'Search your custom knowledge base for information',
               url: process.env.REPLIT_DEV_DOMAIN 
-                ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/webhooks/rag`
-                : 'https://voiceai-dashboard.replit.app/api/webhooks/rag',
+                ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/public/rag`
+                : 'https://voiceai-dashboard.replit.app/api/public/rag',
               method: 'GET',
               queryParameters: [
                 {
@@ -1593,8 +1593,8 @@ Generate the complete prompt now:`;
                   enabled: true,
                   description: 'Search your custom knowledge base for information',
                   url: process.env.REPLIT_DEV_DOMAIN 
-                    ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/webhooks/rag`
-                    : 'https://voiceai-dashboard.replit.app/api/webhooks/rag',
+                    ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/public/rag`
+                    : 'https://voiceai-dashboard.replit.app/api/public/rag',
                   method: 'GET',
                   queryParameters: [
                     {
@@ -1728,8 +1728,8 @@ Generate the complete prompt now:`;
                   enabled: true,
                   description: 'Search your custom knowledge base for information',
                   url: process.env.REPLIT_DEV_DOMAIN 
-                    ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/webhooks/rag`
-                    : 'https://voiceai-dashboard.replit.app/api/webhooks/rag',
+                    ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/public/rag`
+                    : 'https://voiceai-dashboard.replit.app/api/public/rag',
                   method: 'GET',
                   queryParameters: [
                     {
@@ -1966,13 +1966,19 @@ Generate the complete prompt now:`;
                 if (updates.tools?.customTools) {
                   const ragTool = updates.tools.customTools.find((t: any) => t.type === 'rag' && t.enabled);
                   if (ragTool) {
-                    const ragInstructions = '\n\nYou have a knowledge_base_rag webhook tool available. When users ask questions about information, people, companies, or facts, this tool will automatically search and provide relevant information.\n\n' +
-                      'IMPORTANT: Use webhooks naturally in conversation:\n' +
-                      '1. When a user asks a question, the webhook automatically searches based on their query\n' +
-                      '2. Wait for the webhook response and incorporate it into your answer\n' +
-                      '3. Speak naturally - don\'t mention you\'re "searching" or "using a tool"\n' +
-                      '4. If no information is found, simply say you don\'t have that information\n\n' +
-                      'The webhook extracts the search query from the conversation automatically. Just respond naturally based on what the webhook returns.';
+                    const ragInstructions = '\n\n**KNOWLEDGE BASE ACCESS:**\n' +
+                      'You have access to a knowledge_base_rag webhook that searches a comprehensive knowledge base.\n\n' +
+                      '**WHEN TO USE THE WEBHOOK:**\n' +
+                      '- When users ask about ANY stored information, facts, people, companies, or documents\n' +
+                      '- When users request specific details that might be in the knowledge base\n' +
+                      '- When users ask "what do you know about..." or similar questions\n' +
+                      '- Always attempt to search before saying you don\'t know something\n\n' +
+                      '**HOW IT WORKS:**\n' +
+                      '1. The webhook will be called automatically when you need information\n' +
+                      '2. It searches based on the user\'s question and returns relevant data\n' +
+                      '3. Use the returned information to answer comprehensively\n' +
+                      '4. If the webhook returns no results, politely explain you don\'t have that information\n\n' +
+                      '**IMPORTANT:** Never mention "searching" or "using tools" - just naturally incorporate the information into your response.';
                     if (enhancedSystemPrompt && !enhancedSystemPrompt.includes('knowledge_base_rag webhook')) {
                       enhancedSystemPrompt = enhancedSystemPrompt + ragInstructions;
                       console.log('Enhanced system prompt with RAG webhook instructions');
@@ -2159,8 +2165,8 @@ Generate the complete prompt now:`;
                           // Use the current application's domain for the webhook URL
                           const currentDomain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
                           const webhookUrl = currentDomain 
-                            ? `https://${currentDomain}/api/webhooks/rag-search`
-                            : 'https://voiceai-dashboard.replit.app/api/webhooks/rag-search';
+                            ? `https://${currentDomain}/api/public/rag`
+                            : 'https://voiceai-dashboard.replit.app/api/public/rag';
                           
                           const ragTool: any = {
                             type: "webhook",
@@ -2550,8 +2556,8 @@ Generate the complete prompt now:`;
           enabled: true,
           description: 'Search your custom knowledge base for information',
           url: process.env.REPLIT_DEV_DOMAIN 
-            ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/webhooks/rag`
-            : 'https://voiceai-dashboard.replit.app/api/webhooks/rag',
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/public/rag`
+            : 'https://voiceai-dashboard.replit.app/api/public/rag',
           method: 'GET',
           queryParameters: [
             {
@@ -4109,8 +4115,8 @@ Generate the complete prompt now:`;
   // Custom RAG Tool webhook endpoints
   app.get("/api/tools/rag", handleRAGTool);
   app.post("/api/tools/rag", handleRAGTool);
-  app.get("/api/webhooks/rag", handleRAGTool);
-  app.post("/api/webhooks/rag", handleRAGTool);
+  app.get("/api/public/rag", handleRAGTool);
+  app.post("/api/public/rag", handleRAGTool);
   
   // Public webhook endpoint for external agents (no auth required)
   app.get("/api/public/rag", handleRAGTool);
