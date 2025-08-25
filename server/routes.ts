@@ -5276,6 +5276,54 @@ Generate the complete prompt now:`;
     }
   });
 
+  // Save RAG configuration
+  app.post("/api/tools/rag-config", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const config = req.body;
+      
+      // Store config in database or memory
+      // For now, we'll store it in memory (you can extend this to use database)
+      const ragConfigs = (global as any).ragConfigs || {};
+      ragConfigs[user.organizationId] = config;
+      (global as any).ragConfigs = ragConfigs;
+
+      res.json({ success: true, message: "RAG configuration saved" });
+    } catch (error: any) {
+      console.error("Error saving RAG config:", error);
+      res.status(500).json({ message: `Failed to save configuration: ${error.message}` });
+    }
+  });
+
+  // Get RAG configuration
+  app.get("/api/tools/rag-config", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Retrieve config from database or memory
+      const ragConfigs = (global as any).ragConfigs || {};
+      const config = ragConfigs[user.organizationId];
+
+      if (!config) {
+        return res.status(404).json({ message: "No RAG configuration found" });
+      }
+
+      res.json(config);
+    } catch (error: any) {
+      console.error("Error fetching RAG config:", error);
+      res.status(500).json({ message: `Failed to fetch configuration: ${error.message}` });
+    }
+  });
+
   // Get document chunks for debugging (Local VectorDB)
   app.get("/api/convai/knowledge-base/:document_id/chunks", isAuthenticated, async (req: any, res) => {
     try {

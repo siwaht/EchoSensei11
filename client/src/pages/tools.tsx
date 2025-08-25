@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
@@ -18,7 +20,8 @@ import {
   Sheet, Calendar, Mail, CheckCircle, XCircle, Database,
   Brain, FileText, Upload, Search, Phone, Languages,
   SkipForward, UserPlus, Voicemail, Hash, Server,
-  Mic, AudioLines, Bot, Key, Shield, Sparkles, Settings
+  Mic, AudioLines, Bot, Key, Shield, Sparkles, Settings,
+  Info, RefreshCw, File
 } from "lucide-react";
 import type { Agent, CustomTool } from "@shared/schema";
 import { SystemToolConfigModal } from "@/components/tools/system-tool-config-modal";
@@ -144,6 +147,120 @@ export default function Tools() {
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
 
+  // RAG Knowledge Base state
+  const [ragEnabled, setRagEnabled] = useState(true);
+  const [ragToolName, setRagToolName] = useState("Knowledge Base RAG");
+  const [ragToolDescription, setRagToolDescription] = useState("check the knowledge base for more information");
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
+  const [topK, setTopK] = useState(5);
+  const [maxResponseTokens, setMaxResponseTokens] = useState(2000);
+  const [ragTemperature, setRagTemperature] = useState(0.7);
+  const [chunkSize, setChunkSize] = useState(1000);
+  const [chunkOverlap, setChunkOverlap] = useState(200);
+  const [ragSystemPrompt, setRagSystemPrompt] = useState(
+    "reference the most relevant entries when providing facts about a person's background, preferences, or company information. If the user inquires about a person's location, what they like to eat, or a company's services, cite the related knowledge base entry in your answer. Respond concisely, truthfully, and in a helpful manner based on the provided information."
+  );
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+
+  // Fetch knowledge base documents
+  const { data: documentsData, refetch: refetchDocuments } = useQuery({
+    queryKey: ["/api/convai/knowledge-base"],
+    queryFn: async () => {
+      const response = await fetch("/api/convai/knowledge-base", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        return { documents: [] };
+      }
+      return await response.json();
+    },
+    refetchInterval: 10000,
+  });
+
+  const documents = documentsData?.documents || [];
+
+  // Upload document mutation
+  const uploadMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const response = await fetch("/api/convai/knowledge-base", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Document Uploaded",
+        description: "The document has been processed and indexed.",
+      });
+      setUploadFile(null);
+      refetchDocuments();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload document.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete document mutation
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      const response = await fetch(`/api/convai/knowledge-base/${documentId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to delete document");
+      }
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Document Deleted",
+        description: "The document has been removed from the knowledge base.",
+      });
+      refetchDocuments();
+    },
+    onError: () => {
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete document.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUploadDocument = async () => {
+    if (!uploadFile) {
+      toast({
+        title: "No File Selected",
+        description: "Please select a file to upload.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', uploadFile);
+    formData.append('name', uploadFile.name.replace(/\.[^/.]+$/, ""));
+    formData.append('type', 'file');
+    formData.append('agent_ids', JSON.stringify(selectedAgentId ? [selectedAgentId] : []));
+
+    await uploadMutation.mutateAsync(formData);
+  };
+
   // Tool configurations state
   const [toolsConfig, setToolsConfig] = useState({
     systemTools: {
@@ -254,6 +371,53 @@ export default function Tools() {
       });
     },
   });
+
+  // Save RAG configuration
+  const saveRagConfig = async () => {
+    const config = {
+      name: ragToolName,
+      description: ragToolDescription,
+      enabled: ragEnabled,
+      type: 'rag',
+      config: {
+        vectorDatabase: 'lancedb',
+        openaiApiKey: openaiApiKey,
+        topK,
+        maxResponseTokens,
+        temperature: ragTemperature,
+        chunkSize,
+        chunkOverlap,
+        systemPrompt: ragSystemPrompt,
+        embedModel: openaiApiKey ? 'text-embedding-3-small' : 'local',
+      },
+    };
+
+    try {
+      const response = await fetch("/api/tools/rag-config", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(config),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to save configuration");
+      }
+      
+      toast({
+        title: "Configuration Saved",
+        description: "RAG knowledge base settings have been updated.",
+      });
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: "Failed to save RAG configuration.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSave = () => {
     if (!selectedAgentId) {
@@ -1357,114 +1521,274 @@ export default function Tools() {
 
           {/* Custom Tools Tab */}
           <TabsContent value="custom" className="space-y-4">
-            {/* MCP Servers */}
-            <Card className="p-4 sm:p-6">
-              <div className="mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
-                      <Server className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-base sm:text-lg font-semibold">MCP Servers</h3>
-                      <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                        Connect custom Model Context Protocol servers for advanced capabilities
-                      </p>
-                    </div>
+            {/* RAG Knowledge Base Card */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <Database className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setMcpServerDialog({ isOpen: true })}
-                    data-testid="button-add-mcp-server"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Server
-                  </Button>
+                  <div>
+                    <h2 className="text-xl font-semibold">RAG Knowledge Base</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Retrieval-Augmented Generation with custom knowledge bases
+                    </p>
+                  </div>
                 </div>
+                <Switch
+                  checked={ragEnabled}
+                  onCheckedChange={setRagEnabled}
+                  className="scale-125"
+                />
               </div>
 
-              {toolsConfig.mcpServers?.length === 0 ? (
-                <div className="text-center py-8 border rounded-lg text-muted-foreground">
-                  <Server className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No MCP servers configured</p>
-                  <p className="text-xs mt-1">Add a custom MCP server to extend your agent's capabilities</p>
+              <div className="space-y-6">
+                {/* Tool Configuration */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="tool-name">Tool Name</Label>
+                    <Input
+                      id="tool-name"
+                      value={ragToolName}
+                      onChange={(e) => setRagToolName(e.target.value)}
+                      placeholder="Knowledge Base RAG"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="tool-desc">Description</Label>
+                    <Input
+                      id="tool-desc"
+                      value={ragToolDescription}
+                      onChange={(e) => setRagToolDescription(e.target.value)}
+                      placeholder="check the knowledge base for more information"
+                    />
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {toolsConfig.mcpServers?.map((server, index) => (
-                    <div key={server.id} className="p-4 border rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{server.name}</p>
-                            {server.enabled && (
-                              <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded">
-                                Active
-                              </span>
-                            )}
-                          </div>
-                          {server.description && (
-                            <p className="text-sm text-muted-foreground mt-1">{server.description}</p>
-                          )}
-                          <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                            <p>Type: {server.mcpConfig?.serverType === 'sse' ? 'SSE' : 'Streamable HTTP'}</p>
-                            <p>Approval: {server.mcpConfig?.approvalMode?.replace('_', ' ')}</p>
-                            {server.url && <p className="truncate">URL: {server.url}</p>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={server.enabled}
-                            onCheckedChange={(checked) => {
-                              const updatedServers = [...(toolsConfig.mcpServers || [])];
-                              updatedServers[index] = { ...server, enabled: checked };
-                              setToolsConfig({
-                                ...toolsConfig,
-                                mcpServers: updatedServers,
-                              });
-                              setHasUnsavedChanges(true);
-                            }}
-                            data-testid={`switch-mcp-server-${index}`}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setMcpServerDialog({ isOpen: true, server })}
-                            data-testid={`button-edit-mcp-server-${index}`}
-                          >
-                            <Settings className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              const updatedServers = toolsConfig.mcpServers?.filter((_, i) => i !== index) || [];
-                              setToolsConfig({
-                                ...toolsConfig,
-                                mcpServers: updatedServers,
-                              });
-                              setHasUnsavedChanges(true);
-                            }}
-                            data-testid={`button-delete-mcp-server-${index}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
 
-            {/* Other Custom Tools Coming Soon */}
-            <Card className="p-4 sm:p-6">
-              <div className="text-center py-8 text-muted-foreground">
-                <Code className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <h4 className="text-base font-medium mb-2">More Custom Tools Coming Soon</h4>
-                <p className="text-sm">
-                  API connectors, custom functions, workflow automation, and more
-                </p>
+                {/* Vector Database Configuration */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Database className="h-5 w-5" />
+                    <h3 className="font-semibold">Vector Database Configuration</h3>
+                  </div>
+                  
+                  <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <AlertDescription className="text-green-800 dark:text-green-200">
+                      <strong>Open Source LanceDB (Free)</strong>
+                      <br />
+                      No external services required - runs locally on your server
+                    </AlertDescription>
+                  </Alert>
+
+                  <div>
+                    <Label htmlFor="openai-key">
+                      OpenAI API Key (Optional - for better embeddings)
+                    </Label>
+                    <Input
+                      id="openai-key"
+                      type="password"
+                      value={openaiApiKey}
+                      onChange={(e) => setOpenaiApiKey(e.target.value)}
+                      placeholder="sk-... (Leave empty to use free local embeddings)"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      If provided, OpenAI embeddings will be used for better search accuracy
+                    </p>
+                  </div>
+                </div>
+
+                {/* Retrieval Settings */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Search className="h-5 w-5" />
+                    <h3 className="font-semibold">Retrieval Settings</h3>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label>Top K Results</Label>
+                        <span className="text-sm text-muted-foreground">{topK}</span>
+                      </div>
+                      <Slider
+                        value={[topK]}
+                        onValueChange={(v) => setTopK(v[0])}
+                        min={1}
+                        max={20}
+                        step={1}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label>Max Response Tokens</Label>
+                        <span className="text-sm text-muted-foreground">{maxResponseTokens}</span>
+                      </div>
+                      <Slider
+                        value={[maxResponseTokens]}
+                        onValueChange={(v) => setMaxResponseTokens(v[0])}
+                        min={100}
+                        max={4000}
+                        step={100}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label>Temperature</Label>
+                        <span className="text-sm text-muted-foreground">{ragTemperature.toFixed(2)}</span>
+                      </div>
+                      <Slider
+                        value={[ragTemperature]}
+                        onValueChange={(v) => setRagTemperature(v[0])}
+                        min={0}
+                        max={1}
+                        step={0.01}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label>Chunk Size</Label>
+                        <span className="text-sm text-muted-foreground">{chunkSize}</span>
+                      </div>
+                      <Slider
+                        value={[chunkSize]}
+                        onValueChange={(v) => setChunkSize(v[0])}
+                        min={100}
+                        max={2000}
+                        step={50}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>Chunk Overlap</Label>
+                      <span className="text-sm text-muted-foreground">{chunkOverlap}</span>
+                    </div>
+                    <Slider
+                      value={[chunkOverlap]}
+                      onValueChange={(v) => setChunkOverlap(v[0])}
+                      min={0}
+                      max={500}
+                      step={10}
+                    />
+                  </div>
+                </div>
+
+                {/* System Prompt */}
+                <div className="space-y-2">
+                  <Label htmlFor="system-prompt">System Prompt for RAG</Label>
+                  <Textarea
+                    id="system-prompt"
+                    value={ragSystemPrompt}
+                    onChange={(e) => setRagSystemPrompt(e.target.value)}
+                    rows={5}
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Instructions for how the agent should use retrieved knowledge
+                  </p>
+                </div>
+
+                {/* Knowledge Base Documents */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      <h3 className="font-semibold">Knowledge Base Documents</h3>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        document.getElementById('file-upload')?.click();
+                      }}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Documents
+                    </Button>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      accept=".txt,.pdf,.docx,.doc,.md,.csv,.json"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setUploadFile(file);
+                          handleUploadDocument();
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    Supported formats: Text (.txt), PDF (.pdf), Word (.docx, .doc), Markdown (.md), CSV (.csv), JSON (.json)
+                  </p>
+
+                  {documents.length === 0 ? (
+                    <Card className="p-8 border-dashed">
+                      <div className="flex flex-col items-center text-center">
+                        <Database className="h-12 w-12 text-muted-foreground mb-3" />
+                        <h4 className="font-semibold mb-1">No knowledge bases configured</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Upload documents to create your first knowledge base
+                        </p>
+                      </div>
+                    </Card>
+                  ) : (
+                    <div className="space-y-2">
+                      {documents.map((doc: any) => (
+                        <Card key={doc.id} className="p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <File className="h-4 w-4 text-blue-500" />
+                              <div>
+                                <p className="font-medium text-sm">{doc.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {doc.chunks} chunks • {new Date(doc.createdAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteDocumentMutation.mutate(doc.id)}
+                              disabled={deleteDocumentMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Quick Start Guide */}
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Quick Start Guide</strong>
+                      <ol className="mt-2 ml-2 space-y-1 text-sm">
+                        <li>1. Upload your documents (PDFs, Word docs, text files, etc.)</li>
+                        <li>2. Documents are automatically processed and indexed</li>
+                        <li>3. Optionally add an OpenAI API key for better search accuracy</li>
+                        <li>4. Configure retrieval settings for optimal performance</li>
+                        <li>5. Your agent can now answer questions using the knowledge base</li>
+                      </ol>
+                    </AlertDescription>
+                  </Alert>
+                </div>
+
+                {/* Save Button for RAG Config */}
+                <div className="flex justify-end">
+                  <Button onClick={saveRagConfig}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save RAG Configuration
+                  </Button>
+                </div>
               </div>
             </Card>
           </TabsContent>
