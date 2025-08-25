@@ -1203,12 +1203,12 @@ export default function AdminDashboard() {
 
       {/* Edit Organization Billing Dialog */}
       <Dialog open={!!editingOrg} onOpenChange={() => setEditingOrg(null)}>
-        <DialogContent className="w-[95vw] max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Edit Organization Billing Settings</DialogTitle>
             <DialogDescription>Manage billing configuration for {editingOrg?.name}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto flex-1 pr-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Organization Name</Label>
