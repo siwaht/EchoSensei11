@@ -20,7 +20,7 @@ import {
   Sheet, Calendar, Mail, CheckCircle, XCircle, Database,
   Brain, FileText, Upload, Search, Phone, Languages,
   SkipForward, UserPlus, Voicemail, Hash, Server,
-  Mic, AudioLines, Bot, Key, Shield, Sparkles, Settings,
+  Mic, AudioLines, Bot, Key, Shield, ShieldAlert, ShieldOff, Sparkles, Settings,
   Info, RefreshCw, File
 } from "lucide-react";
 import type { Agent, CustomTool } from "@shared/schema";
@@ -1362,19 +1362,164 @@ export default function Tools() {
 
           {/* Custom Tools Tab */}
           <TabsContent value="custom" className="space-y-4">
-            {/* Empty State - Custom Tools Coming Soon */}
-            <Card className="p-8">
-              <div className="flex flex-col items-center text-center">
-                <Wrench className="h-12 w-12 text-muted-foreground mb-3" />
-                <h4 className="text-lg font-semibold mb-2">Custom Tools</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Custom tools and integrations are coming soon
-                </p>
-                <p className="text-xs text-muted-foreground max-w-md">
-                  For RAG (Retrieval-Augmented Generation) configuration, please use the dedicated RAG System tab from the navigation menu.
-                </p>
+            {/* MCP Servers Card */}
+            <Card className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <Server className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold">MCP Servers</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Connect to Model Context Protocol servers for extended capabilities
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => setMcpServerDialog({ isOpen: true })}
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Add MCP Server</span>
+                </Button>
               </div>
+
+              {/* MCP Servers Information */}
+              <Alert className="mb-4">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Model Context Protocol (MCP)</strong> servers enable your agents to connect with external services like Zapier, HubSpot, Gmail, and custom APIs. MCP is an open standard that allows AI models to interact with diverse data sources and tools.
+                </AlertDescription>
+              </Alert>
+
+              {toolsConfig.mcpServers && toolsConfig.mcpServers.length === 0 ? (
+                <Card className="p-8 border-dashed">
+                  <div className="flex flex-col items-center text-center">
+                    <Server className="h-12 w-12 text-muted-foreground mb-3" />
+                    <h4 className="font-semibold mb-1">No MCP servers configured</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Add an MCP server to extend your agent's capabilities
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => setMcpServerDialog({ isOpen: true })}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Configure MCP Server
+                    </Button>
+                  </div>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {toolsConfig.mcpServers?.map((server: CustomTool) => (
+                    <Card key={server.id} className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Server className="h-5 w-5 text-purple-500" />
+                            <h4 className="font-semibold">{server.name}</h4>
+                            <Badge variant={server.enabled ? "default" : "secondary"}>
+                              {server.enabled ? "Active" : "Inactive"}
+                            </Badge>
+                            {server.mcpConfig && (
+                              <Badge variant="outline">
+                                {server.mcpConfig.serverType === 'sse' ? 'SSE' : 'HTTP'}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {server.description}
+                          </p>
+                          <div className="flex flex-col gap-1">
+                            <p className="text-xs text-muted-foreground">
+                              <strong>URL:</strong> {server.url}
+                            </p>
+                            {server.mcpConfig && (
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-muted-foreground">
+                                  <strong>Approval Mode:</strong>
+                                </p>
+                                <Badge variant="outline" className="text-xs">
+                                  {server.mcpConfig.approvalMode === 'always_ask' && (
+                                    <>
+                                      <Shield className="h-3 w-3 mr-1" />
+                                      Always Ask
+                                    </>
+                                  )}
+                                  {server.mcpConfig.approvalMode === 'fine_grained' && (
+                                    <>
+                                      <ShieldAlert className="h-3 w-3 mr-1" />
+                                      Fine-Grained
+                                    </>
+                                  )}
+                                  {server.mcpConfig.approvalMode === 'no_approval' && (
+                                    <>
+                                      <ShieldOff className="h-3 w-3 mr-1" />
+                                      No Approval
+                                    </>
+                                  )}
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setMcpServerDialog({ 
+                              isOpen: true, 
+                              server: server 
+                            })}
+                          >
+                            <Settings2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const updatedServers = toolsConfig.mcpServers?.filter(
+                                s => s.id !== server.id
+                              ) || [];
+                              setToolsConfig({
+                                ...toolsConfig,
+                                mcpServers: updatedServers,
+                              });
+                              setHasUnsavedChanges(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {/* Quick Start Guide */}
+              <Alert className="mt-4">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Quick Start with Popular MCP Servers:</strong>
+                  <ul className="mt-2 ml-2 space-y-1 text-sm">
+                    <li>• <strong>Zapier MCP:</strong> Connect to 7000+ apps and services</li>
+                    <li>• <strong>HubSpot MCP:</strong> CRM integration for sales and marketing</li>
+                    <li>• <strong>Gmail MCP:</strong> Email management and automation</li>
+                    <li>• <strong>Custom API:</strong> Connect to your own backend services</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
             </Card>
+
+            {/* RAG System Redirect */}
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Looking for RAG (Retrieval-Augmented Generation) configuration? Visit the dedicated <strong>RAG System</strong> tab from the navigation menu.
+              </AlertDescription>
+            </Alert>
           </TabsContent>
         </Tabs>
       )}
@@ -1407,7 +1552,7 @@ export default function Tools() {
         <MCPServerDialog
           isOpen={mcpServerDialog.isOpen}
           onClose={() => setMcpServerDialog({ isOpen: false })}
-          server={mcpServerDialog.server}
+          tool={mcpServerDialog.server}
           onSave={(server) => {
             const updatedServers = [...(toolsConfig.mcpServers || [])];
             if (mcpServerDialog.server) {
