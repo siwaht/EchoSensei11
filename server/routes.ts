@@ -2623,7 +2623,7 @@ Generate the complete prompt now:`;
               }
               
               // Add the RAG webhook tool
-              elevenLabsTools.push({
+              const ragWebhookTool = {
                 type: 'webhook',
                 name: 'rag_search',
                 description: ragTool.description || 'Search your custom knowledge base for information',
@@ -2638,7 +2638,15 @@ Generate the complete prompt now:`;
                   description: param.description || ''
                 })) || [],
                 body_parameters: []
+              };
+              
+              console.log(`Configuring RAG webhook for agent ${agentId}:`, {
+                url: ragWebhookTool.url,
+                method: ragWebhookTool.method,
+                parameters: ragWebhookTool.query_parameters
               });
+              
+              elevenLabsTools.push(ragWebhookTool);
               
               // Update the agent in ElevenLabs with the tools
               const updatePayload = {
@@ -2649,13 +2657,17 @@ Generate the complete prompt now:`;
                 }
               };
               
-              await callElevenLabsAPI(
+              console.log(`Sending tools update to ElevenLabs for agent ${agentId}:`, JSON.stringify(updatePayload, null, 2));
+              
+              const updateResponse = await callElevenLabsAPI(
                 decryptedKey,
                 `/v1/convai/agents/${agentId}`,
                 "PATCH",
                 updatePayload,
                 integration.id
               );
+              
+              console.log(`ElevenLabs update response for agent ${agentId}:`, updateResponse);
             }
           }
         } catch (toolError) {
