@@ -88,7 +88,8 @@ export default function KnowledgeBase() {
       });
       
       if (!response.ok) {
-        throw new Error("Failed to upload document");
+        const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
       }
       
       return await response.json();
@@ -102,10 +103,11 @@ export default function KnowledgeBase() {
       resetUploadForm();
       refetch();
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error('Upload error:', error);
       toast({
         title: "Upload Failed",
-        description: "Failed to upload document. Please try again.",
+        description: error.message || "Failed to upload document. Please try again.",
         variant: "destructive",
       });
     },
@@ -170,9 +172,14 @@ export default function KnowledgeBase() {
     
     try {
       const formData = new FormData();
-      formData.append('name', uploadName);
       
-      if (selectedAgentId) {
+      // Add name if provided
+      if (uploadName) {
+        formData.append('name', uploadName);
+      }
+      
+      // Add agent_ids if selected (but not if it's "none")
+      if (selectedAgentId && selectedAgentId !== 'none') {
         formData.append('agent_ids', JSON.stringify([selectedAgentId]));
       }
 
@@ -180,14 +187,18 @@ export default function KnowledgeBase() {
         // Send the actual file
         formData.append('file', uploadFile);
         formData.append('type', 'file');
-      } else if (uploadType === 'url') {
+        console.log('Uploading file:', uploadFile.name, 'size:', uploadFile.size);
+      } else if (uploadType === 'url' && uploadUrl) {
         formData.append('url', uploadUrl);
         formData.append('type', 'url');
-      } else if (uploadType === 'text') {
+        console.log('Uploading URL:', uploadUrl);
+      } else if (uploadType === 'text' && uploadText) {
         // Convert text to a file for the API
         const textBlob = new Blob([uploadText], { type: 'text/plain' });
-        formData.append('file', textBlob, `${uploadName.replace(/[^a-z0-9]/gi, '_')}.txt`);
+        const fileName = `${uploadName.replace(/[^a-z0-9]/gi, '_')}.txt`;
+        formData.append('file', textBlob, fileName);
         formData.append('type', 'file');
+        console.log('Uploading text as file:', fileName);
       }
       
       await uploadMutation.mutateAsync(formData);

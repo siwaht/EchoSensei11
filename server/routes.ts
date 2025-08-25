@@ -4871,6 +4871,11 @@ Generate the complete prompt now:`;
   // Create knowledge base document
   app.post("/api/convai/knowledge-base", isAuthenticated, kbUpload.single('file'), async (req: any, res) => {
     try {
+      console.log("Knowledge base upload request:", {
+        body: req.body,
+        file: req.file ? { name: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype } : null
+      });
+
       const userId = req.user.id;
       const user = await storage.getUser(userId);
       if (!user) {
@@ -4879,43 +4884,58 @@ Generate the complete prompt now:`;
 
       const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
       if (!integration || !integration.apiKey) {
-        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+        return res.status(400).json({ message: "ElevenLabs API key not configured. Please go to Integrations and set up your ElevenLabs API key." });
       }
 
       const apiKey = decryptApiKey(integration.apiKey);
       const { name, type, url, agent_ids } = req.body;
       
-      // Prepare FormData for ElevenLabs API
-      const FormData = require('form-data');
-      const formData = new FormData();
+      // Import form-data properly
+      const FormDataLib = (await import('form-data')).default;
+      const formData = new FormDataLib();
       
       // Add name if provided
       if (name) {
         formData.append('name', name);
       }
 
-      // Add agent_ids if provided
+      // Add agent_ids if provided and not 'none'
       if (agent_ids) {
-        const agentIdsArray = typeof agent_ids === 'string' ? JSON.parse(agent_ids) : agent_ids;
-        agentIdsArray.forEach((id: string) => {
-          formData.append('agent_ids', id);
-        });
+        try {
+          const agentIdsArray = typeof agent_ids === 'string' ? JSON.parse(agent_ids) : agent_ids;
+          if (Array.isArray(agentIdsArray) && agentIdsArray.length > 0) {
+            agentIdsArray.forEach((id: string) => {
+              if (id && id !== 'none') {
+                formData.append('agent_ids', id);
+              }
+            });
+          }
+        } catch (parseError) {
+          console.error('Error parsing agent_ids:', parseError);
+        }
       }
 
       // Handle different document types
       if (type === 'url' && url) {
+        console.log('Adding URL to knowledge base:', url);
         formData.append('url', url);
       } else if (type === 'file' && req.file) {
-        // Add the file
+        console.log('Adding file to knowledge base:', req.file.originalname);
+        // Add the file with proper options
         formData.append('file', req.file.buffer, {
           filename: req.file.originalname,
-          contentType: req.file.mimetype
+          contentType: req.file.mimetype || 'application/octet-stream'
         });
       } else {
-        return res.status(400).json({ message: "Invalid document type. Please provide either a URL or file." });
+        console.log('Invalid document type or missing data:', { type, hasFile: !!req.file, hasUrl: !!url });
+        return res.status(400).json({ 
+          message: "Invalid document type or missing data. Please provide either a URL or file.",
+          details: { type, hasFile: !!req.file, hasUrl: !!url }
+        });
       }
 
       // Send to ElevenLabs API
+      console.log('Sending to ElevenLabs API...');
       const response = await fetch(
         "https://api.elevenlabs.io/v1/convai/knowledge-base",
         {
@@ -4924,20 +4944,38 @@ Generate the complete prompt now:`;
             "xi-api-key": apiKey,
             ...formData.getHeaders()
           },
-          body: formData
+          body: formData as any
         }
       );
 
+      const responseText = await response.text();
+      console.log('ElevenLabs API response:', response.status, responseText.substring(0, 500));
+
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+        // Try to parse as JSON for better error message
+        let errorMessage = `ElevenLabs API error: ${response.status}`;
+        try {
+          const errorJson = JSON.parse(responseText);
+          if (errorJson.detail) {
+            errorMessage = errorJson.detail;
+          } else if (errorJson.message) {
+            errorMessage = errorJson.message;
+          } else {
+            errorMessage += ` - ${responseText.substring(0, 200)}`;
+          }
+        } catch {
+          errorMessage += ` - ${responseText.substring(0, 200)}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      const data = JSON.parse(responseText);
+      console.log('Knowledge base document created successfully:', data.document_id);
       res.json(data);
     } catch (error: any) {
-      console.error("Error creating knowledge base document:", error);
-      res.status(500).json({ message: `Failed to create document: ${error.message}` });
+      console.error("Error creating knowledge base document:", error.message);
+      const statusCode = error.message.includes('API key') ? 400 : 500;
+      res.status(statusCode).json({ message: error.message });
     }
   });
 
