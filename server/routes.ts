@@ -8,6 +8,7 @@ import crypto from "crypto";
 import multer from "multer";
 import type { RequestHandler } from "express";
 import { seedAdminUser } from "./seedAdmin";
+import { vectorDB } from "./vectordb";
 
 // Authentication middleware
 const isAuthenticated: RequestHandler = (req, res, next) => {
@@ -527,13 +528,13 @@ export function registerRoutes(app: Express): Server {
   app.post('/api/admin/sync/run', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       // Check API connectivity
-      const integration = await storage.getIntegration(req.session.organizationId!);
+      const integration = await storage.getIntegration(req.session.organizationId!, "elevenlabs");
       
       if (!integration || !integration.apiKey) {
         return res.status(400).json({ message: 'No API key configured' });
       }
 
-      const apiKey = decrypt(integration.apiKey);
+      const apiKey = decryptApiKey(integration.apiKey);
 
       // Test API connectivity with a simple call
       const testResponse = await fetch('https://api.elevenlabs.io/v1/user', {
@@ -563,13 +564,13 @@ export function registerRoutes(app: Express): Server {
   app.post('/api/admin/sync/validate', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const endpoint = req.body;
-      const integration = await storage.getIntegration(req.session.organizationId!);
+      const integration = await storage.getIntegration(req.session.organizationId!, "elevenlabs");
       
       if (!integration || !integration.apiKey) {
         return res.status(400).json({ valid: false, message: 'No API key configured' });
       }
 
-      const apiKey = decrypt(integration.apiKey);
+      const apiKey = decryptApiKey(integration.apiKey);
 
       // Validate specific endpoint
       let testUrl = 'https://api.elevenlabs.io';
@@ -5077,7 +5078,7 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Knowledge Base API - List documents
+  // Knowledge Base API - List documents (Local VectorDB)
   app.get("/api/convai/knowledge-base", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -5086,30 +5087,17 @@ Generate the complete prompt now:`;
         return res.status(404).json({ message: "User not found" });
       }
 
-      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
-      if (!integration || !integration.apiKey) {
-        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      // Check if OpenAI API key is configured for embeddings
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(400).json({ 
+          message: "OpenAI API key not configured. Please set OPENAI_API_KEY in your environment variables." 
+        });
       }
 
-      const apiKey = decryptApiKey(integration.apiKey);
-
-      const response = await fetch(
-        "https://api.elevenlabs.io/v1/convai/knowledge-base",
-        {
-          headers: {
-            "xi-api-key": apiKey,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      res.json(data);
+      // Get documents from local vector database
+      const documents = await vectorDB.getDocuments(user.organizationId);
+      
+      res.json({ documents });
     } catch (error: any) {
       console.error("Error fetching knowledge base:", error);
       res.status(500).json({ message: `Failed to fetch knowledge base: ${error.message}` });
@@ -5122,7 +5110,7 @@ Generate the complete prompt now:`;
     limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit
   });
 
-  // Create knowledge base document
+  // Create knowledge base document (Local VectorDB)
   app.post("/api/convai/knowledge-base", isAuthenticated, kbUpload.single('file'), async (req: any, res) => {
     try {
       console.log("Knowledge base upload request:", {
@@ -5136,47 +5124,56 @@ Generate the complete prompt now:`;
         return res.status(404).json({ message: "User not found" });
       }
 
-      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
-      if (!integration || !integration.apiKey) {
-        return res.status(400).json({ message: "ElevenLabs API key not configured. Please go to Integrations and set up your ElevenLabs API key." });
+      // Check if OpenAI API key is configured for embeddings
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(400).json({ 
+          message: "OpenAI API key not configured. Please set OPENAI_API_KEY in your environment variables." 
+        });
       }
 
-      const apiKey = decryptApiKey(integration.apiKey);
       const { name, type, url, agent_ids } = req.body;
       
-      // Import form-data properly
-      const FormDataLib = (await import('form-data')).default;
-      const formData = new FormDataLib();
-      
-      // Add name if provided
-      if (name) {
-        formData.append('name', name);
-      }
-
-      // Add agent_ids if provided and not 'none'
+      // Parse agent_ids
+      let agentIdsArray: string[] = [];
       if (agent_ids) {
         try {
-          const agentIdsArray = typeof agent_ids === 'string' ? JSON.parse(agent_ids) : agent_ids;
-          if (Array.isArray(agentIdsArray) && agentIdsArray.length > 0) {
-            agentIdsArray.forEach((id: string) => {
-              if (id && id !== 'none') {
-                formData.append('agent_ids', id);
-              }
-            });
+          agentIdsArray = typeof agent_ids === 'string' ? JSON.parse(agent_ids) : agent_ids;
+          if (!Array.isArray(agentIdsArray)) {
+            agentIdsArray = [];
           }
         } catch (parseError) {
           console.error('Error parsing agent_ids:', parseError);
         }
       }
 
+      // Generate document ID
+      const documentId = crypto.randomBytes(12).toString('hex');
+      let content = "";
+      let documentName = name || "Untitled Document";
+
       // Handle different document types
       if (type === 'url' && url) {
         console.log('Adding URL to knowledge base:', url);
-        formData.append('url', url);
+        // For URL type, we'll just store the URL as content for now
+        // In a production system, you'd fetch and parse the URL content
+        content = `URL Document: ${url}\n\nNote: URL content extraction not yet implemented. Please upload a file instead.`;
+        documentName = name || url;
       } else if (type === 'file' && req.file) {
         console.log('Adding file to knowledge base:', req.file.originalname, 'size:', req.file.size);
-        // Add the file buffer directly without extra options that might confuse the API
-        formData.append('file', req.file.buffer, req.file.originalname);
+        // Extract text from the file
+        try {
+          content = await vectorDB.extractTextFromFile(
+            req.file.buffer,
+            req.file.mimetype,
+            req.file.originalname
+          );
+          documentName = name || req.file.originalname;
+        } catch (extractError: any) {
+          console.error('Error extracting text from file:', extractError);
+          return res.status(400).json({ 
+            message: `Failed to extract text from file: ${extractError.message}` 
+          });
+        }
       } else {
         console.log('Invalid document type or missing data:', { type, hasFile: !!req.file, hasUrl: !!url });
         return res.status(400).json({ 
@@ -5185,48 +5182,22 @@ Generate the complete prompt now:`;
         });
       }
 
-      // Get the form data buffer and headers
-      const formDataBuffer = formData.getBuffer();
-      const formDataHeaders = formData.getHeaders();
-
-      // Send to ElevenLabs API
-      console.log('Sending to ElevenLabs API with headers:', formDataHeaders);
-      const response = await fetch(
-        "https://api.elevenlabs.io/v1/convai/knowledge-base",
-        {
-          method: "POST",
-          headers: {
-            "xi-api-key": apiKey,
-            ...formDataHeaders
-          },
-          body: formDataBuffer
-        }
+      // Add document to vector database
+      await vectorDB.addDocument(
+        documentId,
+        documentName,
+        content,
+        agentIdsArray,
+        user.organizationId
       );
 
-      const responseText = await response.text();
-      console.log('ElevenLabs API response:', response.status, responseText.substring(0, 500));
-
-      if (!response.ok) {
-        // Try to parse as JSON for better error message
-        let errorMessage = `ElevenLabs API error: ${response.status}`;
-        try {
-          const errorJson = JSON.parse(responseText);
-          if (errorJson.detail) {
-            errorMessage = errorJson.detail;
-          } else if (errorJson.message) {
-            errorMessage = errorJson.message;
-          } else {
-            errorMessage += ` - ${responseText.substring(0, 200)}`;
-          }
-        } catch {
-          errorMessage += ` - ${responseText.substring(0, 200)}`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const data = JSON.parse(responseText);
-      console.log('Knowledge base document created successfully:', data.id || data.document_id);
-      res.json(data);
+      console.log('Knowledge base document created successfully:', documentId);
+      res.json({ 
+        id: documentId,
+        name: documentName,
+        agent_ids: agentIdsArray,
+        created_at: new Date().toISOString()
+      });
     } catch (error: any) {
       console.error("Error creating knowledge base document:", error.message);
       const statusCode = error.message.includes('API key') ? 400 : 500;
@@ -5234,7 +5205,7 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Get knowledge base document
+  // Get knowledge base document (Local VectorDB)
   app.get("/api/convai/knowledge-base/:document_id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -5243,38 +5214,24 @@ Generate the complete prompt now:`;
         return res.status(404).json({ message: "User not found" });
       }
 
-      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
-      if (!integration || !integration.apiKey) {
-        return res.status(400).json({ message: "ElevenLabs API key not configured" });
-      }
-
-      const apiKey = decryptApiKey(integration.apiKey);
       const { document_id } = req.params;
 
-      const response = await fetch(
-        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}`,
-        {
-          headers: {
-            "xi-api-key": apiKey,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      // Get document details from vector database
+      const documents = await vectorDB.getDocuments(user.organizationId);
+      const document = documents.find(doc => doc.id === document_id);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
       }
 
-      const data = await response.json();
-      res.json(data);
+      res.json(document);
     } catch (error: any) {
       console.error("Error fetching document:", error);
       res.status(500).json({ message: `Failed to fetch document: ${error.message}` });
     }
   });
 
-  // Delete knowledge base document
+  // Delete knowledge base document (Local VectorDB)
   app.delete("/api/convai/knowledge-base/:document_id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -5283,29 +5240,10 @@ Generate the complete prompt now:`;
         return res.status(404).json({ message: "User not found" });
       }
 
-      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
-      if (!integration || !integration.apiKey) {
-        return res.status(400).json({ message: "ElevenLabs API key not configured" });
-      }
-
-      const apiKey = decryptApiKey(integration.apiKey);
       const { document_id } = req.params;
 
-      const response = await fetch(
-        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}`,
-        {
-          method: "DELETE",
-          headers: {
-            "xi-api-key": apiKey,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
-      }
+      // Delete from vector database
+      await vectorDB.deleteDocument(document_id, user.organizationId);
 
       res.json({ message: "Document deleted successfully" });
     } catch (error: any) {
@@ -5317,7 +5255,7 @@ Generate the complete prompt now:`;
   // Note: RAG indexing happens automatically in ElevenLabs when documents are added
   // No manual endpoint needed for computing RAG index
 
-  // Get document content
+  // Get document content (Local VectorDB)
   app.get("/api/convai/knowledge-base/:document_id/content", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -5326,39 +5264,20 @@ Generate the complete prompt now:`;
         return res.status(404).json({ message: "User not found" });
       }
 
-      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
-      if (!integration || !integration.apiKey) {
-        return res.status(400).json({ message: "ElevenLabs API key not configured" });
-      }
-
-      const apiKey = decryptApiKey(integration.apiKey);
       const { document_id } = req.params;
 
-      const response = await fetch(
-        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}/content`,
-        {
-          headers: {
-            "xi-api-key": apiKey,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      // Get content from vector database
+      const content = await vectorDB.getDocumentContent(document_id, user.organizationId);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      res.json(data);
+      res.json({ content });
     } catch (error: any) {
       console.error("Error fetching document content:", error);
       res.status(500).json({ message: `Failed to fetch content: ${error.message}` });
     }
   });
 
-  // Get document chunk
-  app.get("/api/convai/knowledge-base/:document_id/chunks/:chunk_id", isAuthenticated, async (req: any, res) => {
+  // Search knowledge base (Local VectorDB)
+  app.post("/api/convai/knowledge-base/search", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -5366,34 +5285,28 @@ Generate the complete prompt now:`;
         return res.status(404).json({ message: "User not found" });
       }
 
-      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
-      if (!integration || !integration.apiKey) {
-        return res.status(400).json({ message: "ElevenLabs API key not configured" });
+      const { query, agent_id, limit = 5 } = req.body;
+
+      if (!query) {
+        return res.status(400).json({ message: "Query is required" });
       }
 
-      const apiKey = decryptApiKey(integration.apiKey);
-      const { document_id, chunk_id } = req.params;
+      if (!agent_id) {
+        return res.status(400).json({ message: "Agent ID is required" });
+      }
 
-      const response = await fetch(
-        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}/chunks/${chunk_id}`,
-        {
-          headers: {
-            "xi-api-key": apiKey,
-            "Content-Type": "application/json",
-          },
-        }
+      // Search in vector database
+      const results = await vectorDB.searchDocuments(
+        query,
+        agent_id,
+        user.organizationId,
+        limit
       );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      res.json(data);
+      res.json({ results });
     } catch (error: any) {
-      console.error("Error fetching chunk:", error);
-      res.status(500).json({ message: `Failed to fetch chunk: ${error.message}` });
+      console.error("Error searching knowledge base:", error);
+      res.status(500).json({ message: `Failed to search knowledge base: ${error.message}` });
     }
   });
 
