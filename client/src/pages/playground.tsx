@@ -940,7 +940,7 @@ export default function Playground() {
                             {msg.timestamp.toLocaleTimeString()}
                           </span>
                         </div>
-                        <p className="text-sm pl-2">{msg.message}</p>
+                        <p className="text-sm pl-2 break-words whitespace-pre-wrap">{msg.message}</p>
                       </div>
                     ))
                   )}
