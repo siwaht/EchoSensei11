@@ -1000,25 +1000,44 @@ export default function KnowledgeBase() {
                   </div>
                 </Card>
                 
-                <Alert className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50">
-                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  <AlertDescription className="text-amber-800 dark:text-amber-200">
-                    <p className="font-medium mb-2">Manual Setup Required:</p>
-                    <ol className="list-decimal list-inside space-y-1 text-xs">
-                      <li>Copy the webhook URL above</li>
-                      <li>Go to your ElevenLabs Agent settings</li>
-                      <li>Navigate to "Custom tools" or "Tools" section</li>
-                      <li>Click "Add Tool" and select "Webhook"</li>
-                      <li>Configure with:
-                        <ul className="list-disc list-inside ml-4 mt-1">
-                          <li>Name: "Search Knowledge Base"</li>
-                          <li>URL: Paste the copied webhook URL</li>
-                          <li>Method: GET</li>
-                          <li>Query Parameters: Add "query" (type: String)</li>
+                <Alert className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/50">
+                  <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  <AlertTitle className="text-red-900 dark:text-red-100">
+                    Manual Setup Required - ElevenLabs Limitation
+                  </AlertTitle>
+                  <AlertDescription className="text-red-800 dark:text-red-200">
+                    <p className="font-semibold mb-2 text-sm">⚠️ The ElevenLabs API does not support adding custom webhooks programmatically.</p>
+                    <p className="text-xs mb-3">You must manually configure the webhook in the ElevenLabs web interface:</p>
+                    <ol className="list-decimal list-inside space-y-2 text-xs">
+                      <li>
+                        <strong>Log into ElevenLabs.io</strong> (not through our dashboard)
+                      </li>
+                      <li>
+                        <strong>Navigate to your agent</strong> → Click to edit
+                      </li>
+                      <li>
+                        <strong>Find "Tools" or "Custom Tools" section</strong>
+                      </li>
+                      <li>
+                        <strong>Add a new "Webhook" tool with:</strong>
+                        <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                          <li>Name: <code className="bg-black/20 px-1">Search Knowledge Base</code></li>
+                          <li>URL: <code className="bg-black/20 px-1">{window.location.origin}/api/public/rag</code></li>
+                          <li>Method: <code className="bg-black/20 px-1">GET</code></li>
+                          <li>Query Parameter: <code className="bg-black/20 px-1">query</code> (type: String, Required: Yes)</li>
                         </ul>
                       </li>
-                      <li>Save your agent settings</li>
+                      <li>
+                        <strong>In the tool description, add:</strong>
+                        <div className="bg-black/20 p-2 mt-1 rounded text-xs font-mono">
+                          Use this when users ask about people, companies, or specific information
+                        </div>
+                      </li>
+                      <li>
+                        <strong>Save your agent in ElevenLabs</strong>
+                      </li>
                     </ol>
+                    <p className="text-xs mt-3 font-medium">This is a known ElevenLabs API limitation - custom webhooks cannot be added via API.</p>
                   </AlertDescription>
                 </Alert>
               </div>
