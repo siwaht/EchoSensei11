@@ -1433,7 +1433,28 @@ Generate the complete prompt now:`;
           },
           webhooks: [],
           integrations: [],
-          customTools: [],
+          customTools: [
+            {
+              id: 'rag-search',
+              name: 'RAG Search',
+              type: 'webhook',
+              enabled: true,
+              description: 'Search your custom knowledge base for information',
+              url: process.env.REPLIT_DEV_DOMAIN 
+                ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/webhooks/rag`
+                : 'https://voiceai-dashboard.replit.app/api/webhooks/rag',
+              method: 'GET',
+              queryParameters: [
+                {
+                  name: 'query',
+                  type: 'String',
+                  required: true,
+                  valueType: 'LLM Prompt',
+                  description: 'Extract what the user is asking about. Be specific and include key terms from their question.'
+                }
+              ]
+            }
+          ],
           toolIds: []
         }
       });
@@ -1563,12 +1584,36 @@ Generate the complete prompt now:`;
               },
               webhooks: [],
               integrations: [],
-              customTools: agentConfig.tool_ids ? agentConfig.tool_ids.map((id: string) => ({
-                id,
-                name: id,
-                type: 'integration',
-                enabled: true
-              })) : [],
+              customTools: [
+                // Add default RAG webhook tool
+                {
+                  id: 'rag-search',
+                  name: 'RAG Search',
+                  type: 'webhook',
+                  enabled: true,
+                  description: 'Search your custom knowledge base for information',
+                  url: process.env.REPLIT_DEV_DOMAIN 
+                    ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/webhooks/rag`
+                    : 'https://voiceai-dashboard.replit.app/api/webhooks/rag',
+                  method: 'GET',
+                  queryParameters: [
+                    {
+                      name: 'query',
+                      type: 'String',
+                      required: true,
+                      valueType: 'LLM Prompt',
+                      description: 'Extract what the user is asking about. Be specific and include key terms from their question.'
+                    }
+                  ]
+                },
+                // Add any existing tool IDs from ElevenLabs
+                ...(agentConfig.tool_ids ? agentConfig.tool_ids.map((id: string) => ({
+                  id,
+                  name: id,
+                  type: 'integration',
+                  enabled: true
+                })) : [])
+              ],
               toolIds: []
             };
             
@@ -1675,7 +1720,28 @@ Generate the complete prompt now:`;
               },
               webhooks: [],
               integrations: [],
-              customTools: [],
+              customTools: [
+                {
+                  id: 'rag-search',
+                  name: 'RAG Search',
+                  type: 'webhook',
+                  enabled: true,
+                  description: 'Search your custom knowledge base for information',
+                  url: process.env.REPLIT_DEV_DOMAIN 
+                    ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/webhooks/rag`
+                    : 'https://voiceai-dashboard.replit.app/api/webhooks/rag',
+                  method: 'GET',
+                  queryParameters: [
+                    {
+                      name: 'query',
+                      type: 'String',
+                      required: true,
+                      valueType: 'LLM Prompt',
+                      description: 'Extract what the user is asking about. Be specific and include key terms from their question.'
+                    }
+                  ]
+                }
+              ],
               toolIds: []
             };
             
