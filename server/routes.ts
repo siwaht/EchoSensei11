@@ -1827,6 +1827,11 @@ Generate the complete prompt now:`;
                   
                   // Add custom tools (webhooks, RAG, etc.)
                   if (updates.tools.customTools && Array.isArray(updates.tools.customTools)) {
+                    console.log('Processing custom tools:', updates.tools.customTools.map((t: any) => ({
+                      name: t.name,
+                      type: t.type,
+                      enabled: t.enabled
+                    })));
                     for (const customTool of updates.tools.customTools) {
                       if (customTool.enabled) {
                         if (customTool.type === 'rag') {
@@ -1855,11 +1860,12 @@ Generate the complete prompt now:`;
                             ],
                             body_parameters: []
                           };
-                          console.log('Adding RAG tool to ElevenLabs with URL:', webhookUrl);
-                          console.log('RAG tool configuration:', {
+                          console.log('Adding RAG tool to ElevenLabs:', {
                             name: ragTool.name,
                             description: ragTool.description,
-                            url: ragTool.url
+                            url: ragTool.url,
+                            method: ragTool.method,
+                            query_parameters: ragTool.query_parameters
                           });
                           elevenLabsTools.push(ragTool);
                         } else if (customTool.type === 'webhook' && customTool.url) {
@@ -3590,20 +3596,25 @@ Generate the complete prompt now:`;
       console.log("Top K:", top_k);
       
       if (!searchQuery) {
+        console.log("No search query provided, returning help message");
         return res.json({ 
           content: "I need a specific question to search the knowledge base. Please provide more details about what you'd like to know."
         });
       }
 
       // Initialize vector database
+      console.log("Initializing vector database...");
       await vectorDb.initialize();
       
       // Search the vector database
+      console.log("Searching documents with query:", searchQuery);
       const results = await vectorDb.searchDocuments(searchQuery, top_k);
+      console.log("Search returned", results.length, "results");
       
       if (results.length === 0) {
+        console.log("No results found for query");
         return res.json({ 
-          content: "I couldn't find any relevant information in the knowledge base about that topic. Could you provide more context or rephrase your question?"
+          content: "I couldn't find any relevant information in the knowledge base about that topic. The knowledge base may be empty or the query didn't match any stored documents."
         });
       }
 

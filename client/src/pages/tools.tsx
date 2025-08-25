@@ -273,21 +273,21 @@ export default function Tools() {
           enabled: googleGmailIntegration?.enabled || false,
           config: googleGmailIntegration?.configuration || {},
         },
-        ragTool: ragToolConfig?.configuration || {
-          enabled: false,
-          name: 'Knowledge Base RAG',
-          description: '',
-          vectorDatabase: 'lancedb',
-          embeddingModel: 'openai',
-          apiKey: '',
-          indexName: '',
-          namespace: 'default',
-          topK: 5,
-          similarityThreshold: 0.7,
-          maxTokens: 2000,
-          temperature: 0.7,
-          systemPrompt: '',
-          knowledgeBases: [],
+        ragTool: {
+          enabled: ragToolConfig?.enabled || false,
+          name: ragToolConfig?.configuration?.name || ragToolConfig?.name || 'Knowledge Base RAG',
+          description: ragToolConfig?.configuration?.description || ragToolConfig?.description || 'check the knowledge base for more information',
+          vectorDatabase: ragToolConfig?.configuration?.vectorDatabase || 'lancedb',
+          embeddingModel: ragToolConfig?.configuration?.embeddingModel || 'openai',
+          apiKey: ragToolConfig?.configuration?.apiKey || '',
+          indexName: ragToolConfig?.configuration?.indexName || '',
+          namespace: ragToolConfig?.configuration?.namespace || 'default',
+          topK: ragToolConfig?.configuration?.topK || 5,
+          similarityThreshold: ragToolConfig?.configuration?.similarityThreshold || 0.7,
+          maxTokens: ragToolConfig?.configuration?.maxTokens || 2000,
+          temperature: ragToolConfig?.configuration?.temperature || 0.7,
+          systemPrompt: ragToolConfig?.configuration?.systemPrompt || 'reference the most relevant entries when providing facts about a person\'s background, preferences, or company information. If the user inquires about a person\'s location, what they like to eat, or a company\'s services, cite the related knowledge base entry in your answer. Respond concisely, truthfully, and in a helpful manner based on the provided information.',
+          knowledgeBases: ragToolConfig?.configuration?.knowledgeBases || [],
         },
       });
     }
@@ -371,12 +371,10 @@ export default function Tools() {
     if (toolsConfig.ragTool.enabled) {
       customTools.push({
         id: 'rag-tool',
-        name: toolsConfig.ragTool.name,
+        name: toolsConfig.ragTool.name || 'Knowledge Base RAG',
         type: 'rag',
-        configuration: {
-          ...toolsConfig.ragTool,
-          description: toolsConfig.ragTool.description || 'check the knowledge base for more information',
-        },
+        description: toolsConfig.ragTool.description || 'check the knowledge base for more information',
+        configuration: toolsConfig.ragTool,
         enabled: true,
       } as ToolConfig);
     }
