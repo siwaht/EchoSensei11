@@ -1670,7 +1670,6 @@ Generate the complete prompt now:`;
                 
                 // Convert tools to ElevenLabs format
                 if (updates.tools) {
-                  console.log('Received tools update from client:', JSON.stringify(updates.tools, null, 2));
                   const elevenLabsTools: any[] = [];
                   const systemTools = updates.tools.systemTools || {};
                   
@@ -1894,14 +1893,7 @@ Generate the complete prompt now:`;
                   
                   // Add configured webhooks with proper ElevenLabs format
                   if (updates.tools.webhooks && Array.isArray(updates.tools.webhooks)) {
-                    console.log('Processing webhooks:', updates.tools.webhooks.length, 'webhooks');
                     for (const webhook of updates.tools.webhooks) {
-                      console.log('Checking webhook:', { 
-                        name: webhook.name, 
-                        enabled: webhook.enabled, 
-                        url: webhook.url,
-                        hasConfig: !!webhook.webhookConfig 
-                      });
                       // Check if webhook is enabled (default to true if not specified)
                       if (webhook.enabled !== false && webhook.url) {
                         // Ensure webhook has a valid name (required by ElevenLabs)
@@ -1946,41 +1938,15 @@ Generate the complete prompt now:`;
                             description: param.description || ""
                           })) || []
                         };
-                        console.log('Adding webhook tool to ElevenLabs:', JSON.stringify(webhookTool, null, 2));
                         elevenLabsTools.push(webhookTool);
                       }
                     }
                   }
                   
                   
-                  // Add a simple test webhook to verify API accepts webhooks
-                  // This will help diagnose if the issue is with our webhook format or the API itself
-                  if (updates.tools.webhooks && updates.tools.webhooks.length > 0) {
-                    console.log('Adding test webhook for verification');
-                    elevenLabsTools.push({
-                      type: "webhook",
-                      name: "test_search",
-                      description: "Test search webhook",
-                      url: "https://webhook.site/unique-test-url",
-                      method: "POST",
-                      headers: {},
-                      query_parameters: [],
-                      body_parameters: [{
-                        identifier: "query",
-                        data_type: "String",
-                        required: true,
-                        value_type: "LLM Prompt",
-                        description: "What the user wants to search for"
-                      }],
-                      path_parameters: []
-                    });
-                  }
-                  
                   // Always send the tools array to ElevenLabs to ensure proper sync
                   // An empty array will clear all tools in ElevenLabs
                   elevenLabsPayload.conversation_config.agent.tools = elevenLabsTools;
-                  
-                  console.log('Final tools array being sent to ElevenLabs:', JSON.stringify(elevenLabsTools, null, 2));
                 }
               }
               
@@ -2051,8 +2017,6 @@ Generate the complete prompt now:`;
             
             // Update in ElevenLabs if we have any changes
             if (Object.keys(elevenLabsPayload).length > 0) {
-              console.log(`Updating agent in ElevenLabs with payload:`, JSON.stringify(elevenLabsPayload, null, 2));
-              
               const response = await callElevenLabsAPI(
                 decryptedKey,
                 `/v1/convai/agents/${agent.elevenLabsAgentId}`,
@@ -2060,18 +2024,6 @@ Generate the complete prompt now:`;
                 elevenLabsPayload,
                 integration.id
               );
-              
-              console.log(`ElevenLabs update response:`, JSON.stringify(response, null, 2));
-              
-              // Check if tools were actually updated
-              if (response && response.conversation_config && response.conversation_config.agent && response.conversation_config.agent.tools) {
-                console.log('Tools in ElevenLabs after update:', response.conversation_config.agent.tools.length, 'tools');
-                response.conversation_config.agent.tools.forEach((tool: any) => {
-                  console.log('- Tool:', tool.type, tool.name);
-                });
-              } else {
-                console.log('No tools found in ElevenLabs response');
-              }
             }
           } catch (elevenLabsError) {
             console.error("Error updating agent in ElevenLabs:", elevenLabsError);
