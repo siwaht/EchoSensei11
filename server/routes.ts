@@ -4920,12 +4920,9 @@ Generate the complete prompt now:`;
         console.log('Adding URL to knowledge base:', url);
         formData.append('url', url);
       } else if (type === 'file' && req.file) {
-        console.log('Adding file to knowledge base:', req.file.originalname);
-        // Add the file with proper options
-        formData.append('file', req.file.buffer, {
-          filename: req.file.originalname,
-          contentType: req.file.mimetype || 'application/octet-stream'
-        });
+        console.log('Adding file to knowledge base:', req.file.originalname, 'size:', req.file.size);
+        // Add the file buffer directly without extra options that might confuse the API
+        formData.append('file', req.file.buffer, req.file.originalname);
       } else {
         console.log('Invalid document type or missing data:', { type, hasFile: !!req.file, hasUrl: !!url });
         return res.status(400).json({ 
@@ -4934,17 +4931,21 @@ Generate the complete prompt now:`;
         });
       }
 
+      // Get the form data buffer and headers
+      const formDataBuffer = formData.getBuffer();
+      const formDataHeaders = formData.getHeaders();
+
       // Send to ElevenLabs API
-      console.log('Sending to ElevenLabs API...');
+      console.log('Sending to ElevenLabs API with headers:', formDataHeaders);
       const response = await fetch(
         "https://api.elevenlabs.io/v1/convai/knowledge-base",
         {
           method: "POST",
           headers: {
             "xi-api-key": apiKey,
-            ...formData.getHeaders()
+            ...formDataHeaders
           },
-          body: formData as any
+          body: formDataBuffer
         }
       );
 

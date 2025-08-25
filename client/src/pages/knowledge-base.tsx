@@ -195,7 +195,10 @@ export default function KnowledgeBase() {
       } else if (uploadType === 'text' && uploadText) {
         // Convert text to a file for the API
         const textBlob = new Blob([uploadText], { type: 'text/plain' });
-        const fileName = `${uploadName.replace(/[^a-z0-9]/gi, '_')}.txt`;
+        // Check if the name already ends with .txt to avoid double extension
+        const fileName = uploadName.endsWith('.txt') 
+          ? uploadName.replace(/[^a-z0-9._-]/gi, '_')
+          : `${uploadName.replace(/[^a-z0-9._-]/gi, '_')}.txt`;
         formData.append('file', textBlob, fileName);
         formData.append('type', 'file');
         console.log('Uploading text as file:', fileName);
