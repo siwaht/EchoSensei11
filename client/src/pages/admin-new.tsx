@@ -731,32 +731,6 @@ export default function AdminDashboard() {
                             >
                               <Edit className="w-3 h-3" />
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0"
-                              title="Settings"
-                              onClick={() => {
-                                const orgBilling = billingData?.organizationsData.find(o => o.id === org.id);
-                                setEditingOrg({
-                                  id: org.id,
-                                  name: org.name,
-                                  billingPackage: org.billingPackage || 'starter',
-                                  perCallRate: String(org.perCallRate || 0.30),
-                                  perMinuteRate: String(org.perMinuteRate || 0.30),
-                                  monthlyCredits: String(org.monthlyCredits || 0),
-                                  maxAgents: String(org.maxAgents || 5),
-                                  maxUsers: String(org.maxUsers || 10),
-                                  customRateEnabled: false,
-                                  userCount: users.filter(u => u.organizationId === org.id).length,
-                                  totalCalls: orgBilling?.totalCalls || 0,
-                                  usedCredits: orgBilling?.usedCredits || 0,
-                                  estimatedCost: orgBilling?.estimatedCost || 0,
-                                });
-                              }}
-                            >
-                              <Settings className="w-3 h-3" />
-                            </Button>
                           </div>
                         </td>
                       </tr>
