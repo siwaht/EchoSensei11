@@ -5094,7 +5094,7 @@ Generate the complete prompt now:`;
       const apiKey = decryptApiKey(integration.apiKey);
 
       const response = await fetch(
-        "https://api.elevenlabs.io/v1/convai/knowledge-base/",
+        "https://api.elevenlabs.io/v1/convai/knowledge-base",
         {
           headers: {
             "xi-api-key": apiKey,
@@ -5192,7 +5192,7 @@ Generate the complete prompt now:`;
       // Send to ElevenLabs API
       console.log('Sending to ElevenLabs API with headers:', formDataHeaders);
       const response = await fetch(
-        "https://api.elevenlabs.io/v1/convai/knowledge-base/",
+        "https://api.elevenlabs.io/v1/convai/knowledge-base",
         {
           method: "POST",
           headers: {
@@ -5252,7 +5252,7 @@ Generate the complete prompt now:`;
       const { document_id } = req.params;
 
       const response = await fetch(
-        `https://api.elevenlabs.io/v1/convai/knowledge-base//${document_id}`,
+        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}`,
         {
           headers: {
             "xi-api-key": apiKey,
@@ -5292,7 +5292,7 @@ Generate the complete prompt now:`;
       const { document_id } = req.params;
 
       const response = await fetch(
-        `https://api.elevenlabs.io/v1/convai/knowledge-base//${document_id}`,
+        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}`,
         {
           method: "DELETE",
           headers: {
@@ -5335,7 +5335,7 @@ Generate the complete prompt now:`;
       const { document_id } = req.params;
 
       const response = await fetch(
-        `https://api.elevenlabs.io/v1/convai/knowledge-base//${document_id}/content`,
+        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}/content`,
         {
           headers: {
             "xi-api-key": apiKey,
@@ -5375,7 +5375,7 @@ Generate the complete prompt now:`;
       const { document_id, chunk_id } = req.params;
 
       const response = await fetch(
-        `https://api.elevenlabs.io/v1/convai/knowledge-base//${document_id}/chunks/${chunk_id}`,
+        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}/chunks/${chunk_id}`,
         {
           headers: {
             "xi-api-key": apiKey,
