@@ -622,28 +622,11 @@ export default function AdminDashboard() {
 
           {/* Organizations List */}
           <Card className="p-3 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-              <div>
-                <h2 className="text-lg sm:text-xl font-semibold">All Organizations</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Manage and monitor all organizations on the platform
-                </p>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="gap-2"
-                onClick={() => {
-                  toast({ 
-                    title: "Create Organization",
-                    description: "Organization creation is not yet implemented. Organizations are created automatically when users sign up."
-                  });
-                }}
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Create Organization</span>
-                <span className="sm:hidden">Create</span>
-              </Button>
+            <div className="mb-4">
+              <h2 className="text-lg sm:text-xl font-semibold">All Organizations</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage and monitor all organizations on the platform
+              </p>
             </div>
             
             <div className="overflow-x-auto">
