@@ -399,6 +399,9 @@ export const vectorDB = new VectorDatabase();
 
 // Initialize on module load - don't fail if initialization has issues
 vectorDB.initialize().catch(error => {
-  console.warn("Vector database initialization warning:", error.message || error);
-  console.log("Vector database will be initialized on first use.");
+  // Only log if it's not about missing OpenAI API key
+  if (!error.message?.includes("OPENAI_API_KEY")) {
+    console.warn("Vector database initialization warning:", error.message || error);
+  }
+  // Vector database will be initialized on first use if needed
 });

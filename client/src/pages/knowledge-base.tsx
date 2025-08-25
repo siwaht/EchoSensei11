@@ -73,19 +73,20 @@ export default function KnowledgeBase() {
         if (response.status === 400) {
           const error = await response.json();
           if (error.message?.includes("API key not configured")) {
-            return { documents: [], error: "Please configure your OpenAI API key for knowledge base embeddings" };
+            return { documents: [], warning: "Please configure your OpenAI API key for knowledge base embeddings" };
           }
         }
         throw new Error("Failed to fetch knowledge base");
       }
       
-      return await response.json();
+      const data = await response.json();
+      return data;
     },
     refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
 
   const documents = documentsData?.documents || [];
-  const apiError = documentsData?.error;
+  const apiWarning = documentsData?.warning || documentsData?.error;
 
   // Upload document mutation
   const uploadMutation = useMutation({
@@ -282,14 +283,14 @@ export default function KnowledgeBase() {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  if (apiError) {
+  if (apiWarning) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <Card className="p-8 max-w-md w-full">
           <div className="flex flex-col items-center text-center space-y-4">
             <AlertCircle className="h-12 w-12 text-yellow-500" />
             <h3 className="text-lg font-semibold">Configuration Required</h3>
-            <p className="text-muted-foreground">{apiError}</p>
+            <p className="text-muted-foreground">{apiWarning}</p>
             <Button variant="outline" onClick={() => window.location.href = '/integrations'}>
               Go to Settings
             </Button>

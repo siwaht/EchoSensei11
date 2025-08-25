@@ -5089,8 +5089,10 @@ Generate the complete prompt now:`;
 
       // Check if OpenAI API key is configured for embeddings
       if (!process.env.OPENAI_API_KEY) {
-        return res.status(400).json({ 
-          message: "OpenAI API key not configured. Please set OPENAI_API_KEY in your environment variables." 
+        // Return empty documents array with a warning instead of an error
+        return res.json({ 
+          documents: [],
+          warning: "OpenAI API key not configured. Knowledge base features are limited."
         });
       }
 
@@ -5127,7 +5129,7 @@ Generate the complete prompt now:`;
       // Check if OpenAI API key is configured for embeddings
       if (!process.env.OPENAI_API_KEY) {
         return res.status(400).json({ 
-          message: "OpenAI API key not configured. Please set OPENAI_API_KEY in your environment variables." 
+          message: "OpenAI API key not configured. Knowledge base features require an OpenAI API key for embeddings generation." 
         });
       }
 
