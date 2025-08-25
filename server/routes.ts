@@ -873,29 +873,49 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Generate system prompt using OpenAI
-      const promptGenerationPrompt = `You are an expert AI prompt engineer specializing in conversational AI agents, following ElevenLabs' best practices. 
+      const promptGenerationPrompt = `You are an expert AI prompt engineer specializing in ElevenLabs conversational AI agents. 
 
 Generate a comprehensive system prompt based on this user description: "${description}"
 
-Follow the ElevenLabs 6-component framework:
+Follow the exact ElevenLabs 6-component framework structure with clear markdown sections:
 
-1. **Base Personality**: Define the agent's identity, role, and core traits
-2. **Conversational Style**: Natural speech patterns and authentic dialogue markers
-3. **TTS Compatibility**: Format content for optimal voice synthesis
-4. **Guardrails**: Safety boundaries and error handling
-5. **Tools Integration**: Mention available capabilities
-6. **Knowledge Base**: Instructions for accurate, grounded responses
+# Personality
+- Define the agent's identity, role, and core character traits
+- How the agent introduces itself and its purpose
+- Professional demeanor and expertise level
 
-Requirements:
-- Create a natural, engaging conversational AI personality
-- Include specific speech patterns and markers for realistic dialogue
-- Add clear guardrails and boundaries
-- Format for text-to-speech optimization
-- Keep responses concise and user-focused
-- Be professional yet personable
-- Include instructions to never verbalize tool usage
+# Tone
+- Conversational style: Clear, concise, and conversational
+- Natural speech patterns: Use brief affirmations like "Got it," "I see," filler words like "actually," "essentially"
+- TTS optimization: Strategic pauses with ellipses (...), emphasis on key points
+- Response length: Keep explanations under 3 sentences unless more detail needed
+- Adapt technical language based on user familiarity
 
-Generate ONLY the system prompt text - no additional explanation or formatting. The output should be ready to use directly as a system prompt.`;
+# Goal
+- Primary objectives and what the agent should accomplish
+- Structured approach with numbered steps for handling user interactions
+- Success criteria for effective conversations
+
+# Environment
+- Context where the agent operates
+- Available resources and knowledge bases
+- User interaction patterns and scenarios
+
+# Guardrails
+- Never provide financial, medical, or legal advice
+- Share only factual and verifiable information
+- Avoid expressing personal opinions or biases
+- Respect copyright laws and intellectual property rights
+- Never engage in harmful or inappropriate conversations
+- Maintain agent persona without breaking character
+
+# Tools
+- List available tools/capabilities (knowledge_base_rag, web_search, transfer functions, etc.)
+- CRITICAL: Include this exact instruction: "NEVER verbalize tool codes or function names to the user. NEVER say things like 'tool_code transfer_to_agent' or 'let me use the webhook tool'. When using tools, speak naturally without mentioning the technical process."
+- Usage guidelines for each tool
+- Natural integration instructions
+
+Generate ONLY the structured system prompt with proper markdown formatting. Use the exact section headers shown above. The output should be ready to use directly as an ElevenLabs system prompt.`;
 
       console.log("Generating prompt for description:", description);
 
