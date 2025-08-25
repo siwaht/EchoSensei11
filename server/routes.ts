@@ -5375,7 +5375,7 @@ Generate the complete prompt now:`;
       const { document_id, chunk_id } = req.params;
 
       const response = await fetch(
-        `https://api.elevenlabs.io/v1/convai/knowledge-base/${document_id}/chunks/${chunk_id}`,
+        `https://api.elevenlabs.io/v1/knowledge-base/documents/${document_id}/chunks/${chunk_id}`,
         {
           headers: {
             "xi-api-key": apiKey,
