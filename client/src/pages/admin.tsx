@@ -15,6 +15,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Users, Building2, DollarSign, Edit, Trash2, Plus, Shield, Phone, Sparkles, Activity, TrendingUp } from "lucide-react";
 import type { User, Organization, BillingPackage } from "@shared/schema";
 import AdminQuickActions from "./admin-quick-actions";
+import ApiSync from "./admin/api-sync";
 
 interface BillingData {
   totalUsers: number;
@@ -196,13 +197,17 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-5">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="organizations">Organizations</TabsTrigger>
           <TabsTrigger value="billing">Billing Overview</TabsTrigger>
           <TabsTrigger value="quick-actions">
             <Sparkles className="w-4 h-4 mr-1" />
             Quick Actions
+          </TabsTrigger>
+          <TabsTrigger value="api-sync">
+            <Activity className="w-4 h-4 mr-1" />
+            API Sync
           </TabsTrigger>
         </TabsList>
 
@@ -478,6 +483,11 @@ export default function AdminDashboard() {
         {/* Quick Actions Tab */}
         <TabsContent value="quick-actions" className="space-y-4">
           <AdminQuickActions />
+        </TabsContent>
+
+        {/* API Sync Tab */}
+        <TabsContent value="api-sync" className="space-y-4">
+          <ApiSync />
         </TabsContent>
       </Tabs>
 
