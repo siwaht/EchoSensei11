@@ -3820,11 +3820,137 @@ Generate the complete prompt now:`;
   };
 
 
+  // Knowledge Base RAG Webhook endpoint for ElevenLabs agents
+  const handleKnowledgeBaseTool = async (req: any, res: any) => {
+    try {
+      console.log("=== KNOWLEDGE BASE RAG TOOL CALLED ===");
+      console.log("Method:", req.method);
+      console.log("Headers:", req.headers);
+      console.log("Query Parameters:", req.query);
+      console.log("Body:", req.body);
+      
+      // Get the search query from request
+      const query = req.query.query || req.query.q || req.body?.query || req.body?.question || '';
+      const agentId = req.query.agent_id || req.body?.agent_id || req.headers['x-agent-id'] || '';
+      const organizationId = req.query.organization_id || req.body?.organization_id || req.headers['x-organization-id'] || '';
+      const limit = parseInt(req.query.limit || req.body?.limit || '5');
+      
+      console.log("Knowledge Base Query:", query);
+      console.log("Agent ID:", agentId);
+      console.log("Organization ID:", organizationId);
+      
+      if (!query) {
+        return res.json({
+          success: false,
+          error: "No query provided",
+          message: "Please provide a 'query' parameter to search the knowledge base",
+          example: "?query=John Smith location preferences"
+        });
+      }
+
+      // Check if OpenAI API key is configured for embeddings
+      if (!process.env.OPENAI_API_KEY) {
+        return res.json({
+          success: false,
+          error: "Knowledge base not configured",
+          message: "OpenAI API key is required for knowledge base search",
+          results: []
+        });
+      }
+
+      try {
+        // If we don't have agent/org IDs, try to extract from the query context
+        let searchAgentId = agentId;
+        let searchOrgId = organizationId;
+        
+        // If IDs are missing, we'll need to handle this differently
+        // For now, let's try to get them from the first available agent
+        if (!searchAgentId || !searchOrgId) {
+          // Try to find an agent from the database
+          const agents = await storage.getAgents(""); // Get all agents
+          if (agents && agents.length > 0) {
+            searchAgentId = agents[0].elevenLabsAgentId;
+            searchOrgId = agents[0].organizationId;
+            console.log("Using default agent:", searchAgentId, "org:", searchOrgId);
+          }
+        }
+
+        // Search the vector database
+        const searchResults = await vectorDB.searchDocuments(
+          query,
+          searchAgentId,
+          searchOrgId,
+          limit
+        );
+        
+        console.log(`Found ${searchResults.length} results in knowledge base`);
+        
+        if (searchResults.length === 0) {
+          return res.json({
+            success: true,
+            query: query,
+            message: "No relevant information found in the knowledge base",
+            results: [],
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        // Format results for the agent
+        const formattedResults = searchResults.map((result, index) => ({
+          relevance_rank: index + 1,
+          content: result.content,
+          source: result.documentName || "Knowledge Base",
+          confidence_score: (1 - (result.score || 0)).toFixed(3), // Convert distance to confidence
+          chunk_info: result.chunkIndex !== undefined ? `Chunk ${result.chunkIndex + 1} of ${result.totalChunks}` : null
+        }));
+        
+        // Create a summary for the agent to easily understand
+        const summary = formattedResults.map(r => r.content).join("\n\n---\n\n");
+        
+        return res.json({
+          success: true,
+          query: query,
+          results_count: formattedResults.length,
+          results: formattedResults,
+          summary: summary,
+          timestamp: new Date().toISOString()
+        });
+        
+      } catch (searchError) {
+        console.error("Knowledge base search error:", searchError);
+        return res.json({
+          success: false,
+          error: "Search failed",
+          message: searchError instanceof Error ? searchError.message : "Failed to search knowledge base",
+          results: []
+        });
+      }
+      
+    } catch (error) {
+      console.error("Knowledge base tool error:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Knowledge base tool error occurred",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  };
+
   // Server Tools test endpoints for ElevenLabs webhook tools
   app.get("/api/tools/search", handleSearchTool);
   app.post("/api/tools/search", handleSearchTool);
   app.get("/api/tools/info", handleInfoTool);
   app.post("/api/tools/info", handleInfoTool);
+  
+  // Knowledge Base RAG webhook endpoints
+  app.get("/api/tools/knowledge-base", handleKnowledgeBaseTool);
+  app.post("/api/tools/knowledge-base", handleKnowledgeBaseTool);
+  app.get("/api/webhooks/knowledge-base", handleKnowledgeBaseTool);
+  app.post("/api/webhooks/knowledge-base", handleKnowledgeBaseTool);
+  
+  // Public webhook endpoint for external agents (no auth required)
+  app.get("/api/public/knowledge-base", handleKnowledgeBaseTool);
+  app.post("/api/public/knowledge-base", handleKnowledgeBaseTool);
 
   // ElevenLabs MCP-style webhook tools
   const handleTextToSpeech = async (req: any, res: any) => {
