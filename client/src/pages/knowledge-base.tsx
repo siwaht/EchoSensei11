@@ -42,10 +42,10 @@ export default function KnowledgeBase() {
   const [showDocumentDetails, setShowDocumentDetails] = useState(false);
   const { toast } = useToast();
 
-  // RAG Knowledge Base state
+  // Custom RAG Tool state
   const [ragEnabled, setRagEnabled] = useState(true);
-  const [ragToolName, setRagToolName] = useState("Knowledge Base RAG");
-  const [ragToolDescription, setRagToolDescription] = useState("check the knowledge base for more information");
+  const [ragToolName, setRagToolName] = useState("Custom RAG Tool");
+  const [ragToolDescription, setRagToolDescription] = useState("search the RAG system for relevant information");
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [topK, setTopK] = useState(5);
   const [maxResponseTokens, setMaxResponseTokens] = useState(2000);
@@ -107,7 +107,7 @@ export default function KnowledgeBase() {
     onSuccess: () => {
       toast({
         title: "Document Uploaded",
-        description: "The document has been added to the local knowledge base and indexed.",
+        description: "The document has been added to the RAG system and indexed.",
       });
       setShowUpload(false);
       resetUploadForm();
@@ -140,7 +140,7 @@ export default function KnowledgeBase() {
     onSuccess: () => {
       toast({
         title: "Document Deleted",
-        description: "The document has been removed from the knowledge base.",
+        description: "The document has been removed from the RAG system.",
       });
       refetch();
     },
@@ -305,9 +305,9 @@ export default function KnowledgeBase() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">RAG Knowledge Base</h1>
+          <h1 className="text-3xl font-bold">Custom RAG System</h1>
           <p className="text-muted-foreground mt-1">
-            Manage documents and configure Retrieval-Augmented Generation settings
+            Manage documents and configure your custom Retrieval-Augmented Generation tool
           </p>
         </div>
       </div>
@@ -502,7 +502,7 @@ export default function KnowledgeBase() {
                     id="tool-name"
                     value={ragToolName}
                     onChange={(e) => setRagToolName(e.target.value)}
-                    placeholder="Knowledge Base RAG"
+                    placeholder="Custom RAG Tool"
                   />
                 </div>
                 <div>
@@ -675,9 +675,9 @@ export default function KnowledgeBase() {
       <Dialog open={showUpload} onOpenChange={setShowUpload}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Add Document to Knowledge Base</DialogTitle>
+            <DialogTitle>Add Document to RAG System</DialogTitle>
             <DialogDescription>
-              Upload files or add URLs to your local knowledge base for semantic search
+              Upload files or add URLs to your custom RAG system for semantic search
             </DialogDescription>
           </DialogHeader>
           

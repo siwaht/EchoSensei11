@@ -58,7 +58,7 @@ class VectorDatabase {
       // Check if table exists
       const tables = await this.db.tableNames();
       if (!tables.includes(this.documentsTableName)) {
-        console.log("Knowledge base table does not exist yet. It will be created on first document upload.");
+        console.log("RAG system table does not exist yet. It will be created on first document upload.");
       } else {
         console.log("Vector database initialized with existing table");
       }

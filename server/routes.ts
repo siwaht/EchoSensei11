@@ -3820,10 +3820,10 @@ Generate the complete prompt now:`;
   };
 
 
-  // Knowledge Base RAG Webhook endpoint for ElevenLabs agents
-  const handleKnowledgeBaseTool = async (req: any, res: any) => {
+  // Custom RAG Tool Webhook endpoint for agents
+  const handleRAGTool = async (req: any, res: any) => {
     try {
-      console.log("=== KNOWLEDGE BASE RAG TOOL CALLED ===");
+      console.log("=== CUSTOM RAG TOOL CALLED ===");
       console.log("Method:", req.method);
       console.log("Headers:", req.headers);
       console.log("Query Parameters:", req.query);
@@ -3835,7 +3835,7 @@ Generate the complete prompt now:`;
       const organizationId = req.query.organization_id || req.body?.organization_id || req.headers['x-organization-id'] || '';
       const limit = parseInt(req.query.limit || req.body?.limit || '5');
       
-      console.log("Knowledge Base Query:", query);
+      console.log("RAG Query:", query);
       console.log("Agent ID:", agentId);
       console.log("Organization ID:", organizationId);
       
@@ -3843,7 +3843,7 @@ Generate the complete prompt now:`;
         return res.json({
           success: false,
           error: "No query provided",
-          message: "Please provide a 'query' parameter to search the knowledge base",
+          message: "Please provide a 'query' parameter to search the RAG system",
           example: "?query=John Smith location preferences"
         });
       }
@@ -3852,8 +3852,8 @@ Generate the complete prompt now:`;
       if (!process.env.OPENAI_API_KEY) {
         return res.json({
           success: false,
-          error: "Knowledge base not configured",
-          message: "OpenAI API key is required for knowledge base search",
+          error: "RAG system not configured",
+          message: "OpenAI API key is required for RAG search",
           results: []
         });
       }
@@ -3883,13 +3883,13 @@ Generate the complete prompt now:`;
           limit
         );
         
-        console.log(`Found ${searchResults.length} results in knowledge base`);
+        console.log(`Found ${searchResults.length} results in RAG system`);
         
         if (searchResults.length === 0) {
           return res.json({
             success: true,
             query: query,
-            message: "No relevant information found in the knowledge base",
+            message: "No relevant information found in the RAG system",
             results: [],
             timestamp: new Date().toISOString()
           });
@@ -3899,7 +3899,7 @@ Generate the complete prompt now:`;
         const formattedResults = searchResults.map((result, index) => ({
           relevance_rank: index + 1,
           content: result.content,
-          source: result.documentName || "Knowledge Base",
+          source: result.documentName || "RAG Document",
           confidence_score: (1 - (result.score || 0)).toFixed(3), // Convert distance to confidence
           chunk_info: result.chunkIndex !== undefined ? `Chunk ${result.chunkIndex + 1} of ${result.totalChunks}` : null
         }));
@@ -3921,16 +3921,16 @@ Generate the complete prompt now:`;
         return res.json({
           success: false,
           error: "Search failed",
-          message: searchError instanceof Error ? searchError.message : "Failed to search knowledge base",
+          message: searchError instanceof Error ? searchError.message : "Failed to search RAG system",
           results: []
         });
       }
       
     } catch (error) {
-      console.error("Knowledge base tool error:", error);
+      console.error("RAG tool error:", error);
       res.status(500).json({ 
         success: false,
-        error: "Knowledge base tool error occurred",
+        error: "RAG tool error occurred",
         message: error instanceof Error ? error.message : "Unknown error"
       });
     }
@@ -3942,15 +3942,23 @@ Generate the complete prompt now:`;
   app.get("/api/tools/info", handleInfoTool);
   app.post("/api/tools/info", handleInfoTool);
   
-  // Knowledge Base RAG webhook endpoints
-  app.get("/api/tools/knowledge-base", handleKnowledgeBaseTool);
-  app.post("/api/tools/knowledge-base", handleKnowledgeBaseTool);
-  app.get("/api/webhooks/knowledge-base", handleKnowledgeBaseTool);
-  app.post("/api/webhooks/knowledge-base", handleKnowledgeBaseTool);
+  // Custom RAG Tool webhook endpoints
+  app.get("/api/tools/rag", handleRAGTool);
+  app.post("/api/tools/rag", handleRAGTool);
+  app.get("/api/webhooks/rag", handleRAGTool);
+  app.post("/api/webhooks/rag", handleRAGTool);
   
   // Public webhook endpoint for external agents (no auth required)
-  app.get("/api/public/knowledge-base", handleKnowledgeBaseTool);
-  app.post("/api/public/knowledge-base", handleKnowledgeBaseTool);
+  app.get("/api/public/rag", handleRAGTool);
+  app.post("/api/public/rag", handleRAGTool);
+  
+  // Legacy endpoints for backward compatibility
+  app.get("/api/tools/knowledge-base", handleRAGTool);
+  app.post("/api/tools/knowledge-base", handleRAGTool);
+  app.get("/api/webhooks/knowledge-base", handleRAGTool);
+  app.post("/api/webhooks/knowledge-base", handleRAGTool);
+  app.get("/api/public/knowledge-base", handleRAGTool);
+  app.post("/api/public/knowledge-base", handleRAGTool);
 
   // ElevenLabs MCP-style webhook tools
   const handleTextToSpeech = async (req: any, res: any) => {

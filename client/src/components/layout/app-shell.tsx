@@ -34,7 +34,7 @@ const navigation = [
   { name: "Outbound Calling", href: "/outbound-calling", icon: PhoneOutgoing },
   { name: "Tools", href: "/tools", icon: Wrench },
   { name: "Conversations", href: "/conversations", icon: MessageSquare },
-  { name: "Knowledge Base", href: "/knowledge-base", icon: Brain },
+  { name: "RAG System", href: "/knowledge-base", icon: Brain },
   { name: "Widget", href: "/widget", icon: AppWindow },
   { name: "Playground", href: "/playground", icon: FlaskConical },
   { name: "Call History", href: "/history", icon: History },
@@ -84,8 +84,8 @@ export default function AppShell({ children }: AppShellProps) {
     // Check for conversations route
     if (location === "/conversations") return "Conversations";
     
-    // Check for knowledge base route
-    if (location === "/knowledge-base") return "Knowledge Base";
+    // Check for knowledge base route (RAG system)
+    if (location === "/knowledge-base") return "RAG System";
     
     // Check for widget route
     if (location === "/widget") return "Widget Configuration";
