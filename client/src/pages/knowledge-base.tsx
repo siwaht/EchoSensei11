@@ -19,16 +19,18 @@ import {
 } from "lucide-react";
 
 interface KnowledgeDocument {
-  document_id: string;
+  id: string;  // ElevenLabs API uses 'id' not 'document_id'
+  document_id?: string;  // Keep for backwards compatibility
   name: string;
   type: 'file' | 'url' | 'text';
   source?: string;
   content_type?: string;
-  size_bytes?: number;
+  file_size_bytes?: number;
+  size_bytes?: number;  // Keep for backwards compatibility
   chunk_count?: number;
-  created_at: string;
+  created_at?: string;
   updated_at?: string;
-  status: 'processing' | 'ready' | 'failed';
+  status?: 'processing' | 'ready' | 'failed';
   agents?: string[];
 }
 
@@ -229,11 +231,16 @@ export default function KnowledgeBase() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return 'Invalid Date';
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -325,7 +332,7 @@ export default function KnowledgeBase() {
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Storage Used</p>
             <p className="text-2xl font-bold">
-              {formatFileSize(documents.reduce((acc: number, doc: KnowledgeDocument) => acc + (doc.size_bytes || 0), 0))}
+              {formatFileSize(documents.reduce((acc: number, doc: KnowledgeDocument) => acc + (doc.file_size_bytes || doc.size_bytes || 0), 0))}
             </p>
           </div>
         </Card>
@@ -377,11 +384,13 @@ export default function KnowledgeBase() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDocuments.map((document: KnowledgeDocument) => (
+          {filteredDocuments.map((document: KnowledgeDocument) => {
+            const docId = document.id || document.document_id || '';
+            return (
             <Card 
-              key={document.document_id} 
+              key={docId} 
               className="p-4 hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => fetchDocumentDetails(document.document_id)}
+              onClick={() => fetchDocumentDetails(docId)}
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
@@ -389,18 +398,20 @@ export default function KnowledgeBase() {
                     {getTypeIcon(document.type)}
                     <p className="font-medium truncate flex-1">{document.name}</p>
                   </div>
-                  {getStatusIcon(document.status)}
+                  {getStatusIcon(document.status || 'ready')}
                 </div>
                 
                 <div className="space-y-1 text-sm text-muted-foreground">
-                  <p className="truncate">ID: {document.document_id?.slice(-8) || 'N/A'}</p>
+                  <p className="truncate">ID: {(document.id || document.document_id)?.slice(-8) || 'N/A'}</p>
                   {document.chunk_count && (
                     <p>{document.chunk_count} chunks</p>
                   )}
-                  {document.size_bytes && (
-                    <p>{formatFileSize(document.size_bytes)}</p>
+                  {(document.file_size_bytes || document.size_bytes) && (
+                    <p>{formatFileSize(document.file_size_bytes || document.size_bytes || 0)}</p>
                   )}
-                  <p>{formatDate(document.created_at)}</p>
+                  {document.created_at && (
+                    <p>{formatDate(document.created_at)}</p>
+                  )}
                 </div>
                 
                 {document.agents && document.agents.length > 0 && (
@@ -422,7 +433,7 @@ export default function KnowledgeBase() {
                     variant="outline"
                     onClick={(e) => {
                       e.stopPropagation();
-                      deleteMutation.mutate(document.document_id);
+                      deleteMutation.mutate(docId);
                     }}
                     disabled={deleteMutation.isPending}
                   >
@@ -431,7 +442,8 @@ export default function KnowledgeBase() {
                 </div>
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -594,7 +606,7 @@ export default function KnowledgeBase() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm text-muted-foreground">Document ID</Label>
-                  <p className="font-mono text-sm">{selectedDocument.document_id}</p>
+                  <p className="font-mono text-sm">{selectedDocument.id || selectedDocument.document_id}</p>
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">Name</Label>
@@ -610,8 +622,8 @@ export default function KnowledgeBase() {
                 <div>
                   <Label className="text-sm text-muted-foreground">Status</Label>
                   <div className="flex items-center gap-2">
-                    {getStatusIcon(selectedDocument.status)}
-                    <p className="text-sm capitalize">{selectedDocument.status}</p>
+                    {getStatusIcon(selectedDocument.status || 'ready')}
+                    <p className="text-sm capitalize">{selectedDocument.status || 'ready'}</p>
                   </div>
                 </div>
                 <div>
@@ -620,11 +632,11 @@ export default function KnowledgeBase() {
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">Size</Label>
-                  <p className="text-sm">{formatFileSize(selectedDocument.size_bytes)}</p>
+                  <p className="text-sm">{formatFileSize(selectedDocument.file_size_bytes || selectedDocument.size_bytes || 0)}</p>
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">Created</Label>
-                  <p className="text-sm">{formatDate(selectedDocument.created_at)}</p>
+                  <p className="text-sm">{selectedDocument.created_at ? formatDate(selectedDocument.created_at) : 'N/A'}</p>
                 </div>
                 {selectedDocument.updated_at && (
                   <div>
