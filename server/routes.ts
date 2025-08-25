@@ -5276,6 +5276,36 @@ Generate the complete prompt now:`;
     }
   });
 
+  // Get document chunks for debugging (Local VectorDB)
+  app.get("/api/convai/knowledge-base/:document_id/chunks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { document_id } = req.params;
+      
+      // Get all chunks for this document from vector database
+      const content = await vectorDB.getDocumentContent(document_id, user.organizationId);
+      const chunks = content.split("\n\n"); // Split by double newline as that's how we join them
+      
+      res.json({ 
+        documentId: document_id,
+        totalChunks: chunks.length,
+        chunks: chunks.map((chunk, index) => ({
+          index,
+          length: chunk.length,
+          preview: chunk.substring(0, 100) + (chunk.length > 100 ? "..." : "")
+        }))
+      });
+    } catch (error: any) {
+      console.error("Error fetching document chunks:", error);
+      res.status(500).json({ message: `Failed to fetch chunks: ${error.message}` });
+    }
+  });
+
   // Search knowledge base (Local VectorDB)
   app.post("/api/convai/knowledge-base/search", isAuthenticated, async (req: any, res) => {
     try {

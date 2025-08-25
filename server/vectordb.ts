@@ -82,20 +82,26 @@ class VectorDatabase {
     }
 
     try {
-      // Split content into chunks
+      // Split content into chunks with proper sizing
       const splitter = new RecursiveCharacterTextSplitter({
         chunkSize: 1000,
         chunkOverlap: 200,
+        separators: ["\n\n", "\n", ".", "!", "?", ",", " ", ""],
       });
       
       const chunks = await splitter.splitText(content);
+      const totalChunks = chunks.length;
+      
+      console.log(`Splitting document "${name}" into ${totalChunks} chunks`);
       
       // Check if table exists, create if needed
       const tables = await this.db!.tableNames();
       let table;
+      let documentsToAdd: any[] = [];
       
       if (!tables.includes(this.documentsTableName)) {
-        // Create table with first document
+        // Create table with first chunk
+        console.log("Creating new knowledge_documents table...");
         const firstChunk = chunks[0];
         const firstEmbedding = await this.embeddings.embedQuery(firstChunk);
         
@@ -110,46 +116,61 @@ class VectorDatabase {
               agentIds,
               organizationId,
               chunkIndex: 0,
-              totalChunks: chunks.length,
+              totalChunks,
             }),
           },
         ]);
         
-        // Start from second chunk since first is already added
-        chunks.splice(0, 1);
+        // Process remaining chunks (starting from index 1)
+        for (let i = 1; i < chunks.length; i++) {
+          const chunk = chunks[i];
+          const embedding = await this.embeddings.embedQuery(chunk);
+          
+          documentsToAdd.push({
+            id: `${documentId}_chunk_${i}`,
+            documentId,
+            content: chunk,
+            vector: embedding,
+            metadata: JSON.stringify({
+              name,
+              agentIds,
+              organizationId,
+              chunkIndex: i,
+              totalChunks,
+            }),
+          });
+        }
       } else {
+        // Table exists, add all chunks
         table = await this.db!.openTable(this.documentsTableName);
-      }
-      
-      // Generate embeddings for remaining chunks
-      const documents: any[] = [];
-      
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
-        const embedding = await this.embeddings.embedQuery(chunk);
-        const chunkIndex = tables.includes(this.documentsTableName) ? i : i + 1; // Adjust index if first chunk was used to create table
         
-        documents.push({
-          id: `${documentId}_chunk_${chunkIndex}`,
-          documentId,
-          content: chunk,
-          vector: embedding,
-          metadata: JSON.stringify({
-            name,
-            agentIds,
-            organizationId,
-            chunkIndex,
-            totalChunks: chunks.length + (tables.includes(this.documentsTableName) ? 0 : 1),
-          }),
-        });
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i];
+          const embedding = await this.embeddings.embedQuery(chunk);
+          
+          documentsToAdd.push({
+            id: `${documentId}_chunk_${i}`,
+            documentId,
+            content: chunk,
+            vector: embedding,
+            metadata: JSON.stringify({
+              name,
+              agentIds,
+              organizationId,
+              chunkIndex: i,
+              totalChunks,
+            }),
+          });
+        }
       }
       
-      // Add remaining documents to the table if any
-      if (documents.length > 0) {
-        await table.add(documents as any);
+      // Add documents to the table if any
+      if (documentsToAdd.length > 0) {
+        await table.add(documentsToAdd as any);
+        console.log(`Added ${documentsToAdd.length} chunks to existing table`);
       }
       
-      console.log(`Added document ${name} with ${chunks.length} chunks to vector database`);
+      console.log(`Successfully indexed document "${name}" with ${totalChunks} chunks`);
     } catch (error) {
       console.error("Error adding document to vector database:", error);
       throw error;
@@ -253,7 +274,7 @@ class VectorDatabase {
                 id: docId,
                 name: metadata.name,
                 agentIds: metadata.agentIds || [],
-                chunks: metadata.totalChunks,
+                chunks: metadata.totalChunks || 1,
                 createdAt: new Date().toISOString(),
               });
             }
