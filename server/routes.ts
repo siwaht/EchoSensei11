@@ -2542,6 +2542,28 @@ Generate the complete prompt now:`;
           }
         }
         
+        // Always add the RAG webhook tool to customTools
+        tools.customTools.push({
+          id: 'rag-search',
+          name: 'RAG Search',
+          type: 'webhook',
+          enabled: true,
+          description: 'Search your custom knowledge base for information',
+          url: process.env.REPLIT_DEV_DOMAIN 
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/webhooks/rag`
+            : 'https://voiceai-dashboard.replit.app/api/webhooks/rag',
+          method: 'GET',
+          queryParameters: [
+            {
+              name: 'query',
+              type: 'String',
+              required: true,
+              valueType: 'LLM Prompt',
+              description: 'Extract what the user is asking about. Be specific and include key terms from their question.'
+            }
+          ]
+        });
+        
         const agentData = {
           organizationId: user.organizationId,
           elevenLabsAgentId: agentId,
@@ -2576,6 +2598,70 @@ Generate the complete prompt now:`;
           createdCount++;
         }
         syncedCount++;
+        
+        // After creating/updating the agent locally, ensure the RAG tool is configured in ElevenLabs
+        try {
+          // Get the agent that was just created/updated to get its full configuration
+          const updatedAgent = existingAgent 
+            ? await storage.getAgent(existingAgent.id, user.organizationId)
+            : await storage.getAgentByElevenLabsId(agentId, user.organizationId);
+          
+          if (updatedAgent && updatedAgent.tools?.customTools) {
+            const ragTool = updatedAgent.tools.customTools.find((t: any) => t.id === 'rag-search');
+            if (ragTool) {
+              // Format the RAG tool for ElevenLabs
+              const elevenLabsTools = [];
+              
+              // Add system tools that are enabled
+              const systemTools = updatedAgent.tools.systemTools || {};
+              if (systemTools.endCall?.enabled) {
+                elevenLabsTools.push({
+                  type: 'system',
+                  name: 'end_call',
+                  description: systemTools.endCall.description || 'End the call'
+                });
+              }
+              
+              // Add the RAG webhook tool
+              elevenLabsTools.push({
+                type: 'webhook',
+                name: 'rag_search',
+                description: ragTool.description || 'Search your custom knowledge base for information',
+                url: ragTool.url,
+                method: ragTool.method || 'GET',
+                headers: {},
+                query_parameters: ragTool.queryParameters?.map((param: any) => ({
+                  identifier: param.name,
+                  data_type: param.type || 'String',
+                  required: param.required || false,
+                  value_type: param.valueType || 'LLM Prompt',
+                  description: param.description || ''
+                })) || [],
+                body_parameters: []
+              });
+              
+              // Update the agent in ElevenLabs with the tools
+              const updatePayload = {
+                conversation_config: {
+                  agent: {
+                    tools: elevenLabsTools
+                  }
+                }
+              };
+              
+              await callElevenLabsAPI(
+                decryptedKey,
+                `/v1/convai/agents/${agentId}`,
+                "PATCH",
+                updatePayload,
+                integration.id
+              );
+            }
+          }
+        } catch (toolError) {
+          console.error(`Error configuring RAG tool for agent ${agentId}:`, toolError);
+          // Don't fail the sync if tool configuration fails
+        }
       }
       
       res.json({ 
@@ -5601,7 +5687,7 @@ Generate the complete prompt now:`;
       // Search in vector database for relevant documents
       const searchResults = await vectorDB.searchDocuments(
         message,
-        null, // No specific agent required for testing
+        "", // No specific agent required for testing
         user.organizationId,
         topK
       );
