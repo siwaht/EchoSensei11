@@ -5517,6 +5517,108 @@ Generate the complete prompt now:`;
     }
   });
 
+  // RAG Chat endpoint for testing
+  app.post("/api/rag/chat", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { message, topK = 5, temperature = 0.7, maxTokens = 500 } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      // Search in vector database for relevant documents
+      const searchResults = await vectorDB.searchDocuments(
+        message,
+        null, // No specific agent required for testing
+        user.organizationId,
+        topK
+      );
+
+      // Build context from search results
+      let context = "";
+      if (searchResults && searchResults.length > 0) {
+        context = searchResults.map((result: any) => result.content).join("\n\n");
+      }
+
+      // Check if OpenAI API key is configured
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (!openaiKey) {
+        // If no OpenAI key, return the raw search results
+        return res.json({
+          response: context ? `Based on the RAG system, here are the relevant findings:\n\n${context}` : "No relevant documents found in the RAG system.",
+          sources: searchResults?.map((r: any) => ({
+            document: r.documentName || r.documentId,
+            relevance: r.score
+          })) || [],
+          mode: "search_only"
+        });
+      }
+
+      // Use OpenAI to generate response with context
+      try {
+        const systemPrompt = "You are a helpful assistant that answers questions based on the provided context from a RAG (Retrieval-Augmented Generation) system. Always base your answers on the context provided. If the context doesn't contain relevant information, say so clearly.";
+        
+        const userPrompt = context 
+          ? `Context from RAG system:\n\n${context}\n\nQuestion: ${message}\n\nPlease provide a comprehensive answer based on the context above.`
+          : `Question: ${message}\n\nNote: No relevant context was found in the RAG system. Please answer based on general knowledge or indicate that no relevant information is available.`;
+
+        const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${openaiKey}`
+          },
+          body: JSON.stringify({
+            model: "gpt-4-turbo-preview",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            temperature,
+            max_tokens: maxTokens
+          })
+        });
+
+        if (!openaiResponse.ok) {
+          throw new Error(`OpenAI API error: ${openaiResponse.statusText}`);
+        }
+
+        const openaiData = await openaiResponse.json();
+        const aiResponse = openaiData.choices[0]?.message?.content || "No response generated.";
+
+        res.json({
+          response: aiResponse,
+          sources: searchResults?.map((r: any) => ({
+            document: r.documentName || r.documentId,
+            relevance: r.score
+          })) || [],
+          mode: "llm_augmented"
+        });
+      } catch (openaiError: any) {
+        console.error("OpenAI API error:", openaiError);
+        // Fallback to search results only
+        res.json({
+          response: context ? `Based on the RAG system, here are the relevant findings:\n\n${context}` : "No relevant documents found in the RAG system.",
+          sources: searchResults?.map((r: any) => ({
+            document: r.documentName || r.documentId,
+            relevance: r.score
+          })) || [],
+          mode: "search_only",
+          error: "LLM generation failed, showing search results only"
+        });
+      }
+    } catch (error: any) {
+      console.error("Error in RAG chat:", error);
+      res.status(500).json({ message: `Failed to process chat: ${error.message}` });
+    }
+  });
+
   // Backward compatibility routes - redirect old endpoints to new ones
   app.get("/api/convai/knowledge-base", isAuthenticated, (req: any, res, next) => {
     req.url = "/api/rag/documents";

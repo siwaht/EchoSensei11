@@ -18,7 +18,7 @@ import {
   FileText, Upload, Link, Plus, Trash2, Search, 
   Brain, Database, Book, Globe, File, RefreshCw,
   CheckCircle, XCircle, Clock, AlertCircle, Download,
-  Save, Info
+  Save, Info, Send, MessageSquare, Bot, User, Sparkles
 } from "lucide-react";
 
 interface KnowledgeDocument {
@@ -27,6 +27,15 @@ interface KnowledgeDocument {
   agentIds: string[];
   chunks: number;
   createdAt: string;
+}
+
+interface ChatMessage {
+  id: string;
+  content: string;
+  role: 'user' | 'assistant';
+  timestamp: Date;
+  sources?: Array<{ document: string; relevance: number }>;
+  mode?: 'llm_augmented' | 'search_only';
 }
 
 export default function KnowledgeBase() {
@@ -41,6 +50,14 @@ export default function KnowledgeBase() {
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeDocument | null>(null);
   const [showDocumentDetails, setShowDocumentDetails] = useState(false);
   const { toast } = useToast();
+  
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [chatTopK, setChatTopK] = useState(5);
+  const [chatTemperature, setChatTemperature] = useState(0.7);
+  const [chatMaxTokens, setChatMaxTokens] = useState(500);
 
   // Custom RAG Tool state
   const [ragEnabled, setRagEnabled] = useState(true);
@@ -214,6 +231,64 @@ export default function KnowledgeBase() {
     setUploadType('file');
   };
 
+  // Send chat message
+  const sendChatMessage = async () => {
+    if (!chatInput.trim() || isSendingMessage) return;
+    
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: chatInput.trim(),
+      role: 'user',
+      timestamp: new Date()
+    };
+    
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput("");
+    setIsSendingMessage(true);
+    
+    try {
+      const response = await fetch("/api/rag/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          message: userMessage.content,
+          topK: chatTopK,
+          temperature: chatTemperature,
+          maxTokens: chatMaxTokens
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to get response");
+      }
+      
+      const data = await response.json();
+      
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        content: data.response,
+        role: 'assistant',
+        timestamp: new Date(),
+        sources: data.sources,
+        mode: data.mode
+      };
+      
+      setChatMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error("Chat error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to get response from RAG system",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
   // Save RAG configuration
   const saveRagConfig = async () => {
     const config = {
@@ -314,8 +389,9 @@ export default function KnowledgeBase() {
 
       {/* Tabs */}
       <Tabs defaultValue="documents" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="chat">Test Chat</TabsTrigger>
           <TabsTrigger value="configuration">RAG Configuration</TabsTrigger>
         </TabsList>
 
@@ -468,6 +544,218 @@ export default function KnowledgeBase() {
           ))}
         </div>
       )}
+        </TabsContent>
+
+        {/* Chat Test Tab */}
+        <TabsContent value="chat" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Chat Interface */}
+            <div className="lg:col-span-2">
+              <Card className="h-[600px] flex flex-col">
+                <div className="p-4 border-b">
+                  <div className="flex items-center gap-2">
+                    <Bot className="h-5 w-5 text-purple-500" />
+                    <h3 className="font-semibold">RAG System Test Chat</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Test your RAG configuration with real queries
+                  </p>
+                </div>
+                
+                {/* Messages Area */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {chatMessages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground/50" />
+                      <div>
+                        <p className="text-muted-foreground">No messages yet</p>
+                        <p className="text-sm text-muted-foreground">
+                          Ask a question to test your RAG system
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    chatMessages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-[80%] ${
+                            message.role === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted'
+                          } rounded-lg p-3 space-y-2`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {message.role === 'user' ? (
+                              <User className="h-4 w-4" />
+                            ) : (
+                              <Sparkles className="h-4 w-4" />
+                            )}
+                            <span className="text-xs font-medium">
+                              {message.role === 'user' ? 'You' : 'RAG System'}
+                            </span>
+                            <span className="text-xs opacity-70">
+                              {new Date(message.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          
+                          {/* Sources */}
+                          {message.sources && message.sources.length > 0 && (
+                            <div className="pt-2 border-t border-white/10">
+                              <p className="text-xs opacity-70 mb-1">Sources:</p>
+                              <div className="space-y-1">
+                                {message.sources.map((source, idx) => (
+                                  <div key={idx} className="text-xs opacity-80">
+                                    <FileText className="h-3 w-3 inline mr-1" />
+                                    {source.document} ({Math.round(source.relevance * 100)}% relevance)
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                {/* Input Area */}
+                <div className="p-4 border-t">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Ask a question to test your RAG system..."
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
+                      disabled={isSendingMessage}
+                    />
+                    <Button
+                      onClick={sendChatMessage}
+                      disabled={!chatInput.trim() || isSendingMessage}
+                    >
+                      {isSendingMessage ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
+            
+            {/* Chat Settings */}
+            <div className="space-y-4">
+              <Card className="p-4">
+                <h3 className="font-semibold mb-4">Chat Settings</h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="chat-topk">Top K Results</Label>
+                    <div className="flex items-center gap-2">
+                      <Slider
+                        id="chat-topk"
+                        min={1}
+                        max={20}
+                        step={1}
+                        value={[chatTopK]}
+                        onValueChange={(value) => setChatTopK(value[0])}
+                        className="flex-1"
+                      />
+                      <span className="text-sm font-medium w-8">{chatTopK}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Number of relevant documents to retrieve
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="chat-temperature">Temperature</Label>
+                    <div className="flex items-center gap-2">
+                      <Slider
+                        id="chat-temperature"
+                        min={0}
+                        max={1}
+                        step={0.1}
+                        value={[chatTemperature]}
+                        onValueChange={(value) => setChatTemperature(value[0])}
+                        className="flex-1"
+                      />
+                      <span className="text-sm font-medium w-8">{chatTemperature}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Controls response creativity (0 = focused, 1 = creative)
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="chat-max-tokens">Max Tokens</Label>
+                    <div className="flex items-center gap-2">
+                      <Slider
+                        id="chat-max-tokens"
+                        min={100}
+                        max={2000}
+                        step={100}
+                        value={[chatMaxTokens]}
+                        onValueChange={(value) => setChatMaxTokens(value[0])}
+                        className="flex-1"
+                      />
+                      <span className="text-sm font-medium w-12">{chatMaxTokens}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Maximum response length in tokens
+                    </p>
+                  </div>
+                </div>
+              </Card>
+              
+              <Card className="p-4">
+                <h3 className="font-semibold mb-2">Quick Actions</h3>
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => setChatMessages([])}
+                    disabled={chatMessages.length === 0}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Clear Chat History
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      setChatTopK(5);
+                      setChatTemperature(0.7);
+                      setChatMaxTokens(500);
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Reset Settings
+                  </Button>
+                </div>
+              </Card>
+              
+              {documents.length > 0 && (
+                <Card className="p-4">
+                  <h3 className="font-semibold mb-2">Available Documents</h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {documents.length} document{documents.length !== 1 ? 's' : ''} indexed
+                  </p>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {documents.map((doc: KnowledgeDocument) => (
+                      <div key={doc.id} className="text-xs flex items-center gap-1">
+                        <FileText className="h-3 w-3 text-muted-foreground" />
+                        <span className="truncate">{doc.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+            </div>
+          </div>
         </TabsContent>
 
         {/* RAG Configuration Tab */}
