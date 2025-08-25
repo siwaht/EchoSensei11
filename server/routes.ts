@@ -3952,13 +3952,6 @@ Generate the complete prompt now:`;
   app.get("/api/public/rag", handleRAGTool);
   app.post("/api/public/rag", handleRAGTool);
   
-  // Legacy endpoints for backward compatibility
-  app.get("/api/tools/knowledge-base", handleRAGTool);
-  app.post("/api/tools/knowledge-base", handleRAGTool);
-  app.get("/api/webhooks/knowledge-base", handleRAGTool);
-  app.post("/api/webhooks/knowledge-base", handleRAGTool);
-  app.get("/api/public/knowledge-base", handleRAGTool);
-  app.post("/api/public/knowledge-base", handleRAGTool);
 
   // ElevenLabs MCP-style webhook tools
   const handleTextToSpeech = async (req: any, res: any) => {
@@ -5212,8 +5205,8 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Knowledge Base API - List documents (Local VectorDB)
-  app.get("/api/convai/knowledge-base", isAuthenticated, async (req: any, res) => {
+  // RAG System API - List documents (Local VectorDB)
+  app.get("/api/rag/documents", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -5226,7 +5219,7 @@ Generate the complete prompt now:`;
         // Return empty documents array with a warning instead of an error
         return res.json({ 
           documents: [],
-          warning: "OpenAI API key not configured. Knowledge base features are limited."
+          warning: "OpenAI API key not configured. RAG system features are limited."
         });
       }
 
@@ -5235,8 +5228,8 @@ Generate the complete prompt now:`;
       
       res.json({ documents });
     } catch (error: any) {
-      console.error("Error fetching knowledge base:", error);
-      res.status(500).json({ message: `Failed to fetch knowledge base: ${error.message}` });
+      console.error("Error fetching RAG documents:", error);
+      res.status(500).json({ message: `Failed to fetch RAG documents: ${error.message}` });
     }
   });
 
@@ -5246,10 +5239,10 @@ Generate the complete prompt now:`;
     limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit
   });
 
-  // Create knowledge base document (Local VectorDB)
-  app.post("/api/convai/knowledge-base", isAuthenticated, kbUpload.single('file'), async (req: any, res) => {
+  // Create RAG document (Local VectorDB)
+  app.post("/api/rag/documents", isAuthenticated, kbUpload.single('file'), async (req: any, res) => {
     try {
-      console.log("Knowledge base upload request:", {
+      console.log("RAG document upload request:", {
         body: req.body,
         file: req.file ? { name: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype } : null
       });
@@ -5263,7 +5256,7 @@ Generate the complete prompt now:`;
       // Check if OpenAI API key is configured for embeddings
       if (!process.env.OPENAI_API_KEY) {
         return res.status(400).json({ 
-          message: "OpenAI API key not configured. Knowledge base features require an OpenAI API key for embeddings generation." 
+          message: "OpenAI API key not configured. RAG system requires an OpenAI API key for embeddings generation." 
         });
       }
 
@@ -5341,8 +5334,8 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Get knowledge base document (Local VectorDB)
-  app.get("/api/convai/knowledge-base/:document_id", isAuthenticated, async (req: any, res) => {
+  // Get RAG document (Local VectorDB)
+  app.get("/api/rag/documents/:document_id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -5367,8 +5360,8 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Delete knowledge base document (Local VectorDB)
-  app.delete("/api/convai/knowledge-base/:document_id", isAuthenticated, async (req: any, res) => {
+  // Delete RAG document (Local VectorDB)
+  app.delete("/api/rag/documents/:document_id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -5391,8 +5384,8 @@ Generate the complete prompt now:`;
   // Note: RAG indexing happens automatically in ElevenLabs when documents are added
   // No manual endpoint needed for computing RAG index
 
-  // Get document content (Local VectorDB)
-  app.get("/api/convai/knowledge-base/:document_id/content", isAuthenticated, async (req: any, res) => {
+  // Get RAG document content (Local VectorDB)
+  app.get("/api/rag/documents/:document_id/content", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -5460,8 +5453,8 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Get document chunks for debugging (Local VectorDB)
-  app.get("/api/convai/knowledge-base/:document_id/chunks", isAuthenticated, async (req: any, res) => {
+  // Get RAG document chunks for debugging (Local VectorDB)
+  app.get("/api/rag/documents/:document_id/chunks", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -5490,8 +5483,8 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Search knowledge base (Local VectorDB)
-  app.post("/api/convai/knowledge-base/search", isAuthenticated, async (req: any, res) => {
+  // Search RAG system (Local VectorDB)
+  app.post("/api/rag/search", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -5520,8 +5513,44 @@ Generate the complete prompt now:`;
       res.json({ results });
     } catch (error: any) {
       console.error("Error searching knowledge base:", error);
-      res.status(500).json({ message: `Failed to search knowledge base: ${error.message}` });
+      res.status(500).json({ message: `Failed to search RAG system: ${error.message}` });
     }
+  });
+
+  // Backward compatibility routes - redirect old endpoints to new ones
+  app.get("/api/convai/knowledge-base", isAuthenticated, (req: any, res, next) => {
+    req.url = "/api/rag/documents";
+    next();
+  });
+  
+  app.post("/api/convai/knowledge-base", isAuthenticated, kbUpload.single('file'), (req: any, res, next) => {
+    req.url = "/api/rag/documents";
+    next();
+  });
+  
+  app.get("/api/convai/knowledge-base/:document_id", isAuthenticated, (req: any, res, next) => {
+    req.url = req.url.replace("/api/convai/knowledge-base", "/api/rag/documents");
+    next();
+  });
+  
+  app.delete("/api/convai/knowledge-base/:document_id", isAuthenticated, (req: any, res, next) => {
+    req.url = req.url.replace("/api/convai/knowledge-base", "/api/rag/documents");
+    next();
+  });
+  
+  app.get("/api/convai/knowledge-base/:document_id/content", isAuthenticated, (req: any, res, next) => {
+    req.url = req.url.replace("/api/convai/knowledge-base", "/api/rag/documents");
+    next();
+  });
+  
+  app.get("/api/convai/knowledge-base/:document_id/chunks", isAuthenticated, (req: any, res, next) => {
+    req.url = req.url.replace("/api/convai/knowledge-base", "/api/rag/documents");
+    next();
+  });
+  
+  app.post("/api/convai/knowledge-base/search", isAuthenticated, (req: any, res, next) => {
+    req.url = "/api/rag/search";
+    next();
   });
 
   // Widget API - Get widget configuration

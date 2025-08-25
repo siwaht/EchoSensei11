@@ -53,7 +53,7 @@ export default function KnowledgeBase() {
   const [chunkSize, setChunkSize] = useState(1000);
   const [chunkOverlap, setChunkOverlap] = useState(200);
   const [ragSystemPrompt, setRagSystemPrompt] = useState(
-    "reference the most relevant entries when providing facts about a person's background, preferences, or company information. If the user inquires about a person's location, what they like to eat, or a company's services, cite the related knowledge base entry in your answer. Respond concisely, truthfully, and in a helpful manner based on the provided information."
+    "reference the most relevant entries when providing facts about a person's background, preferences, or company information. If the user inquires about a person's location, what they like to eat, or a company's services, cite the related RAG system entry in your answer. Respond concisely, truthfully, and in a helpful manner based on the provided information."
   );
 
   // Fetch agents
@@ -61,11 +61,11 @@ export default function KnowledgeBase() {
     queryKey: ["/api/agents"],
   });
 
-  // Fetch knowledge base documents
+  // Fetch RAG documents
   const { data: documentsData, isLoading, refetch } = useQuery({
-    queryKey: ["/api/convai/knowledge-base"],
+    queryKey: ["/api/rag/documents"],
     queryFn: async () => {
-      const response = await fetch("/api/convai/knowledge-base", {
+      const response = await fetch("/api/rag/documents", {
         credentials: "include",
       });
       
@@ -73,10 +73,10 @@ export default function KnowledgeBase() {
         if (response.status === 400) {
           const error = await response.json();
           if (error.message?.includes("API key not configured")) {
-            return { documents: [], warning: "Please configure your OpenAI API key for knowledge base embeddings" };
+            return { documents: [], warning: "Please configure your OpenAI API key for RAG system embeddings" };
           }
         }
-        throw new Error("Failed to fetch knowledge base");
+        throw new Error("Failed to fetch RAG documents");
       }
       
       const data = await response.json();
@@ -91,7 +91,7 @@ export default function KnowledgeBase() {
   // Upload document mutation
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch("/api/convai/knowledge-base", {
+      const response = await fetch("/api/rag/documents", {
         method: "POST",
         credentials: "include",
         body: formData,
@@ -126,7 +126,7 @@ export default function KnowledgeBase() {
   // Delete document mutation
   const deleteMutation = useMutation({
     mutationFn: async (documentId: string) => {
-      const response = await fetch(`/api/convai/knowledge-base/${documentId}`, {
+      const response = await fetch(`/api/rag/documents/${documentId}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -155,7 +155,7 @@ export default function KnowledgeBase() {
 
   const fetchDocumentDetails = async (documentId: string) => {
     try {
-      const response = await fetch(`/api/convai/knowledge-base/${documentId}`, {
+      const response = await fetch(`/api/rag/documents/${documentId}`, {
         credentials: "include",
       });
       
@@ -402,7 +402,7 @@ export default function KnowledgeBase() {
             <p className="text-muted-foreground max-w-md">
               {searchTerm 
                 ? "No documents match your search criteria."
-                : "Your knowledge base is empty. Add documents to enhance your agents' capabilities."}
+                : "Your RAG system is empty. Add documents to enhance your agents' capabilities."}
             </p>
             {!searchTerm && (
               <Button onClick={() => setShowUpload(true)}>
@@ -511,7 +511,7 @@ export default function KnowledgeBase() {
                     id="tool-desc"
                     value={ragToolDescription}
                     onChange={(e) => setRagToolDescription(e.target.value)}
-                    placeholder="check the knowledge base for more information"
+                    placeholder="check the RAG system for more information"
                   />
                 </div>
               </div>
@@ -654,7 +654,7 @@ export default function KnowledgeBase() {
                     <li>2. Documents are automatically processed and indexed</li>
                     <li>3. Optionally add an OpenAI API key for better search accuracy</li>
                     <li>4. Configure retrieval settings for optimal performance</li>
-                    <li>5. Your agent can now answer questions using the knowledge base</li>
+                    <li>5. Your agent can now answer questions using the RAG system</li>
                   </ol>
                 </AlertDescription>
               </Alert>
@@ -810,7 +810,7 @@ export default function KnowledgeBase() {
           <DialogHeader>
             <DialogTitle>Document Details</DialogTitle>
             <DialogDescription>
-              View detailed information about this knowledge base document
+              View detailed information about this RAG document
             </DialogDescription>
           </DialogHeader>
           
