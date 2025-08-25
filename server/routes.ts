@@ -873,49 +873,43 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Generate system prompt using OpenAI
-      const promptGenerationPrompt = `You are an expert AI prompt engineer specializing in ElevenLabs conversational AI agents. 
+      const promptGenerationPrompt = `You are an expert AI prompt engineer. Generate a structured system prompt following the EXACT ElevenLabs format for: "${description}"
 
-Generate a comprehensive system prompt based on this user description: "${description}"
-
-Follow the exact ElevenLabs 6-component framework structure with clear markdown sections:
+You MUST follow this EXACT format with markdown headers and structure:
 
 # Personality
-- Define the agent's identity, role, and core character traits
-- How the agent introduces itself and its purpose
-- Professional demeanor and expertise level
+[Define agent identity, role, character traits. Use 2-4 sentences describing who the agent is, their background, and core personality traits]
+
+# Environment  
+[Describe where/how the agent operates. Mention communication medium, user context, and relevant situational factors. 2-3 sentences]
 
 # Tone
-- Conversational style: Clear, concise, and conversational
-- Natural speech patterns: Use brief affirmations like "Got it," "I see," filler words like "actually," "essentially"
-- TTS optimization: Strategic pauses with ellipses (...), emphasis on key points
-- Response length: Keep explanations under 3 sentences unless more detail needed
-- Adapt technical language based on user familiarity
+[Specify conversational style. Include: natural speech patterns with brief affirmations like "Got it," "I see"; filler words like "actually," "essentially"; TTS optimization with strategic pauses (...); response length guidance; technical language adaptation. 4-6 sentences]
 
 # Goal
-- Primary objectives and what the agent should accomplish
-- Structured approach with numbered steps for handling user interactions
-- Success criteria for effective conversations
-
-# Environment
-- Context where the agent operates
-- Available resources and knowledge bases
-- User interaction patterns and scenarios
+[Define primary objectives and structured approach. Include numbered steps for handling interactions. Be specific about what success looks like. 3-5 sentences]
 
 # Guardrails
-- Never provide financial, medical, or legal advice
-- Share only factual and verifiable information
-- Avoid expressing personal opinions or biases
-- Respect copyright laws and intellectual property rights
-- Never engage in harmful or inappropriate conversations
-- Maintain agent persona without breaking character
+[List boundaries and safety measures. Include: content limits, error handling, persona maintenance, professional standards. Use bullet points with - prefix]
 
 # Tools
-- List available tools/capabilities (knowledge_base_rag, web_search, transfer functions, etc.)
-- CRITICAL: Include this exact instruction: "NEVER verbalize tool codes or function names to the user. NEVER say things like 'tool_code transfer_to_agent' or 'let me use the webhook tool'. When using tools, speak naturally without mentioning the technical process."
-- Usage guidelines for each tool
-- Natural integration instructions
+[List available capabilities. MUST include this exact text: "NEVER verbalize tool codes or function names to the user. NEVER say things like 'tool_code transfer_to_agent' or 'let me use the webhook tool'. When using tools, speak naturally without mentioning the technical process." Use bullet points with - prefix]
 
-Generate ONLY the structured system prompt with proper markdown formatting. Use the exact section headers shown above. The output should be ready to use directly as an ElevenLabs system prompt.`;
+CRITICAL REQUIREMENTS:
+1. Use EXACTLY these 6 section headers with # markdown formatting
+2. Follow the structure shown above
+3. Generate content that's specific to the agent description
+4. Include the exact tool usage instruction shown above
+5. Output ONLY the formatted prompt, no additional text
+
+Example structure:
+# Personality
+You are [Name], a [role/identity with traits]. [Background/expertise]. [Key characteristics].
+
+# Environment
+[Context and medium]. [User situation]. [Available resources].
+
+Generate the complete prompt now:`;
 
       console.log("Generating prompt for description:", description);
 
