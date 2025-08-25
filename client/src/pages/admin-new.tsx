@@ -322,31 +322,31 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="w-full flex flex-col sm:grid sm:grid-cols-5 gap-1 sm:gap-0 h-auto sm:h-10">
-          <TabsTrigger value="users" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
-            <Users className="w-4 h-4 mr-2 sm:hidden" />
-            <span className="hidden sm:inline">User Management</span>
-            <span className="sm:hidden">Users</span>
+        <TabsList className="w-full flex flex-col lg:grid lg:grid-cols-5 gap-1 lg:gap-0 h-auto lg:h-10">
+          <TabsTrigger value="users" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
+            <Users className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="hidden xl:inline">User Management</span>
+            <span className="xl:hidden">Users</span>
           </TabsTrigger>
-          <TabsTrigger value="billing" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
-            <CreditCard className="w-4 h-4 mr-2 sm:hidden" />
-            <span className="hidden sm:inline">Billing & Packages</span>
-            <span className="sm:hidden">Billing</span>
+          <TabsTrigger value="billing" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
+            <CreditCard className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="hidden xl:inline">Billing & Packages</span>
+            <span className="xl:hidden">Billing</span>
           </TabsTrigger>
-          <TabsTrigger value="organizations" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
-            <Building2 className="w-4 h-4 mr-2 sm:hidden" />
-            <span className="hidden sm:inline">Organizations</span>
-            <span className="sm:hidden">Orgs</span>
+          <TabsTrigger value="organizations" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
+            <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="hidden xl:inline">Organizations</span>
+            <span className="xl:hidden">Orgs</span>
           </TabsTrigger>
-          <TabsTrigger value="payments" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
-            <Wallet className="w-4 h-4 mr-2 sm:hidden" />
-            <span className="hidden sm:inline">Payment Gateways</span>
-            <span className="sm:hidden">Payments</span>
+          <TabsTrigger value="payments" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
+            <Wallet className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="hidden xl:inline">Payment Gateways</span>
+            <span className="xl:hidden">Payments</span>
           </TabsTrigger>
-          <TabsTrigger value="api-sync" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
-            <RefreshCw className="w-4 h-4 mr-2 sm:hidden" />
-            <span className="hidden sm:inline">API Sync</span>
-            <span className="sm:hidden">API</span>
+          <TabsTrigger value="api-sync" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
+            <RefreshCw className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="hidden xl:inline">API Sync</span>
+            <span className="xl:hidden">API</span>
           </TabsTrigger>
         </TabsList>
 
