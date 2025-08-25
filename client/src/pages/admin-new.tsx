@@ -15,9 +15,10 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Users, Building2, DollarSign, Phone, Edit, Trash2, Plus, Shield, 
   Activity, TrendingUp, Package, CreditCard, UserPlus, Settings,
-  Save, X, Eye, Wallet, CheckCircle, AlertCircle
+  Save, X, Eye, Wallet, CheckCircle, AlertCircle, RefreshCw
 } from "lucide-react";
 import type { User, Organization, BillingPackage } from "@shared/schema";
+import ApiSync from "./admin/api-sync";
 
 interface BillingData {
   totalUsers: number;
@@ -321,7 +322,7 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="w-full flex flex-col sm:grid sm:grid-cols-4 gap-1 sm:gap-0 h-auto sm:h-10">
+        <TabsList className="w-full flex flex-col sm:grid sm:grid-cols-5 gap-1 sm:gap-0 h-auto sm:h-10">
           <TabsTrigger value="users" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
             <Users className="w-4 h-4 mr-2 sm:hidden" />
             <span className="hidden sm:inline">User Management</span>
@@ -341,6 +342,11 @@ export default function AdminDashboard() {
             <Wallet className="w-4 h-4 mr-2 sm:hidden" />
             <span className="hidden sm:inline">Payment Gateways</span>
             <span className="sm:hidden">Payments</span>
+          </TabsTrigger>
+          <TabsTrigger value="api-sync" className="w-full justify-start sm:justify-center text-xs sm:text-sm">
+            <RefreshCw className="w-4 h-4 mr-2 sm:hidden" />
+            <span className="hidden sm:inline">API Sync</span>
+            <span className="sm:hidden">API</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1065,6 +1071,11 @@ export default function AdminDashboard() {
               </div>
             )}
           </Card>
+        </TabsContent>
+
+        {/* API Sync Tab */}
+        <TabsContent value="api-sync" className="space-y-4">
+          <ApiSync />
         </TabsContent>
       </Tabs>
 
