@@ -3872,6 +3872,17 @@ Generate the complete prompt now:`;
     }
   });
 
+  // Simple test endpoint for RAG webhook
+  app.get("/api/public/rag/test", async (req: any, res: any) => {
+    res.json({
+      status: "OK",
+      message: "RAG webhook is working! Configure this webhook in your ElevenLabs agent to enable knowledge base search.",
+      webhook_url: `${req.protocol}://${req.get('host')}/api/public/rag`,
+      test_query: `${req.protocol}://${req.get('host')}/api/public/rag?query=where does john live`,
+      instructions: "Add this webhook to your agent in ElevenLabs dashboard with a 'query' parameter"
+    });
+  });
+
   // RAG Search Webhook endpoint for ElevenLabs agents
   // Test Webhook Tools for ElevenLabs Server Tools integration
   const handleSearchTool = async (req: any, res: any) => {
