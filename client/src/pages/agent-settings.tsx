@@ -495,7 +495,7 @@ export default function AgentSettings() {
 
         {/* Settings Tabs */}
         <Tabs defaultValue="conversation" className="space-y-4">
-          <TabsList className="grid grid-cols-5 w-full p-1">
+          <TabsList className="grid grid-cols-6 w-full p-1">
             <TabsTrigger value="conversation" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <MessageSquare className="w-4 h-4" />
               <span className="text-[10px] sm:text-sm">Chat</span>
@@ -511,6 +511,10 @@ export default function AgentSettings() {
             <TabsTrigger value="llm" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <Brain className="w-4 h-4" />
               <span className="text-[10px] sm:text-sm">LLM</span>
+            </TabsTrigger>
+            <TabsTrigger value="tools" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
+              <Wrench className="w-4 h-4" />
+              <span className="text-[10px] sm:text-sm">Tools</span>
             </TabsTrigger>
             <TabsTrigger value="advanced" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 px-1 py-2 sm:px-3">
               <Settings2 className="w-4 h-4" />
@@ -1139,6 +1143,132 @@ export default function AgentSettings() {
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Maximum response length in tokens
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* Tools Tab */}
+          <TabsContent value="tools" className="space-y-4 mt-4">
+            <Card className="p-4">
+              <h3 className="text-base font-semibold mb-4">Agent Tools & Integrations</h3>
+              
+              {/* RAG Tool Section */}
+              <div className="space-y-4">
+                <div className="border rounded-lg p-4 bg-muted/50">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Database className="w-5 h-5 text-primary" />
+                      <div>
+                        <h4 className="font-medium">RAG Knowledge Base</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Enable your agent to search and retrieve information from your knowledge base
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={settings.tools?.customTools?.some((t: any) => t.type === 'rag' && t.enabled) || false}
+                      onCheckedChange={(checked) => {
+                        const updatedTools = { ...settings.tools };
+                        if (!updatedTools.customTools) {
+                          updatedTools.customTools = [];
+                        }
+                        
+                        const ragToolIndex = updatedTools.customTools.findIndex((t: any) => t.type === 'rag');
+                        
+                        if (checked) {
+                          if (ragToolIndex >= 0) {
+                            updatedTools.customTools[ragToolIndex].enabled = true;
+                          } else {
+                            updatedTools.customTools.push({
+                              id: 'rag-tool',
+                              name: 'RAG Knowledge Base',
+                              type: 'rag',
+                              enabled: true,
+                              description: 'Searches the knowledge base for information'
+                            });
+                          }
+                        } else {
+                          if (ragToolIndex >= 0) {
+                            updatedTools.customTools[ragToolIndex].enabled = false;
+                          }
+                        }
+                        
+                        setSettings({ ...settings, tools: updatedTools });
+                        setHasUnsavedChanges(true);
+                      }}
+                      data-testid="switch-rag-tool"
+                    />
+                  </div>
+                  
+                  {settings.tools?.customTools?.some((t: any) => t.type === 'rag' && t.enabled) && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                        <Check className="w-3 h-3" />
+                        <span>RAG tool is enabled for this agent</span>
+                      </div>
+                      
+                      <div className="bg-background/50 rounded-lg p-3 space-y-2">
+                        <p className="text-xs font-medium">Sync Status</p>
+                        <p className="text-xs text-muted-foreground">
+                          When you save agent settings with RAG enabled, the webhook will be automatically configured in ElevenLabs.
+                        </p>
+                        
+                        <Button
+                          onClick={async () => {
+                            // Save and sync the RAG tool
+                            const updatedSettings = {
+                              ...settings,
+                              tools: {
+                                ...settings.tools,
+                                customTools: settings.tools?.customTools || []
+                              }
+                            };
+                            
+                            await updateAgentMutation.mutateAsync(updatedSettings);
+                            
+                            toast({
+                              title: "RAG Tool Synced",
+                              description: "The RAG webhook has been configured in ElevenLabs. Your agent can now access the knowledge base.",
+                            });
+                          }}
+                          size="sm"
+                          className="w-full"
+                          disabled={!hasUnsavedChanges || updateAgentMutation.isPending}
+                        >
+                          {updateAgentMutation.isPending ? (
+                            <>
+                              <RotateCcw className="w-4 h-4 mr-2 animate-spin" />
+                              Syncing...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Save & Sync RAG Tool
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      
+                      <div className="text-xs space-y-1">
+                        <p className="font-medium">How it works:</p>
+                        <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                          <li>The agent will automatically search the knowledge base when users ask questions</li>
+                          <li>Responses are generated based on retrieved documents</li>
+                          <li>Configure your knowledge base content in the Knowledge Base section</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Other Tools Placeholder */}
+                <div className="border-2 border-dashed rounded-lg p-4 text-center text-muted-foreground">
+                  <Webhook className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm font-medium">More Tools Coming Soon</p>
+                  <p className="text-xs mt-1">
+                    Additional webhook integrations and custom tools will be available here
                   </p>
                 </div>
               </div>
