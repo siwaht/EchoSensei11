@@ -4033,29 +4033,39 @@ Generate the complete prompt now:`;
       }
 
       try {
-        // If we don't have agent/org IDs, try to extract from the query context
-        let searchAgentId = agentId;
-        let searchOrgId = organizationId;
+        // First, try to search with provided IDs if available
+        let searchResults = [];
         
-        // If IDs are missing, we'll need to handle this differently
-        // For now, let's try to get them from the first available agent
-        if (!searchAgentId || !searchOrgId) {
-          // Try to find an agent from the database
-          const agents = await storage.getAgents(""); // Get all agents
-          if (agents && agents.length > 0) {
-            searchAgentId = agents[0].elevenLabsAgentId;
-            searchOrgId = agents[0].organizationId;
-            console.log("Using default agent:", searchAgentId, "org:", searchOrgId);
+        if (agentId && organizationId) {
+          // Search with specific agent and org IDs
+          searchResults = await vectorDB.searchDocuments(
+            query,
+            agentId,
+            organizationId,
+            limit
+          );
+        }
+        
+        // If no results and no specific IDs provided, search more broadly
+        if (searchResults.length === 0) {
+          // Try to get all organizations and search across them
+          const orgs = await storage.getAllOrganizations();
+          
+          for (const org of orgs) {
+            // Search without agent ID restriction (search all docs in org)
+            const orgResults = await vectorDB.searchDocuments(
+              query,
+              "", // Empty agent ID to search all agents
+              org.id,
+              limit
+            );
+            
+            if (orgResults.length > 0) {
+              searchResults = orgResults;
+              break; // Use the first organization with results
+            }
           }
         }
-
-        // Search the vector database
-        const searchResults = await vectorDB.searchDocuments(
-          query,
-          searchAgentId,
-          searchOrgId,
-          limit
-        );
         
         console.log(`Found ${searchResults.length} results in RAG system`);
         

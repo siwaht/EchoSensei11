@@ -191,6 +191,7 @@ class VectorDatabase {
       // Check if table exists first
       const tables = await this.db!.tableNames();
       if (!tables.includes(this.documentsTableName)) {
+        console.log("RAG Search: Table doesn't exist");
         return [];
       }
       
@@ -212,6 +213,7 @@ class VectorDatabase {
             const metadata = typeof result.metadata === 'string' 
               ? JSON.parse(result.metadata) 
               : result.metadata;
+            
             // If no agentId provided, search all documents for the organization
             if (!agentId) {
               return metadata.organizationId === organizationId;
