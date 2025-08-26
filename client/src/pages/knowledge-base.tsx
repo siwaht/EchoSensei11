@@ -59,6 +59,9 @@ export default function KnowledgeBase() {
   const [chatTopK, setChatTopK] = useState(5);
   const [chatTemperature, setChatTemperature] = useState(0.7);
   const [chatMaxTokens, setChatMaxTokens] = useState(500);
+  
+  // Ref for auto-scrolling chat
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   // Custom RAG Tool state
   const [ragEnabled, setRagEnabled] = useState(true);
@@ -73,6 +76,13 @@ export default function KnowledgeBase() {
   const [ragSystemPrompt, setRagSystemPrompt] = useState(
     "reference the most relevant entries when providing facts about a person's background, preferences, or company information. If the user inquires about a person's location, what they like to eat, or a company's services, cite the related RAG system entry in your answer. Respond concisely, truthfully, and in a helpful manner based on the provided information."
   );
+
+  // Auto-scroll to bottom when new messages are added
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
 
   // Load saved RAG configuration on mount
   useEffect(() => {
@@ -602,7 +612,7 @@ export default function KnowledgeBase() {
                 </div>
                 
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
                   {chatMessages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
                       <MessageSquare className="h-12 w-12 text-muted-foreground/50" />

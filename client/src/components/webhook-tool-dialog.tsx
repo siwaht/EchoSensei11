@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Code } from "lucide-react";
+import { Plus, Trash2, Code, Sparkles, Database } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 // Simple ID generator
 const generateId = () => `webhook_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -65,9 +66,45 @@ interface WebhookToolDialogProps {
   onSave: (webhook: WebhookTool) => void;
 }
 
+// Webhook templates
+const WEBHOOK_TEMPLATES = {
+  rag: {
+    name: "RAG Knowledge Base Search",
+    description: "Search the custom knowledge base for relevant information",
+    method: 'GET' as const,
+    url: `${window.location.origin}/api/public/rag`,
+    webhookConfig: {
+      responseTimeout: 30,
+      disableInterruptions: false,
+      preToolSpeech: 'auto' as const,
+      queryParameters: [
+        {
+          key: 'query',
+          description: 'The search query to find relevant information in the knowledge base',
+          required: true,
+          dataType: 'String' as const,
+          valueType: 'LLM Prompt' as const
+        }
+      ]
+    }
+  },
+  custom: {
+    name: "",
+    description: "",
+    method: 'POST' as const,
+    url: "",
+    webhookConfig: {
+      responseTimeout: 20,
+      disableInterruptions: false,
+      preToolSpeech: 'auto' as const
+    }
+  }
+};
+
 export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookToolDialogProps) {
   const [showJsonEditor, setShowJsonEditor] = useState(false);
   const [jsonContent, setJsonContent] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [formData, setFormData] = useState<WebhookTool>({
     id: webhook?.id || generateId(),
     type: 'webhook',
@@ -89,6 +126,28 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
       dynamicVariableAssignments: webhook?.webhookConfig?.dynamicVariableAssignments || [],
     },
   });
+
+  // Apply template function
+  const applyTemplate = (templateName: string) => {
+    if (templateName && WEBHOOK_TEMPLATES[templateName as keyof typeof WEBHOOK_TEMPLATES]) {
+      const template = WEBHOOK_TEMPLATES[templateName as keyof typeof WEBHOOK_TEMPLATES];
+      setFormData({
+        ...formData,
+        name: template.name,
+        description: template.description,
+        method: template.method,
+        url: template.url,
+        webhookConfig: {
+          ...formData.webhookConfig,
+          ...template.webhookConfig,
+          headers: template.webhookConfig?.headers || [],
+          pathParameters: template.webhookConfig?.pathParameters || [],
+          queryParameters: template.webhookConfig?.queryParameters || [],
+          bodyParameters: template.webhookConfig?.bodyParameters || [],
+        }
+      });
+    }
+  };
 
   useEffect(() => {
     if (webhook) {
@@ -292,6 +351,51 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Template Selection */}
+            {!webhook && (
+              <Alert className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+                <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="flex flex-col gap-3">
+                  <div className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    Quick Start Templates
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedTemplate('rag');
+                        applyTemplate('rag');
+                      }}
+                      className={selectedTemplate === 'rag' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/50' : ''}
+                    >
+                      <Database className="h-4 w-4 mr-2" />
+                      RAG Knowledge Base
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedTemplate('custom');
+                        applyTemplate('custom');
+                      }}
+                      className={selectedTemplate === 'custom' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/50' : ''}
+                    >
+                      Custom Webhook
+                    </Button>
+                  </div>
+                  {selectedTemplate === 'rag' && (
+                    <div className="text-xs text-blue-800 dark:text-blue-200 bg-blue-100 dark:bg-blue-800/30 p-2 rounded">
+                      This template configures a webhook to search your RAG knowledge base. 
+                      Make sure you've uploaded documents in the RAG System tab first.
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Configuration Section */}
             <div className="space-y-4">
               <div>
