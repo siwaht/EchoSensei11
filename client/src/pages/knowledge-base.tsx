@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,44 @@ export default function KnowledgeBase() {
   const [ragSystemPrompt, setRagSystemPrompt] = useState(
     "reference the most relevant entries when providing facts about a person's background, preferences, or company information. If the user inquires about a person's location, what they like to eat, or a company's services, cite the related RAG system entry in your answer. Respond concisely, truthfully, and in a helpful manner based on the provided information."
   );
+
+  // Load saved RAG configuration on mount
+  useEffect(() => {
+    const loadRagConfig = async () => {
+      try {
+        const response = await fetch("/api/tools/rag-config", {
+          credentials: "include",
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.config) {
+            const config = data.config;
+            if (config.name) setRagToolName(config.name);
+            if (config.description) setRagToolDescription(config.description);
+            if (typeof config.enabled !== 'undefined') setRagEnabled(config.enabled);
+            
+            if (config.config) {
+              const innerConfig = config.config;
+              if (innerConfig.systemPrompt) setRagSystemPrompt(innerConfig.systemPrompt);
+              if (innerConfig.topK) setTopK(innerConfig.topK);
+              if (innerConfig.temperature) setRagTemperature(innerConfig.temperature);
+              if (innerConfig.maxResponseTokens) setMaxResponseTokens(innerConfig.maxResponseTokens);
+              if (innerConfig.chunkSize) setChunkSize(innerConfig.chunkSize);
+              if (innerConfig.chunkOverlap) setChunkOverlap(innerConfig.chunkOverlap);
+              if (innerConfig.openaiApiKey && innerConfig.openaiApiKey !== "**configured**") {
+                setOpenaiApiKey(innerConfig.openaiApiKey);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load RAG configuration:", error);
+      }
+    };
+    
+    loadRagConfig();
+  }, []); // Only run once on mount
 
   // Fetch agents
   const { data: agents = [] } = useQuery<any[]>({

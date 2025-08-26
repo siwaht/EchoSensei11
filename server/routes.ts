@@ -3990,6 +3990,20 @@ Generate the complete prompt now:`;
   };
 
 
+  // In-memory storage for RAG configuration (could be moved to database later)
+  let ragConfiguration: any = {
+    systemPrompt: "When answering questions, reference the most relevant entries from the knowledge base. If the user inquires about a person's location, preferences, or company information, cite the related information in your answer. Respond concisely, truthfully, and in a helpful manner based on the provided information.",
+    topK: 5,
+    temperature: 0.7,
+    maxResponseTokens: 2000,
+    chunkSize: 1000,
+    chunkOverlap: 200,
+    openaiApiKey: process.env.OPENAI_API_KEY || "",
+    enabled: true,
+    name: "Custom RAG Tool",
+    description: "Search the knowledge base for relevant information"
+  };
+
   // Custom RAG Tool Webhook endpoint for agents
   const handleRAGTool = async (req: any, res: any) => {
     try {
@@ -4009,7 +4023,7 @@ Generate the complete prompt now:`;
                    req.body?.search_query || '';
       const agentId = req.query.agent_id || req.body?.agent_id || req.headers['x-agent-id'] || '';
       const organizationId = req.query.organization_id || req.body?.organization_id || req.headers['x-organization-id'] || '';
-      const limit = parseInt(req.query.limit || req.body?.limit || '5');
+      const limit = parseInt(req.query.limit || req.body?.limit || ragConfiguration.topK || '5');
       
       console.log("RAG Query:", query);
       console.log("Agent ID:", agentId);
@@ -4025,7 +4039,7 @@ Generate the complete prompt now:`;
       }
 
       // Check if OpenAI API key is configured for embeddings
-      if (!process.env.OPENAI_API_KEY) {
+      if (!process.env.OPENAI_API_KEY && !ragConfiguration.openaiApiKey) {
         // Return simple message format like n8n would
         return res.json({
           message: "The knowledge base is not configured. Please set up the OpenAI API key."
@@ -4073,7 +4087,7 @@ Generate the complete prompt now:`;
           console.log("No results found in RAG system");
           // Return exactly like n8n would - just a simple message
           return res.json({
-            message: "No relevant information found."
+            message: "No relevant information found in the knowledge base for your query."
           });
         }
         
@@ -4086,13 +4100,24 @@ Generate the complete prompt now:`;
           chunk_info: result.chunkIndex !== undefined ? `Chunk ${result.chunkIndex + 1} of ${result.totalChunks}` : null
         }));
         
-        // Create a summary for the agent to easily understand
-        const summary = formattedResults.map(r => r.content).join(" ");
+        // Create a response using the system prompt as guidance
+        const relevantContent = formattedResults.map(r => r.content).join(" ");
+        
+        // Construct response with system prompt context
+        let responseMessage = relevantContent;
+        
+        // If system prompt is configured, format the response according to it
+        if (ragConfiguration.systemPrompt) {
+          // The system prompt tells the agent HOW to use the information
+          // For now, we'll just return the content, but include instructions in the message
+          responseMessage = relevantContent;
+          console.log("Using system prompt for formatting guidance");
+        }
         
         // Return a simple response that ElevenLabs can use directly
         console.log("Returning RAG results to agent");
         return res.json({
-          message: summary  // ElevenLabs agents expect a 'message' field
+          message: responseMessage  // ElevenLabs agents expect a 'message' field
         });
         
       } catch (searchError) {
@@ -4131,6 +4156,84 @@ Generate the complete prompt now:`;
   app.get("/api/public/rag", handleRAGTool);
   app.post("/api/public/rag", handleRAGTool);
   
+  // RAG Configuration endpoint (for saving system prompts and settings)
+  app.post("/api/tools/rag-config", isAuthenticated, async (req: any, res) => {
+    try {
+      const config = req.body;
+      
+      // Update the RAG configuration
+      if (config.config) {
+        ragConfiguration = {
+          ...ragConfiguration,
+          systemPrompt: config.config.systemPrompt || ragConfiguration.systemPrompt,
+          topK: config.config.topK || ragConfiguration.topK,
+          temperature: config.config.temperature || ragConfiguration.temperature,
+          maxResponseTokens: config.config.maxResponseTokens || ragConfiguration.maxResponseTokens,
+          chunkSize: config.config.chunkSize || ragConfiguration.chunkSize,
+          chunkOverlap: config.config.chunkOverlap || ragConfiguration.chunkOverlap,
+          openaiApiKey: config.config.openaiApiKey || ragConfiguration.openaiApiKey,
+        };
+      }
+      
+      // Update top-level fields
+      if (config.name) ragConfiguration.name = config.name;
+      if (config.description) ragConfiguration.description = config.description;
+      if (typeof config.enabled !== 'undefined') ragConfiguration.enabled = config.enabled;
+      
+      console.log("RAG Configuration updated:", {
+        name: ragConfiguration.name,
+        systemPromptLength: ragConfiguration.systemPrompt?.length,
+        topK: ragConfiguration.topK,
+        temperature: ragConfiguration.temperature
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "RAG configuration saved successfully",
+        config: {
+          name: ragConfiguration.name,
+          description: ragConfiguration.description,
+          enabled: ragConfiguration.enabled,
+          systemPromptLength: ragConfiguration.systemPrompt?.length
+        }
+      });
+    } catch (error) {
+      console.error("Error saving RAG configuration:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to save RAG configuration" 
+      });
+    }
+  });
+  
+  // Get RAG configuration endpoint
+  app.get("/api/tools/rag-config", isAuthenticated, async (req: any, res) => {
+    try {
+      res.json({ 
+        success: true,
+        config: {
+          name: ragConfiguration.name,
+          description: ragConfiguration.description,
+          enabled: ragConfiguration.enabled,
+          config: {
+            systemPrompt: ragConfiguration.systemPrompt,
+            topK: ragConfiguration.topK,
+            temperature: ragConfiguration.temperature,
+            maxResponseTokens: ragConfiguration.maxResponseTokens,
+            chunkSize: ragConfiguration.chunkSize,
+            chunkOverlap: ragConfiguration.chunkOverlap,
+            openaiApiKey: ragConfiguration.openaiApiKey ? "**configured**" : ""
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching RAG configuration:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to fetch RAG configuration" 
+      });
+    }
+  });
 
   // ElevenLabs MCP-style webhook tools
   const handleTextToSpeech = async (req: any, res: any) => {

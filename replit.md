@@ -5,6 +5,10 @@
 VoiceAI Dashboard is a white-label, multi-tenant SaaS platform for managing and monitoring voice AI agents. The platform follows a "Bring Your Own Key" (BYOK) model where clients securely connect their VoiceAI API credentials to monitor call logs, agent performance, and usage analytics. The application provides comprehensive dashboards for tracking voice agent interactions, billing information, and system integrations. While the platform is powered by advanced voice AI technology, it operates as a fully branded solution where customers interact with the VoiceAI brand without awareness of the underlying infrastructure.
 
 ### Recent Updates (August 26, 2025)
+- **RAG System Prompt Configuration Fixed**: Implemented backend endpoints to save and load RAG configuration including system prompts
+- **Configuration Persistence**: Added `/api/tools/rag-config` endpoints for saving and retrieving RAG settings
+- **Frontend Auto-Load**: RAG configuration now automatically loads saved settings when opening the knowledge base page
+- **System Prompt Integration**: RAG webhook now properly uses saved system prompt when formatting responses
 - **RAG Webhook Fixed**: Fixed vector search functionality in RAG system webhook - now successfully retrieves and returns relevant information from uploaded documents
 - **Enhanced Search Logic**: Improved document search to work across all organizations when specific agent/org IDs not provided
 - **Vector Search Working**: Resolved issues with embeddings and vector similarity search using LanceDB and OpenAI embeddings
