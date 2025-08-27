@@ -211,7 +211,7 @@ export default function ApprovalTasks() {
           <div className="text-center">
             <h3 className="text-lg font-semibold mb-2">No Approval Tasks</h3>
             <p className="text-sm text-muted-foreground max-w-md">
-              When users create new integrations or webhooks that require approval, they will appear here for your review.
+              When users configure RAG systems, tools, webhooks, or MCP services that require approval, they will appear here for your review.
             </p>
           </div>
         </div>
@@ -225,7 +225,7 @@ export default function ApprovalTasks() {
         <div>
           <h2 className="text-xl font-semibold">Approval Tasks</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Review and approve integration requests from users
+            Review and approve RAG configurations, tools, webhooks, and MCP requests
           </p>
         </div>
         <Badge variant="outline" className="text-lg px-4 py-2">

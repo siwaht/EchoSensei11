@@ -1407,45 +1407,18 @@ export function registerRoutes(app: Express): Server {
 
       const encryptedKey = encryptApiKey(apiKey);
       
-      // Create integration with pending approval status
+      // Create integration directly as ACTIVE - no approval needed for integrations
       const integration = await storage.upsertIntegration({
         organizationId: user.organizationId,
         provider: "elevenlabs",
         apiKey: encryptedKey,
-        status: "PENDING_APPROVAL", // Changed from "INACTIVE" to "PENDING_APPROVAL"
-      });
-
-      // Create admin approval task
-      const newTask = await storage.createAdminTask({
-        type: "integration_approval",
-        title: "New Integration Pending Approval",
-        description: `User ${user.email} has created a new ElevenLabs integration that requires approval.`,
-        status: "pending",
-        relatedEntityType: "integration",
-        relatedEntityId: integration.id,
-        organizationId: user.organizationId,
-        requestedBy: userId,
-        metadata: {
-          userEmail: user.email,
-          integrationProvider: "elevenlabs",
-        },
-      });
-      
-      // Trigger webhooks for new task creation
-      await triggerApprovalWebhooks('task.created', {
-        taskId: newTask.id,
-        taskType: newTask.type,
-        taskTitle: newTask.title,
-        organizationId: newTask.organizationId,
-        createdBy: userId,
-        createdAt: new Date().toISOString(),
-        metadata: newTask.metadata
+        status: "ACTIVE", // Direct activation - no approval needed
       });
 
       res.json({ 
-        message: "Integration saved and pending admin approval", 
+        message: "Integration saved successfully", 
         id: integration.id,
-        status: "PENDING_APPROVAL"
+        status: "ACTIVE"
       });
     } catch (error) {
       console.error("Error saving integration:", error);
@@ -1480,15 +1453,7 @@ export function registerRoutes(app: Express): Server {
         });
       }
       
-      // Check if integration is pending approval
-      if (integration.status === "PENDING_APPROVAL") {
-        return res.json({ 
-          status: "PENDING_APPROVAL",
-          provider: provider,
-          message: "Integration is pending admin approval",
-          id: integration.id
-        });
-      }
+      // No approval needed for integrations anymore - only for RAG, tools, webhooks, and MCP
       
       // Don't send the encrypted API key to the client
       const { apiKey, ...integrationWithoutKey } = integration;
