@@ -319,7 +319,7 @@ export class DatabaseStorage implements IStorage {
 
   // Call log operations
   async getCallLogs(organizationId: string, limit = 50, offset = 0, agentId?: string): Promise<CallLog[]> {
-    let query = db
+    let query = db()
       .select()
       .from(callLogs)
       .where(eq(callLogs.organizationId, organizationId))
@@ -328,7 +328,7 @@ export class DatabaseStorage implements IStorage {
       .offset(offset);
 
     if (agentId) {
-      query = db
+      query = db()
         .select()
         .from(callLogs)
         .where(and(eq(callLogs.organizationId, organizationId), eq(callLogs.agentId, agentId)))
