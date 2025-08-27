@@ -847,10 +847,10 @@ export default function Playground() {
 
         {/* Voice Call Interface */}
         <div className="lg:col-span-2">
-          <Card className="h-[600px] flex flex-col shadow-xl border-0 dark:bg-slate-800/50 backdrop-blur">
+          <Card className="h-[calc(100vh-12rem)] flex flex-col shadow-xl border-0 dark:bg-slate-800/50 backdrop-blur">
 
             {/* Visualization Area */}
-            <div className="flex-1 flex items-center justify-center p-8">
+            <div className="flex items-center justify-center p-8">
               <div className="relative">
                 {/* Circular Visualization */}
                 <div className="relative w-64 h-64 rounded-full flex items-center justify-center">
@@ -927,11 +927,11 @@ export default function Playground() {
             )}
 
             {/* Transcript */}
-            <div className="border-t">
+            <div className="border-t flex-1 flex flex-col overflow-hidden">
               <div className="p-3 border-b bg-gradient-to-r from-muted/30 to-muted/50">
                 <h4 className="text-sm font-medium">Call Transcript</h4>
               </div>
-              <ScrollArea ref={transcriptScrollRef} className="h-64 w-full">
+              <ScrollArea ref={transcriptScrollRef} className="flex-1 w-full">
                 <div className="p-4 space-y-3 w-full overflow-hidden">
                   {transcript.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
