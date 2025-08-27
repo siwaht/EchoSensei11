@@ -1,28 +1,34 @@
 // Optimized ElevenLabs sync using best practices from official documentation
 import * as crypto from 'crypto';
 
-// Decrypt API key helper
-function decryptApiKey(encryptedKey: string): string {
-  const algorithm = 'aes-256-gcm';
-  const key = Buffer.from(process.env.ENCRYPTION_KEY || 'your-32-byte-encryption-key-here', 'utf8');
-  
+// Decrypt API key helper (matching the working decryption from services/elevenlabs.ts)
+function decryptApiKey(encryptedApiKey: string): string {
   try {
-    const encrypted = encryptedKey.replace('enc_', '');
-    const parts = encrypted.split(':');
-    const iv = Buffer.from(parts[0], 'hex');
-    const authTag = Buffer.from(parts[1], 'hex');
-    const ciphertext = Buffer.from(parts[2], 'hex');
+    const algorithm = "aes-256-cbc";
+    const key = crypto.scryptSync(process.env.ENCRYPTION_KEY || "default-key", "salt", 32);
+    
+    // Handle both old and new encryption formats
+    if (!encryptedApiKey.includes(":")) {
+      // Old format - try legacy decryption
+      const decipher = crypto.createDecipher("aes-256-cbc", process.env.ENCRYPTION_KEY || "default-key");
+      let decrypted = decipher.update(encryptedApiKey, "hex", "utf8");
+      decrypted += decipher.final("utf8");
+      return decrypted;
+    }
+    
+    // New format
+    const [ivHex, encrypted] = encryptedApiKey.split(":");
+    const iv = Buffer.from(ivHex, "hex");
     
     const decipher = crypto.createDecipheriv(algorithm, key, iv);
-    decipher.setAuthTag(authTag);
-    
-    let decrypted = decipher.update(ciphertext, null, 'utf8');
-    decrypted += decipher.final('utf8');
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
+    decrypted += decipher.final("utf8");
     
     return decrypted;
   } catch (error) {
-    console.error('Failed to decrypt API key:', error);
-    return encryptedKey; // Return as-is if decryption fails
+    console.error("Decryption failed:", error);
+    // Don't throw, just return the key as-is
+    return encryptedApiKey;
   }
 }
 
@@ -52,7 +58,16 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
       );
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch conversations: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`API Error Response (${response.status}):`, errorText);
+        
+        if (response.status === 401) {
+          throw new Error(`Authentication failed (401). Please check your ElevenLabs API key in Integrations.`);
+        } else if (response.status === 403) {
+          throw new Error(`Access forbidden (403). Your API key may not have the required permissions.`);
+        } else {
+          throw new Error(`Failed to fetch conversations: ${response.status} - ${errorText}`);
+        }
       }
       
       // Monitor concurrency from response headers
@@ -112,9 +127,18 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
         return res.status(400).json({ message: "Active ElevenLabs integration required" });
       }
 
-      const apiKey = integration.apiKey.startsWith('enc_') 
-        ? decryptApiKey(integration.apiKey)
-        : integration.apiKey;
+      // Decrypt API key if it's encrypted, otherwise use as-is
+      let apiKey = integration.apiKey;
+      console.log("API key format check - starts with 'enc_':", apiKey.startsWith('enc_'));
+      console.log("API key format check - includes ':':", apiKey.includes(':'));
+      
+      // Only decrypt if it appears to be encrypted (has : separator or starts with enc_)
+      if (apiKey.includes(':') || apiKey.startsWith('enc_')) {
+        apiKey = decryptApiKey(apiKey);
+        console.log("API key decrypted successfully");
+      } else {
+        console.log("Using API key as-is (not encrypted)")
+      }
       
       // Step 1: Fetch ALL conversations using the List API with pagination
       console.log("Fetching all conversations with pagination...");
