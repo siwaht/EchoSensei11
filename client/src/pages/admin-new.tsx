@@ -362,10 +362,73 @@ export default function AdminDashboard() {
               </Button>
             </div>
             
-            <div className="overflow-x-auto">
+            {/* Mobile view - Cards */}
+            <div className="md:hidden space-y-3">
+              {users.map((user) => (
+                <Card key={user.id} className="p-4 bg-card dark:bg-card">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      {user.profileImageUrl ? (
+                        <img src={user.profileImageUrl} alt="" className="w-10 h-10 rounded-full" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <span className="text-sm font-semibold">
+                            {user.firstName?.[0]}{user.lastName?.[0]}
+                          </span>
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-sm">{user.firstName} {user.lastName}</p>
+                        {user.isAdmin ? (
+                          <Badge className="bg-gradient-to-r from-purple-500 to-purple-600 text-xs mt-1">Admin</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs mt-1">User</Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingUser(user)}
+                        className="h-8 w-8 p-0"
+                        data-testid={`button-edit-user-mobile-${user.id}`}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeletingUser(user)}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                        data-testid={`button-delete-user-mobile-${user.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <p className="text-muted-foreground">
+                      <span className="font-medium">Email:</span> <span className="break-all">{user.email}</span>
+                    </p>
+                    <p className="text-muted-foreground">
+                      <span className="font-medium">Company:</span> {organizations.find(org => org.id === user.organizationId)?.name || "N/A"}
+                    </p>
+                    {user.createdAt && (
+                      <p className="text-muted-foreground">
+                        <span className="font-medium">Joined:</span> {new Date(user.createdAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {/* Desktop view - Table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[600px]">
                 <thead>
-                  <tr className="border-b">
+                  <tr className="border-b dark:border-gray-700">
                     <th className="text-left py-3 px-2 text-sm font-medium">User</th>
                     <th className="text-left py-3 px-2 text-sm font-medium">Email</th>
                     <th className="text-left py-3 px-2 text-sm font-medium hidden md:table-cell">Company</th>
@@ -376,7 +439,7 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {users.map((user) => (
-                    <tr key={user.id} className="border-b hover:bg-muted/50">
+                    <tr key={user.id} className="border-b dark:border-gray-700 hover:bg-muted/50 dark:hover:bg-muted/30">
                       <td className="py-3 px-2">
                         <div className="flex items-center gap-2 min-w-0">
                           {user.profileImageUrl ? (
@@ -407,7 +470,7 @@ export default function AdminDashboard() {
                         )}
                       </td>
                       <td className="py-3 px-2 hidden lg:table-cell">
-                        <span className="text-sm">
+                        <span className="text-sm text-muted-foreground">
                           {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A"}
                         </span>
                       </td>
@@ -425,7 +488,7 @@ export default function AdminDashboard() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-red-500 hover:text-red-600 h-7 w-7 sm:h-8 sm:w-8 p-0"
+                            className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 h-7 w-7 sm:h-8 sm:w-8 p-0"
                             onClick={() => setDeletingUser(user)}
                             data-testid={`button-delete-user-${user.id}`}
                           >
