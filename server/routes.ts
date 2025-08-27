@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { insertIntegrationSchema, insertAgentSchema, insertCallLogSchema, insertPhoneNumberSchema, insertBatchCallSchema, insertBatchCallRecipientSchema } from "@shared/schema";
+import { insertIntegrationSchema, insertAgentSchema, insertCallLogSchema, insertPhoneNumberSchema, insertBatchCallSchema, insertBatchCallRecipientSchema, type Integration } from "@shared/schema";
 import { z } from "zod";
 import crypto from "crypto";
 import multer from "multer";
@@ -527,14 +527,17 @@ export function registerRoutes(app: Express): Server {
 
   app.post('/api/admin/sync/run', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      // Check API connectivity
-      const integration = await storage.getIntegration(req.session.organizationId!, "elevenlabs");
+      // For admin sync, try to find any organization with a configured API key
+      const allIntegrations = await storage.getAllIntegrations();
+      const activeIntegration = allIntegrations.find((i: Integration) => i.apiKey && i.status === 'ACTIVE');
       
-      if (!integration || !integration.apiKey) {
-        return res.status(400).json({ message: 'No API key configured' });
+      if (!activeIntegration || !activeIntegration.apiKey) {
+        return res.status(400).json({ 
+          message: 'No API key configured. Please configure an ElevenLabs API key in at least one organization.' 
+        });
       }
 
-      const apiKey = decryptApiKey(integration.apiKey);
+      const apiKey = decryptApiKey(activeIntegration.apiKey);
 
       // Test API connectivity with a simple call
       const testResponse = await fetch('https://api.elevenlabs.io/v1/user', {
@@ -548,12 +551,13 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Log the sync operation
-      console.log('API sync completed successfully');
+      console.log('API sync completed successfully using organization:', activeIntegration.organizationId);
 
       res.json({ 
         success: true, 
         message: 'API synchronization completed successfully',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        organizationUsed: activeIntegration.organizationId
       });
     } catch (error) {
       console.error('Error running sync:', error);
@@ -564,13 +568,18 @@ export function registerRoutes(app: Express): Server {
   app.post('/api/admin/sync/validate', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const endpoint = req.body;
-      const integration = await storage.getIntegration(req.session.organizationId!, "elevenlabs");
+      // For admin sync validation, try to find any organization with a configured API key
+      const allIntegrations = await storage.getAllIntegrations();
+      const activeIntegration = allIntegrations.find((i: Integration) => i.apiKey && i.status === 'ACTIVE');
       
-      if (!integration || !integration.apiKey) {
-        return res.status(400).json({ valid: false, message: 'No API key configured' });
+      if (!activeIntegration || !activeIntegration.apiKey) {
+        return res.status(400).json({ 
+          valid: false, 
+          message: 'No API key configured. Please configure an ElevenLabs API key in at least one organization.' 
+        });
       }
 
-      const apiKey = decryptApiKey(integration.apiKey);
+      const apiKey = decryptApiKey(activeIntegration.apiKey);
 
       // Validate specific endpoint
       let testUrl = 'https://api.elevenlabs.io';

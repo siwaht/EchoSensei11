@@ -51,6 +51,7 @@ export interface IStorage {
 
   // Integration operations
   getIntegration(organizationId: string, provider: string): Promise<Integration | undefined>;
+  getAllIntegrations(): Promise<Integration[]>;
   upsertIntegration(integration: InsertIntegration): Promise<Integration>;
   updateIntegrationStatus(id: string, status: "ACTIVE" | "INACTIVE" | "ERROR", lastTested?: Date): Promise<void>;
 
@@ -231,6 +232,12 @@ export class DatabaseStorage implements IStorage {
       .from(integrations)
       .where(and(eq(integrations.organizationId, organizationId), eq(integrations.provider, provider)));
     return integration;
+  }
+
+  async getAllIntegrations(): Promise<Integration[]> {
+    return await db
+      .select()
+      .from(integrations);
   }
 
   async upsertIntegration(integrationData: InsertIntegration): Promise<Integration> {
