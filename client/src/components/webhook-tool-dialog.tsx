@@ -34,11 +34,11 @@ interface WebhookTool {
       enabled: boolean;
     }>;
     pathParameters?: Array<{
-      key: string;
+      identifier: string;
       description?: string;
     }>;
     queryParameters?: Array<{
-      key: string;
+      identifier: string;
       description?: string;
       required?: boolean;
       dataType?: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array';
@@ -79,7 +79,7 @@ const WEBHOOK_TEMPLATES = {
       preToolSpeech: 'auto' as const,
       queryParameters: [
         {
-          key: 'query',
+          identifier: 'query',
           description: 'The search query to find relevant information in the knowledge base',
           required: true,
           dataType: 'String' as const,
@@ -221,7 +221,7 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
         ...formData.webhookConfig,
         queryParameters: [
           ...(formData.webhookConfig?.queryParameters || []),
-          { key: '', description: '', required: false, dataType: 'String', valueType: 'LLM Prompt' }
+          { identifier: '', description: '', required: false, dataType: 'String', valueType: 'LLM Prompt' }
         ],
       },
     });
@@ -246,7 +246,7 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
     });
   };
 
-  const updateQueryParameter = (index: number, field: 'key' | 'description' | 'required' | 'dataType' | 'valueType', value: any) => {
+  const updateQueryParameter = (index: number, field: 'identifier' | 'description' | 'required' | 'dataType' | 'valueType', value: any) => {
     const params = [...(formData.webhookConfig?.queryParameters || [])];
     params[index] = { ...params[index], [field]: value };
     setFormData({
@@ -597,8 +597,8 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
                       <Label className="text-xs">Identifier</Label>
                       <Input
                         placeholder="e.g., searchQuery"
-                        value={param.key}
-                        onChange={(e) => updateQueryParameter(index, 'key', e.target.value)}
+                        value={param.identifier || (param as any).key}
+                        onChange={(e) => updateQueryParameter(index, 'identifier', e.target.value)}
                         className="mt-1"
                       />
                     </div>
