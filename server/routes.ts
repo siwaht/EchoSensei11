@@ -997,8 +997,53 @@ export function registerRoutes(app: Express): Server {
   app.post('/api/admin/tasks/:taskId/approve', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const adminId = req.user.id;
-      // TODO: Uncomment when database is updated
-      // await storage.completeApprovalTask(req.params.taskId, adminId);
+      const taskId = req.params.taskId;
+      
+      // Get the task to determine what needs approval
+      const task = await storage.getAdminTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      
+      // Handle approval based on entity type
+      if (task.relatedEntityType === 'rag_configuration') {
+        // Approve the RAG configuration
+        await storage.updateRagConfiguration(task.relatedEntityId, {
+          approvalStatus: "ACTIVE",
+          approvedBy: adminId,
+          approvedAt: new Date(),
+        });
+        
+        // Load the RAG configuration into memory
+        const ragConfig = await storage.getRagConfiguration(task.organizationId);
+        if (ragConfig && ragConfig.configuration) {
+          const config = ragConfig.configuration as any;
+          if (config.config) {
+            ragConfiguration = {
+              ...ragConfiguration,
+              systemPrompt: config.config.systemPrompt || ragConfiguration.systemPrompt,
+              topK: config.config.topK || ragConfiguration.topK,
+              temperature: config.config.temperature || ragConfiguration.temperature,
+              maxResponseTokens: config.config.maxResponseTokens || ragConfiguration.maxResponseTokens,
+              chunkSize: config.config.chunkSize || ragConfiguration.chunkSize,
+              chunkOverlap: config.config.chunkOverlap || ragConfiguration.chunkOverlap,
+              openaiApiKey: config.config.openaiApiKey || ragConfiguration.openaiApiKey,
+            };
+            if (config.name) ragConfiguration.name = config.name;
+            if (config.description) ragConfiguration.description = config.description;
+          }
+        }
+        
+        console.log("Approved RAG configuration:", task.relatedEntityId);
+      }
+      
+      // Complete the approval task
+      await storage.updateAdminTask(taskId, {
+        status: "completed",
+        approvedBy: adminId,
+        completedAt: new Date(),
+      });
+      
       res.json({ message: "Task approved successfully" });
     } catch (error) {
       console.error("Error approving task:", error);
@@ -4615,43 +4660,131 @@ Generate the complete prompt now:`;
   app.post("/api/tools/rag-config", isAuthenticated, async (req: any, res) => {
     try {
       const config = req.body;
+      const user = req.user as any;
+      const organizationId = user.organizationId;
+      const userId = user.id;
+      const userEmail = user.email;
       
-      // Update the RAG configuration
-      if (config.config) {
-        ragConfiguration = {
-          ...ragConfiguration,
-          systemPrompt: config.config.systemPrompt || ragConfiguration.systemPrompt,
-          topK: config.config.topK || ragConfiguration.topK,
-          temperature: config.config.temperature || ragConfiguration.temperature,
-          maxResponseTokens: config.config.maxResponseTokens || ragConfiguration.maxResponseTokens,
-          chunkSize: config.config.chunkSize || ragConfiguration.chunkSize,
-          chunkOverlap: config.config.chunkOverlap || ragConfiguration.chunkOverlap,
-          openaiApiKey: config.config.openaiApiKey || ragConfiguration.openaiApiKey,
-        };
-      }
+      // Check if this is the first RAG configuration for this organization
+      const existingConfig = await storage.getRagConfiguration(organizationId);
       
-      // Update top-level fields
-      if (config.name) ragConfiguration.name = config.name;
-      if (config.description) ragConfiguration.description = config.description;
-      if (typeof config.enabled !== 'undefined') ragConfiguration.enabled = config.enabled;
+      // Generate webhook URL
+      const webhookUrl = `${req.protocol}://${req.get('host')}/api/public/rag`;
       
-      console.log("RAG Configuration updated:", {
-        name: ragConfiguration.name,
-        systemPromptLength: ragConfiguration.systemPrompt?.length,
-        topK: ragConfiguration.topK,
-        temperature: ragConfiguration.temperature
-      });
-      
-      res.json({ 
-        success: true, 
-        message: "RAG configuration saved successfully",
-        config: {
-          name: ragConfiguration.name,
-          description: ragConfiguration.description,
-          enabled: ragConfiguration.enabled,
-          systemPromptLength: ragConfiguration.systemPrompt?.length
+      if (!existingConfig) {
+        // First time saving - create configuration with pending approval
+        const newConfig = await storage.createRagConfiguration({
+          organizationId,
+          name: config.name || "Custom RAG",
+          description: config.description || "RAG system for voice agents",
+          webhookUrl,
+          systemPrompt: config.config?.systemPrompt || "",
+          configuration: config,
+          approvalStatus: "PENDING_APPROVAL",
+          firstSavedAt: new Date(),
+        });
+        
+        // Create approval task for admin
+        const organization = await storage.getOrganization(organizationId);
+        await storage.createAdminTask({
+          type: "approval",
+          status: "pending",
+          title: "New RAG Configuration Approval",
+          description: `RAG webhook configuration requires approval for organization: ${organization?.name || organizationId}`,
+          relatedEntityId: newConfig.id,
+          relatedEntityType: "rag_configuration",
+          organizationId,
+          requestedBy: userId,
+          metadata: {
+            organizationName: organization?.name,
+            userEmail,
+            webhookUrl,
+            webhookConfig: {
+              type: "Webhook",
+              method: "GET",
+              queryParameter: "query (type: String)",
+              description: "Search the knowledge base for relevant information"
+            },
+            systemPrompt: config.config?.systemPrompt || "",
+            ragName: config.name || "Custom RAG",
+          },
+        });
+        
+        console.log("Created RAG configuration pending approval:", newConfig.id);
+        
+        res.json({ 
+          success: true, 
+          message: "RAG configuration sent for approval",
+          status: "PENDING_APPROVAL",
+          webhookUrl,
+          config: {
+            name: newConfig.name,
+            description: newConfig.description,
+            enabled: ragConfiguration.enabled,
+            systemPromptLength: config.config?.systemPrompt?.length
+          }
+        });
+        
+      } else if (existingConfig.approvalStatus === "ACTIVE") {
+        // Already approved - allow updates without re-approval
+        const updatedConfig = await storage.updateRagConfiguration(existingConfig.id, {
+          systemPrompt: config.config?.systemPrompt || existingConfig.systemPrompt,
+          configuration: config,
+          webhookUrl,
+        });
+        
+        // Update in-memory configuration as well since it's approved
+        if (config.config) {
+          ragConfiguration = {
+            ...ragConfiguration,
+            systemPrompt: config.config.systemPrompt || ragConfiguration.systemPrompt,
+            topK: config.config.topK || ragConfiguration.topK,
+            temperature: config.config.temperature || ragConfiguration.temperature,
+            maxResponseTokens: config.config.maxResponseTokens || ragConfiguration.maxResponseTokens,
+            chunkSize: config.config.chunkSize || ragConfiguration.chunkSize,
+            chunkOverlap: config.config.chunkOverlap || ragConfiguration.chunkOverlap,
+            openaiApiKey: config.config.openaiApiKey || ragConfiguration.openaiApiKey,
+          };
         }
-      });
+        
+        console.log("Updated approved RAG configuration:", existingConfig.id);
+        
+        res.json({ 
+          success: true, 
+          message: "RAG configuration updated successfully",
+          status: "ACTIVE",
+          webhookUrl,
+          config: {
+            name: updatedConfig.name,
+            description: updatedConfig.description,
+            enabled: ragConfiguration.enabled,
+            systemPromptLength: config.config?.systemPrompt?.length
+          }
+        });
+        
+      } else {
+        // Still pending approval - just update the existing pending config
+        const updatedConfig = await storage.updateRagConfiguration(existingConfig.id, {
+          systemPrompt: config.config?.systemPrompt || existingConfig.systemPrompt,
+          configuration: config,
+          webhookUrl,
+        });
+        
+        console.log("Updated pending RAG configuration:", existingConfig.id);
+        
+        res.json({ 
+          success: true, 
+          message: "RAG configuration updated (still pending approval)",
+          status: "PENDING_APPROVAL",
+          webhookUrl,
+          config: {
+            name: updatedConfig.name,
+            description: updatedConfig.description,
+            enabled: ragConfiguration.enabled,
+            systemPromptLength: config.config?.systemPrompt?.length
+          }
+        });
+      }
     } catch (error) {
       console.error("Error saving RAG configuration:", error);
       res.status(500).json({ 
@@ -4664,23 +4797,58 @@ Generate the complete prompt now:`;
   // Get RAG configuration endpoint
   app.get("/api/tools/rag-config", isAuthenticated, async (req: any, res) => {
     try {
-      res.json({ 
-        success: true,
-        config: {
-          name: ragConfiguration.name,
-          description: ragConfiguration.description,
-          enabled: ragConfiguration.enabled,
+      const user = req.user as any;
+      const organizationId = user.organizationId;
+      
+      // Check if RAG configuration exists in database
+      const savedConfig = await storage.getRagConfiguration(organizationId);
+      
+      // Generate webhook URL
+      const webhookUrl = `${req.protocol}://${req.get('host')}/api/public/rag`;
+      
+      if (savedConfig) {
+        // Return saved configuration with status
+        res.json({ 
+          success: true,
+          status: savedConfig.approvalStatus,
+          webhookUrl,
           config: {
-            systemPrompt: ragConfiguration.systemPrompt,
-            topK: ragConfiguration.topK,
-            temperature: ragConfiguration.temperature,
-            maxResponseTokens: ragConfiguration.maxResponseTokens,
-            chunkSize: ragConfiguration.chunkSize,
-            chunkOverlap: ragConfiguration.chunkOverlap,
-            openaiApiKey: ragConfiguration.openaiApiKey ? "**configured**" : ""
+            name: savedConfig.name || ragConfiguration.name,
+            description: savedConfig.description || ragConfiguration.description,
+            enabled: ragConfiguration.enabled,
+            config: {
+              systemPrompt: savedConfig.systemPrompt || ragConfiguration.systemPrompt,
+              topK: ragConfiguration.topK,
+              temperature: ragConfiguration.temperature,
+              maxResponseTokens: ragConfiguration.maxResponseTokens,
+              chunkSize: ragConfiguration.chunkSize,
+              chunkOverlap: ragConfiguration.chunkOverlap,
+              openaiApiKey: ragConfiguration.openaiApiKey ? "**configured**" : ""
+            }
           }
-        }
-      });
+        });
+      } else {
+        // Return default configuration with no approval status
+        res.json({ 
+          success: true,
+          status: null,
+          webhookUrl,
+          config: {
+            name: ragConfiguration.name,
+            description: ragConfiguration.description,
+            enabled: ragConfiguration.enabled,
+            config: {
+              systemPrompt: ragConfiguration.systemPrompt,
+              topK: ragConfiguration.topK,
+              temperature: ragConfiguration.temperature,
+              maxResponseTokens: ragConfiguration.maxResponseTokens,
+              chunkSize: ragConfiguration.chunkSize,
+              chunkOverlap: ragConfiguration.chunkOverlap,
+              openaiApiKey: ragConfiguration.openaiApiKey ? "**configured**" : ""
+            }
+          }
+        });
+      }
     } catch (error) {
       console.error("Error fetching RAG configuration:", error);
       res.status(500).json({ 

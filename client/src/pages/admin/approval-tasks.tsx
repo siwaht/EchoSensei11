@@ -22,7 +22,7 @@ interface AdminTask {
   description: string;
   status: "pending" | "in_progress" | "completed" | "rejected";
   priority: "low" | "medium" | "high" | "urgent";
-  relatedEntityType: "integration" | "webhook" | "agent" | "organization";
+  relatedEntityType: "integration" | "webhook" | "agent" | "organization" | "rag_configuration";
   relatedEntityId: string;
   createdBy: string;
   approvedBy?: string;
@@ -153,6 +153,8 @@ export default function ApprovalTasks() {
         return <MessageSquare className="w-4 h-4" />;
       case "organization":
         return <Building2 className="w-4 h-4" />;
+      case "rag_configuration":
+        return <FileText className="w-4 h-4" />;
       default:
         return null;
     }

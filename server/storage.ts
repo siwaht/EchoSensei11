@@ -12,6 +12,7 @@ import {
   systemTemplates,
   quickActionButtons,
   adminTasks,
+  ragConfigurations,
   type User,
   type UpsertUser,
   type Organization,
@@ -37,6 +38,8 @@ import {
   type InsertQuickActionButton,
   type AdminTask,
   type InsertAdminTask,
+  type RagConfiguration,
+  type InsertRagConfiguration,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sum, avg, max, or } from "drizzle-orm";
@@ -828,8 +831,51 @@ export class DatabaseStorage implements IStorage {
     // Update the related entity based on type
     if (task.relatedEntityType === "integration") {
       await this.updateIntegrationStatus(task.relatedEntityId, "ACTIVE");
+    } else if (task.relatedEntityType === "rag_configuration") {
+      // Update RAG configuration approval status
+      await this.approveRagConfiguration(task.relatedEntityId, adminId);
     }
     // Add more entity types as needed (webhook, agent, etc.)
+  }
+
+  // RAG Configuration operations
+  async getRagConfiguration(organizationId: string): Promise<RagConfiguration | undefined> {
+    const [config] = await db()
+      .select()
+      .from(ragConfigurations)
+      .where(eq(ragConfigurations.organizationId, organizationId))
+      .orderBy(desc(ragConfigurations.createdAt))
+      .limit(1);
+    return config;
+  }
+
+  async createRagConfiguration(data: InsertRagConfiguration): Promise<RagConfiguration> {
+    const [config] = await db().insert(ragConfigurations).values(data).returning();
+    return config;
+  }
+
+  async updateRagConfiguration(id: string, data: Partial<InsertRagConfiguration>): Promise<RagConfiguration> {
+    const [updated] = await db()
+      .update(ragConfigurations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(ragConfigurations.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error("RAG configuration not found");
+    }
+    return updated;
+  }
+
+  async approveRagConfiguration(id: string, adminId: string): Promise<void> {
+    await db()
+      .update(ragConfigurations)
+      .set({
+        approvalStatus: "ACTIVE",
+        approvedBy: adminId,
+        approvedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(ragConfigurations.id, id));
   }
 }
 

@@ -81,6 +81,9 @@ export const taskStatusEnum = pgEnum("task_status", ["pending", "in_progress", "
 // Task type enum
 export const taskTypeEnum = pgEnum("task_type", ["integration_approval", "webhook_approval", "agent_approval"]);
 
+// RAG Configuration approval status enum
+export const ragApprovalStatusEnum = pgEnum("rag_approval_status", ["PENDING_APPROVAL", "ACTIVE", "REJECTED"]);
+
 // Integrations table for storing API keys
 export const integrations = pgTable("integrations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -112,6 +115,23 @@ export const adminTasks = pgTable("admin_tasks", {
   metadata: json("metadata").$type<Record<string, any>>(),
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// RAG Configurations table - tracks approval status for RAG webhooks
+export const ragConfigurations = pgTable("rag_configurations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull(),
+  name: varchar("name").notNull().default("Custom RAG"),
+  description: text("description"),
+  webhookUrl: text("webhook_url").notNull(),
+  systemPrompt: text("system_prompt"),
+  configuration: json("configuration").$type<any>(),
+  approvalStatus: ragApprovalStatusEnum("approval_status").notNull().default("PENDING_APPROVAL"),
+  approvedBy: varchar("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  firstSavedAt: timestamp("first_saved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -592,6 +612,12 @@ export const insertQuickActionButtonSchema = createInsertSchema(quickActionButto
   updatedAt: true,
 });
 
+export const insertRagConfigurationSchema = createInsertSchema(ragConfigurations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Payment relations (defined after billingPackages table)
 export const paymentsRelations = relations(payments, ({ one }) => ({
   organization: one(organizations, {
@@ -666,3 +692,5 @@ export type GoogleOAuthToken = typeof googleOAuthTokens.$inferSelect;
 export type InsertGoogleOAuthToken = z.infer<typeof insertGoogleOAuthTokenSchema>;
 export type AdminTask = typeof adminTasks.$inferSelect;
 export type InsertAdminTask = z.infer<typeof insertAdminTaskSchema>;
+export type RagConfiguration = typeof ragConfigurations.$inferSelect;
+export type InsertRagConfiguration = z.infer<typeof insertRagConfigurationSchema>;

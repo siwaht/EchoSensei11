@@ -19,7 +19,7 @@ import {
   Brain, Database, Book, Globe, File, RefreshCw,
   CheckCircle, XCircle, Clock, AlertCircle, Download,
   Save, Info, Send, MessageSquare, Bot, User, Sparkles,
-  Webhook, Copy
+  Webhook, Copy, Check, X
 } from "lucide-react";
 
 interface KnowledgeDocument {
@@ -76,6 +76,8 @@ export default function KnowledgeBase() {
   const [ragSystemPrompt, setRagSystemPrompt] = useState(
     "reference the most relevant entries when providing facts about a person's background, preferences, or company information. If the user inquires about a person's location, what they like to eat, or a company's services, cite the related RAG system entry in your answer. Respond concisely, truthfully, and in a helpful manner based on the provided information."
   );
+  const [ragApprovalStatus, setRagApprovalStatus] = useState<string | null>(null);
+  const [webhookUrl, setWebhookUrl] = useState<string>("");
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -94,6 +96,15 @@ export default function KnowledgeBase() {
         
         if (response.ok) {
           const data = await response.json();
+          
+          // Set approval status and webhook URL
+          if (data.status) {
+            setRagApprovalStatus(data.status);
+          }
+          if (data.webhookUrl) {
+            setWebhookUrl(data.webhookUrl);
+          }
+          
           if (data.success && data.config) {
             const config = data.config;
             if (config.name) setRagToolName(config.name);
@@ -369,10 +380,33 @@ export default function KnowledgeBase() {
       });
 
       if (response.ok) {
-        toast({
-          title: "Configuration Saved",
-          description: "RAG configuration has been saved successfully.",
-        });
+        const data = await response.json();
+        
+        // Update approval status and webhook URL
+        if (data.status) {
+          setRagApprovalStatus(data.status);
+        }
+        if (data.webhookUrl) {
+          setWebhookUrl(data.webhookUrl);
+        }
+        
+        // Show appropriate message based on status
+        if (data.status === 'PENDING_APPROVAL') {
+          toast({
+            title: 'Sent for Approval',
+            description: data.message || 'RAG configuration has been sent to admin for approval',
+          });
+        } else if (data.status === 'ACTIVE') {
+          toast({
+            title: 'Configuration Saved',
+            description: 'RAG configuration updated successfully',
+          });
+        } else {
+          toast({
+            title: "Configuration Saved",
+            description: data.message || "RAG configuration has been saved successfully.",
+          });
+        }
       } else {
         throw new Error('Failed to save configuration');
       }
@@ -996,6 +1030,48 @@ export default function KnowledgeBase() {
                 </AlertDescription>
               </Alert>
 
+              {/* Approval Status */}
+              {ragApprovalStatus && (
+                <div className="space-y-2">
+                  <Label>Approval Status</Label>
+                  <div className="flex items-center gap-2">
+                    {ragApprovalStatus === 'PENDING_APPROVAL' && (
+                      <>
+                        <Badge variant="outline" className="border-yellow-500 text-yellow-700">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Pending Approval
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          Admin will manually configure the webhook in ElevenLabs
+                        </span>
+                      </>
+                    )}
+                    {ragApprovalStatus === 'ACTIVE' && (
+                      <>
+                        <Badge variant="default" className="bg-green-600">
+                          <Check className="h-3 w-3 mr-1" />
+                          Active
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          RAG webhook is configured and ready to use
+                        </span>
+                      </>
+                    )}
+                    {ragApprovalStatus === 'REJECTED' && (
+                      <>
+                        <Badge variant="destructive">
+                          <X className="h-3 w-3 mr-1" />
+                          Rejected
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          Please review and resubmit your configuration
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Webhook Configuration */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -1053,7 +1129,7 @@ export default function KnowledgeBase() {
               <div className="flex justify-end">
                 <Button onClick={saveRagConfig}>
                   <Save className="h-4 w-4 mr-2" />
-                  Save RAG Configuration
+                  {!ragApprovalStatus ? 'Send for Approval' : ragApprovalStatus === 'PENDING_APPROVAL' ? 'Update Configuration (Pending)' : 'Save RAG Configuration'}
                 </Button>
               </div>
             </div>
