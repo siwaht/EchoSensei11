@@ -528,16 +528,25 @@ export function registerRoutes(app: Express): Server {
   app.post('/api/admin/sync/run', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       // For admin sync, try to find any organization with a configured API key
+      console.log("Admin sync requested");
       const allIntegrations = await storage.getAllIntegrations();
-      const activeIntegration = allIntegrations.find((i: Integration) => i.apiKey && i.status === 'ACTIVE');
+      console.log("Found integrations:", allIntegrations.length);
       
-      if (!activeIntegration || !activeIntegration.apiKey) {
+      // Find ElevenLabs integration specifically
+      const elevenLabsIntegration = allIntegrations.find((i: Integration) => 
+        i.provider === 'elevenlabs' && i.apiKey && i.status === 'ACTIVE'
+      );
+      
+      console.log("ElevenLabs integration found:", !!elevenLabsIntegration);
+      
+      if (!elevenLabsIntegration || !elevenLabsIntegration.apiKey) {
+        console.log("No active ElevenLabs integration found");
         return res.status(400).json({ 
           message: 'No API key configured. Please configure an ElevenLabs API key in at least one organization.' 
         });
       }
 
-      const apiKey = decryptApiKey(activeIntegration.apiKey);
+      const apiKey = decryptApiKey(elevenLabsIntegration.apiKey);
 
       // Test API connectivity with a simple call
       const testResponse = await fetch('https://api.elevenlabs.io/v1/user', {
@@ -551,13 +560,13 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Log the sync operation
-      console.log('API sync completed successfully using organization:', activeIntegration.organizationId);
+      console.log('API sync completed successfully using organization:', elevenLabsIntegration.organizationId);
 
       res.json({ 
         success: true, 
         message: 'API synchronization completed successfully',
         timestamp: new Date().toISOString(),
-        organizationUsed: activeIntegration.organizationId
+        organizationUsed: elevenLabsIntegration.organizationId
       });
     } catch (error) {
       console.error('Error running sync:', error);
@@ -570,16 +579,18 @@ export function registerRoutes(app: Express): Server {
       const endpoint = req.body;
       // For admin sync validation, try to find any organization with a configured API key
       const allIntegrations = await storage.getAllIntegrations();
-      const activeIntegration = allIntegrations.find((i: Integration) => i.apiKey && i.status === 'ACTIVE');
+      const elevenLabsIntegration = allIntegrations.find((i: Integration) => 
+        i.provider === 'elevenlabs' && i.apiKey && i.status === 'ACTIVE'
+      );
       
-      if (!activeIntegration || !activeIntegration.apiKey) {
+      if (!elevenLabsIntegration || !elevenLabsIntegration.apiKey) {
         return res.status(400).json({ 
           valid: false, 
           message: 'No API key configured. Please configure an ElevenLabs API key in at least one organization.' 
         });
       }
 
-      const apiKey = decryptApiKey(activeIntegration.apiKey);
+      const apiKey = decryptApiKey(elevenLabsIntegration.apiKey);
 
       // Validate specific endpoint
       let testUrl = 'https://api.elevenlabs.io';
