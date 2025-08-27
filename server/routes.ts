@@ -88,6 +88,110 @@ async function callElevenLabsAPI(apiKey: string, endpoint: string, method = "GET
   return {};
 }
 
+// Helper function to manage ElevenLabs tools
+async function manageElevenLabsTools(apiKey: string, tools: any[], integrationId?: string) {
+  const toolIds: string[] = [];
+  const builtInTools: string[] = [];
+  
+  if (!tools || tools.length === 0) {
+    return { toolIds, builtInTools };
+  }
+  
+  for (const tool of tools) {
+    // Handle system/built-in tools
+    if (tool.type === 'system' || tool.name === 'end_call' || tool.name === 'language_detection' || 
+        tool.name === 'skip_turn' || tool.name === 'transfer_to_agent' || tool.name === 'transfer_to_number' ||
+        tool.name === 'play_dtmf' || tool.name === 'voicemail_detection') {
+      // Map our system tool names to ElevenLabs built-in tool names
+      let builtInToolName = tool.name;
+      if (tool.name === 'play_dtmf') {
+        builtInToolName = 'play_keypad_tone';
+      }
+      if (!builtInTools.includes(builtInToolName)) {
+        builtInTools.push(builtInToolName);
+      }
+    }
+    // Handle client and server tools (webhooks)
+    else if (tool.type === 'webhook' || tool.type === 'client') {
+      try {
+        // First, try to get existing tools to check if this tool already exists
+        const existingToolsResponse = await callElevenLabsAPI(apiKey, '/v1/convai/tools', 'GET', null, integrationId);
+        const existingTools = existingToolsResponse?.tools || [];
+        
+        // Check if a tool with the same name already exists
+        const existingTool = existingTools.find((t: any) => t.name === tool.name);
+        
+        let toolId;
+        if (existingTool) {
+          // Update existing tool
+          console.log(`Updating existing tool: ${tool.name} (ID: ${existingTool.tool_id})`);
+          const updatePayload = {
+            type: tool.type === 'webhook' ? 'webhook' : 'client',
+            name: tool.name,
+            description: tool.description,
+            ...(tool.type === 'webhook' ? {
+              url: tool.url,
+              method: tool.method,
+              headers: tool.headers || {},
+              query_parameters: tool.query_parameters || [],
+              body_parameters: tool.body_parameters || [],
+              path_parameters: tool.path_parameters || []
+            } : {
+              parameters: tool.parameters || {}
+            })
+          };
+          
+          await callElevenLabsAPI(
+            apiKey, 
+            `/v1/convai/tools/${existingTool.tool_id}`, 
+            'PATCH', 
+            updatePayload, 
+            integrationId
+          );
+          toolId = existingTool.tool_id;
+        } else {
+          // Create new tool
+          console.log(`Creating new tool: ${tool.name}`);
+          const createPayload = {
+            type: tool.type === 'webhook' ? 'webhook' : 'client',
+            name: tool.name,
+            description: tool.description,
+            ...(tool.type === 'webhook' ? {
+              url: tool.url,
+              method: tool.method,
+              headers: tool.headers || {},
+              query_parameters: tool.query_parameters || [],
+              body_parameters: tool.body_parameters || [],
+              path_parameters: tool.path_parameters || []
+            } : {
+              parameters: tool.parameters || {}
+            })
+          };
+          
+          const response = await callElevenLabsAPI(
+            apiKey, 
+            '/v1/convai/tools', 
+            'POST', 
+            createPayload, 
+            integrationId
+          );
+          
+          toolId = response?.tool_id;
+        }
+        
+        if (toolId) {
+          toolIds.push(toolId);
+        }
+      } catch (error) {
+        console.error(`Error managing tool ${tool.name}:`, error);
+        // Continue with other tools even if one fails
+      }
+    }
+  }
+  
+  return { toolIds, builtInTools };
+}
+
 // Encryption helpers
 function encryptApiKey(apiKey: string): string {
   const algorithm = "aes-256-cbc";
@@ -2255,6 +2359,14 @@ Generate the complete prompt now:`;
                   
                   // Add configured webhooks with proper ElevenLabs format
                   if (updates.tools.webhooks && Array.isArray(updates.tools.webhooks)) {
+                    console.log('Processing webhooks from tools.webhooks:', updates.tools.webhooks.map((w: any) => ({
+                      name: w.name,
+                      url: w.url,
+                      method: w.method,
+                      enabled: w.enabled,
+                      hasConfig: !!w.webhookConfig
+                    })));
+                    
                     for (const webhook of updates.tools.webhooks) {
                       // Check if webhook is enabled (default to true if not specified)
                       if (webhook.enabled !== false && webhook.url) {
@@ -2306,9 +2418,37 @@ Generate the complete prompt now:`;
                   }
                   
                   
-                  // Always send the tools array to ElevenLabs to ensure proper sync
-                  // An empty array will clear all tools in ElevenLabs
-                  elevenLabsPayload.conversation_config.agent.tools = elevenLabsTools;
+                  // Use the new tools API format
+                  // First, manage tools via the dedicated tools endpoint
+                  const { toolIds, builtInTools } = await manageElevenLabsTools(
+                    decryptedKey,
+                    elevenLabsTools,
+                    integration.id
+                  );
+                  
+                  console.log('Tool IDs created/updated:', toolIds);
+                  console.log('Built-in tools to enable:', builtInTools);
+                  
+                  // Update the agent's prompt with the new format
+                  if (!elevenLabsPayload.conversation_config.agent.prompt) {
+                    elevenLabsPayload.conversation_config.agent.prompt = {};
+                  }
+                  
+                  // Set tool_ids for client/server tools
+                  if (toolIds.length > 0) {
+                    elevenLabsPayload.conversation_config.agent.prompt.tool_ids = toolIds;
+                  } else {
+                    // Clear tool_ids if no tools
+                    elevenLabsPayload.conversation_config.agent.prompt.tool_ids = [];
+                  }
+                  
+                  // Set built_in_tools for system tools
+                  if (builtInTools.length > 0) {
+                    elevenLabsPayload.conversation_config.agent.prompt.built_in_tools = builtInTools;
+                  } else {
+                    // Clear built_in_tools if no system tools
+                    elevenLabsPayload.conversation_config.agent.prompt.built_in_tools = [];
+                  }
                 }
               }
               
@@ -3670,9 +3810,24 @@ Generate the complete prompt now:`;
                 }
               }
               
-              // Set tools configuration in payload
+              // Use the new tools API format for RAG tools
               if (toolConfigs.length > 0) {
-                elevenLabsPayload.conversation_config.agent.tools = toolConfigs;
+                const { toolIds, builtInTools } = await manageElevenLabsTools(
+                  decryptedKey,
+                  toolConfigs,
+                  integration.id
+                );
+                
+                // Ensure prompt object exists
+                if (!elevenLabsPayload.conversation_config.agent.prompt) {
+                  elevenLabsPayload.conversation_config.agent.prompt = {};
+                }
+                
+                // Set tool_ids for webhook tools
+                if (toolIds.length > 0) {
+                  elevenLabsPayload.conversation_config.agent.prompt.tool_ids = 
+                    [...(elevenLabsPayload.conversation_config.agent.prompt.tool_ids || []), ...toolIds];
+                }
               }
             }
 
