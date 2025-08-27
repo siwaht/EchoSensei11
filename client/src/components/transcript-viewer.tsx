@@ -166,7 +166,7 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-200 whitespace-pre-wrap">
+                  <p className="text-sm text-gray-200 whitespace-pre-wrap break-words">
                     {msg.message}
                   </p>
                 </div>
