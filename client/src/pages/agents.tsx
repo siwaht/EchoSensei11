@@ -219,7 +219,7 @@ export default function Agents() {
             <Card 
               key={agent.id} 
               className="group relative flex flex-col h-full p-6 border-0 shadow-lg card-hover hover:shadow-2xl transition-all cursor-pointer overflow-hidden"
-              onClick={() => setLocation(`/agents/${agent.id}/settings`)}
+              onClick={() => setSelectedAgent(agent)}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="w-12 h-12 gradient-purple rounded-xl flex items-center justify-center flex-shrink-0 shadow-md group-hover:scale-110 transition-transform">

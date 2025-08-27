@@ -84,9 +84,6 @@ export default function AppShell({ children }: AppShellProps) {
     // Check for knowledge base route (RAG system)
     if (location === "/knowledge-base") return "RAG System";
     
-    // Check for agent settings route
-    if (location.startsWith("/agents/") && location.includes("/settings")) return "Agent Settings";
-    
     // Default to "Page Not Found" for unknown routes
     return "Page Not Found";
   };

@@ -9,7 +9,6 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Agents from "@/pages/agents";
-import AgentSettings from "@/pages/agent-settings";
 import Voices from "@/pages/voices";
 import History from "@/pages/history";
 import Integrations from "@/pages/integrations";
@@ -41,7 +40,6 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/agents" component={Agents} />
-        <Route path="/agents/:agentId/settings" component={AgentSettings} />
         <Route path="/voices" component={Voices} />
         <Route path="/phone-numbers" component={PhoneNumbers} />
         <Route path="/outbound-calling" component={OutboundCalling} />
