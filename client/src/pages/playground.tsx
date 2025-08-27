@@ -931,8 +931,8 @@ export default function Playground() {
               <div className="p-3 border-b bg-gradient-to-r from-muted/30 to-muted/50">
                 <h4 className="text-sm font-medium">Call Transcript</h4>
               </div>
-              <ScrollArea ref={transcriptScrollRef} className="h-64">
-                <div className="p-4 space-y-3">
+              <ScrollArea ref={transcriptScrollRef} className="h-64 w-full">
+                <div className="p-4 space-y-3 w-full overflow-hidden">
                   {transcript.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       Transcript will appear here when you start a call
@@ -948,7 +948,7 @@ export default function Playground() {
                             {msg.timestamp.toLocaleTimeString()}
                           </span>
                         </div>
-                        <p className="text-sm pl-2 break-words whitespace-pre-wrap">{msg.message}</p>
+                        <p className="text-sm pl-2 break-all whitespace-pre-wrap overflow-hidden">{msg.message}</p>
                       </div>
                     ))
                   )}
