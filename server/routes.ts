@@ -5435,7 +5435,12 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Sync call logs from ElevenLabs API
+  // Import and use the optimized sync function
+  import("./sync-optimized.js").then(({ setupOptimizedSync }) => {
+    setupOptimizedSync(app, storage, isAuthenticated, calculateCallCost);
+  });
+
+  /* COMMENTED OUT - OLD BROKEN SYNC FUNCTION
   app.post("/api/sync-calls", isAuthenticated, async (req: any, res) => {
     console.log("=== SYNC CALLS REQUEST STARTED ===");
     try {
@@ -5467,72 +5472,84 @@ Generate the complete prompt now:`;
       let totalSynced = 0;
       let totalErrors = 0;
       
-      for (const agent of agents) {
-        try {
-          console.log(`\n--- Syncing agent: ${agent.name} (${agent.elevenLabsAgentId}) ---`);
-          
-          // Get conversations for this agent with automatic retry
-          const conversationsResult = await client.getConversations({
-            agent_id: agent.elevenLabsAgentId,
-            page_size: 100
-          });
-          
-          if (!conversationsResult.success) {
-            console.error(`Failed to fetch conversations for agent ${agent.name}:`, conversationsResult.error);
-            totalErrors++;
-            continue;
-          }
-          
-          const conversations = conversationsResult.data;
-          
-          console.log(`API response:`, conversations);
-          console.log(`Found ${conversations.conversations?.length || 0} conversations for agent ${agent.name}`);
-          
-          for (const conversation of conversations.conversations || []) {
+      // Process agents in parallel batches
+      const AGENT_BATCH_SIZE = 3; // Process 3 agents at a time
+      const CONVERSATION_BATCH_SIZE = 10; // Process 10 conversations at a time
+      
+      for (let i = 0; i < agents.length; i += AGENT_BATCH_SIZE) {
+        const agentBatch = agents.slice(i, i + AGENT_BATCH_SIZE);
+        
+        await Promise.allSettled(
+          agentBatch.map(async (agent) => {
             try {
-              console.log(`\n  Processing conversation: ${conversation.conversation_id}`);
+              console.log(`\n--- Syncing agent: ${agent.name} (${agent.elevenLabsAgentId}) ---`);
               
-              // Check if we already have this call log
-              const existing = await storage.getCallLogByElevenLabsId(conversation.conversation_id, user.organizationId);
-              if (existing) {
-                console.log(`  Conversation ${conversation.conversation_id} already exists, skipping`);
-                continue;
-              }
-              
-              console.log(`  Fetching details for conversation: ${conversation.conversation_id}`);
-              
-              // Get detailed conversation data with retry logic
-              const detailsResult = await client.getConversation(conversation.conversation_id);
-              
-              if (!detailsResult.success) {
-                console.error(`  Failed to fetch conversation details:`, detailsResult.error);
-                continue;
-              }
-              
-              const details = detailsResult.data;
-              
-              console.log(`  Conversation details received:`, {
-                id: details.conversation_id || details.id,
-                duration: details.call_duration_secs,
-                hasTranscript: !!details.transcript,
-                transcriptLength: details.transcript?.length || 0,
-                transcriptType: typeof details.transcript,
-                transcriptSample: typeof details.transcript === 'string' ? details.transcript.substring(0, 200) : JSON.stringify(details.transcript).substring(0, 200),
-                hasAudio: !!(details.audio_url || details.recording_url || details.audio || details.media_url)
+              // Get conversations for this agent with automatic retry
+              const conversationsResult = await client.getConversations({
+                agent_id: agent.elevenLabsAgentId,
+                page_size: 100
               });
               
-              // Try to get audio URL from the conversation details
-              let audioUrl = "";
-              
-              // Check for audio in the response
-              if (details.audio_url) {
-                audioUrl = details.audio_url;
-              } else if (details.recording_url) {
-                audioUrl = details.recording_url;
-              } else if (details.recordings && details.recordings.length > 0) {
-                // Sometimes recordings are in an array
-                audioUrl = details.recordings[0].url || details.recordings[0].recording_url || "";
+              if (!conversationsResult.success) {
+                console.error(`Failed to fetch conversations for agent ${agent.name}:`, conversationsResult.error);
+                totalErrors++;
+                return;
               }
+              
+              const conversations = conversationsResult.data;
+              console.log(`Found ${conversations.conversations?.length || 0} conversations for agent ${agent.name}`);
+              
+              // Filter out existing conversations first to avoid unnecessary API calls
+              const conversationsToSync = [];
+              for (const conversation of conversations.conversations || []) {
+                const existing = await storage.getCallLogByElevenLabsId(conversation.conversation_id, user.organizationId);
+                if (!existing) {
+                  conversationsToSync.push(conversation);
+                } else {
+                  console.log(`  Conversation ${conversation.conversation_id} already exists, skipping`);
+                }
+              }
+              
+              console.log(`  ${conversationsToSync.length} new conversations to sync for agent ${agent.name}`);
+              
+              // Process conversations in parallel batches
+              for (let j = 0; j < conversationsToSync.length; j += CONVERSATION_BATCH_SIZE) {
+                const convBatch = conversationsToSync.slice(j, j + CONVERSATION_BATCH_SIZE);
+                
+                const batchResults = await Promise.allSettled(
+                  convBatch.map(async (conversation) => {
+                    try {
+                      console.log(`  Fetching details for conversation: ${conversation.conversation_id}`);
+                      
+                      // Get detailed conversation data with retry logic
+                      const detailsResult = await client.getConversation(conversation.conversation_id);
+                      
+                      if (!detailsResult.success) {
+                        console.error(`  Failed to fetch conversation details:`, detailsResult.error);
+                        return null;
+                      }
+                      
+                      const details = detailsResult.data;
+                      
+                      console.log(`  Conversation details received:`, {
+                id: details.conversation_id || details.id,
+                        id: details.conversation_id || details.id,
+                        duration: details.call_duration_secs,
+                        hasTranscript: !!details.transcript
+                      });
+                      
+                      // Try to get audio URL from the conversation details
+                      let audioUrl = "";
+                      
+                      // Check for audio in the response
+                      if (details.audio_url) {
+                        audioUrl = details.audio_url;
+                      } else if (details.recording_url) {
+                        audioUrl = details.recording_url;
+                      } else if (details.recordings && details.recordings.length > 0) {
+                        // Sometimes recordings are in an array
+                        audioUrl = details.recordings[0].url || details.recordings[0].recording_url || "";
+                      }
               
               // If no direct audio URL, use our proxy endpoint
               if (!audioUrl && conversation.conversation_id) {
@@ -5666,6 +5683,7 @@ Generate the complete prompt now:`;
       res.status(500).json({ message: `Failed to sync calls: ${error.message}` });
     }
   });
+  END OF COMMENTED OUT SECTION */
 
   // Audio proxy endpoint for ElevenLabs recordings
   app.get("/api/audio/:conversationId", isAuthenticated, async (req: any, res) => {
