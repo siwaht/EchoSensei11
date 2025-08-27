@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Phone, Clock, DollarSign, Bot, PhoneCall, MessageSquare, AlertCircle, RefreshCw, BarChart3, TrendingUp, Activity, HelpCircle } from "lucide-react";
+import { Phone, Clock, DollarSign, Bot, PhoneCall, MessageSquare, AlertCircle, RefreshCw, BarChart3, TrendingUp, Activity, HelpCircle, CheckCircle, XCircle, FileText } from "lucide-react";
 import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -717,6 +717,11 @@ export default function Dashboard() {
     queryKey: ["/api/agents"],
   });
 
+  // Fetch pending approvals for current user
+  const { data: pendingApprovals = [] } = useQuery<any[]>({
+    queryKey: ["/api/user/pending-approvals"],
+  });
+
   // Sync mutation
   const syncMutation = useMutation({
     mutationFn: async () => {
@@ -822,6 +827,77 @@ export default function Dashboard() {
               <p className="text-sm text-yellow-700 dark:text-yellow-300">
                 Click the "Sync with ElevenLabs" button above to fetch your latest call data and ensure all metrics are accurate.
               </p>
+            </div>
+          </div>
+        </Card>
+      )}
+      
+      {/* Pending Approvals Section */}
+      {pendingApprovals.length > 0 && (
+        <Card className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 border-orange-200 dark:border-orange-800">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-orange-900 dark:text-orange-100">
+                  Pending Approvals ({pendingApprovals.length})
+                </h3>
+                <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                  Awaiting Review
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                {pendingApprovals.slice(0, 3).map((task: any) => (
+                  <div key={task.id} className="p-3 bg-white dark:bg-gray-900 rounded-lg border border-orange-200 dark:border-orange-800">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {task.type === 'approval' && <CheckCircle className="h-4 w-4 text-orange-500" />}
+                          {task.type === 'review' && <FileText className="h-4 w-4 text-blue-500" />}
+                          {task.type === 'action' && <AlertCircle className="h-4 w-4 text-yellow-500" />}
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {task.title}
+                          </h4>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                          {task.description}
+                        </p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            Type: {task.relatedEntityType}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            Priority: <span className={`font-medium ${
+                              task.priority === 'urgent' ? 'text-red-600' :
+                              task.priority === 'high' ? 'text-orange-600' :
+                              task.priority === 'medium' ? 'text-yellow-600' :
+                              'text-green-600'
+                            }`}>{task.priority}</span>
+                          </span>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="text-xs shrink-0">
+                        Pending
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+                {pendingApprovals.length > 3 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center pt-1">
+                    +{pendingApprovals.length - 3} more pending approval{pendingApprovals.length - 3 > 1 ? 's' : ''}
+                  </p>
+                )}
+                <div className="pt-2 text-center">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="text-orange-600 border-orange-300 hover:bg-orange-50 dark:text-orange-400 dark:border-orange-700 dark:hover:bg-orange-950"
+                    onClick={() => setLocation('/admin')}
+                  >
+                    View All in Admin Panel
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </Card>

@@ -1068,6 +1068,26 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // User tasks - Get pending approval tasks for current user
+  app.get('/api/user/pending-approvals', isAuthenticated, async (req: any, res) => {
+    try {
+      // Get all pending tasks
+      const allTasks = await storage.getAdminTasks("pending");
+      
+      // Filter tasks created by or related to the current user
+      const userTasks = allTasks.filter(task => 
+        task.createdBy === req.user.id || 
+        task.metadata?.userId === req.user.id ||
+        task.metadata?.requestedBy === req.user.id
+      );
+      
+      res.json(userTasks);
+    } catch (error) {
+      console.error("Error fetching user pending approvals:", error);
+      res.status(500).json({ message: "Failed to fetch pending approvals" });
+    }
+  });
+
   // Quick Action Buttons routes - Users (for their own buttons)
   app.get('/api/quick-action-buttons', isAuthenticated, async (req: any, res) => {
     try {
