@@ -6,10 +6,10 @@ import * as schema from "@shared/schema";
 neonConfig.webSocketConstructor = ws;
 
 let pool: Pool | null = null;
-let db: ReturnType<typeof drizzle> | null = null;
+let database: ReturnType<typeof drizzle> | null = null;
 
 function getDatabaseConnection() {
-  if (!db) {
+  if (!database) {
     if (!process.env.DATABASE_URL) {
       throw new Error(
         "DATABASE_URL must be set. Did you forget to provision a database?",
@@ -25,11 +25,11 @@ function getDatabaseConnection() {
       allowExitOnIdle: true
     });
 
-    db = drizzle({ client: pool, schema });
+    database = drizzle({ client: pool, schema });
   }
   
-  return db;
+  return database;
 }
 
-// Export a proxy that lazy-loads the database connection
-export { getDatabaseConnection as db };
+// Export the function that lazy-loads the database connection
+export const db = getDatabaseConnection;
