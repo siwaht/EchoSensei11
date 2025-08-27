@@ -5621,7 +5621,7 @@ Generate the complete prompt now:`;
                 conversationId: conversation.conversation_id, // Add missing conversationId field
                 elevenLabsCallId: conversation.conversation_id,
                 duration: details.call_duration_secs || conversation.call_duration_secs || 0,
-                transcript: transcriptJson, // Use proper JSON array instead of string
+                transcript: JSON.parse(JSON.stringify(transcriptJson)), // Ensure proper JSON serialization
                 audioUrl: audioUrl || "",
                 cost: calculateCallCost(
                   details.call_duration_secs || conversation.call_duration_secs || 0,

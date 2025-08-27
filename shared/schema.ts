@@ -394,7 +394,7 @@ export const callLogs = pgTable("call_logs", {
   agentId: varchar("agent_id").notNull(),
   elevenLabsCallId: varchar("eleven_labs_call_id"),
   duration: integer("duration"), // in seconds
-  transcript: text("transcript"),
+  transcript: json("transcript"),
   audioUrl: varchar("audio_url"),
   cost: decimal("cost", { precision: 10, scale: 4 }),
   status: varchar("status").notNull().default("completed"), // completed, failed, in_progress
