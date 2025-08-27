@@ -21,8 +21,7 @@ import {
   PhoneOutgoing,
   Wrench,
   MessageSquare,
-  Brain,
-  AppWindow
+  Brain
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +33,6 @@ const navigation = [
   { name: "Outbound Calling", href: "/outbound-calling", icon: PhoneOutgoing },
   { name: "Tools", href: "/tools", icon: Wrench },
   { name: "RAG System", href: "/knowledge-base", icon: Brain },
-  { name: "Widget", href: "/widget", icon: AppWindow },
   { name: "Playground", href: "/playground", icon: FlaskConical },
   { name: "Call History", href: "/history", icon: History },
   { name: "Integrations", href: "/integrations", icon: Plug },
@@ -85,9 +83,6 @@ export default function AppShell({ children }: AppShellProps) {
     
     // Check for knowledge base route (RAG system)
     if (location === "/knowledge-base") return "RAG System";
-    
-    // Check for widget route
-    if (location === "/widget") return "Widget Configuration";
     
     // Check for agent settings route
     if (location.startsWith("/agents/") && location.includes("/settings")) return "Agent Settings";
