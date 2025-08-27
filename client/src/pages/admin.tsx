@@ -198,20 +198,25 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-6">
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="organizations">Organizations</TabsTrigger>
-          <TabsTrigger value="billing">Billing Overview</TabsTrigger>
-          <TabsTrigger value="approval-tasks">
-            <Shield className="w-4 h-4 mr-1" />
-            Approvals
+        <TabsList className="w-full flex flex-wrap justify-start gap-2 h-auto p-1">
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            User Management
           </TabsTrigger>
-          <TabsTrigger value="quick-actions">
-            <Sparkles className="w-4 h-4 mr-1" />
-            Quick Actions
+          <TabsTrigger value="billing" className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4" />
+            Billing & Packages
           </TabsTrigger>
-          <TabsTrigger value="api-sync">
-            <Activity className="w-4 h-4 mr-1" />
+          <TabsTrigger value="organizations" className="flex items-center gap-2">
+            <Building2 className="w-4 h-4" />
+            Organizations
+          </TabsTrigger>
+          <TabsTrigger value="approval-tasks" className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            Approval Tasks
+          </TabsTrigger>
+          <TabsTrigger value="api-sync" className="flex items-center gap-2">
+            <Activity className="w-4 h-4" />
             API Sync
           </TabsTrigger>
         </TabsList>
