@@ -26,7 +26,7 @@ async function callElevenLabsAPI(apiKey: string, endpoint: string, method = "GET
   };
 
   const url = `https://api.elevenlabs.io${endpoint}`;
-  console.log(`Calling ElevenLabs API: ${method} ${url}`);
+  // Removed verbose logging to prevent console spill over
 
   const response = await fetch(url, {
     method,
@@ -1516,11 +1516,9 @@ export function registerRoutes(app: Express): Server {
       const { createElevenLabsClient } = await import("./services/elevenlabs");
       const client = createElevenLabsClient(integration.apiKey);
       
-      console.log("Testing ElevenLabs API connection...");
       const userResult = await client.getUser();
       
       if (userResult.success && userResult.data) {
-        console.log("ElevenLabs user data retrieved:", userResult.data);
         await storage.updateIntegrationStatus(integration.id, "ACTIVE", new Date());
         
         res.json({ 
