@@ -5597,12 +5597,31 @@ Generate the complete prompt now:`;
               }
               
               // Create call log with proper field mapping including timestamp
+              // Parse the formatted transcript to proper JSON array
+              let transcriptJson: any = [];
+              if (formattedTranscript) {
+                try {
+                  const lines = formattedTranscript.split('\n').filter(line => line.trim());
+                  transcriptJson = lines.map(line => {
+                    try {
+                      return JSON.parse(line);
+                    } catch {
+                      return { role: 'system', message: line };
+                    }
+                  });
+                } catch (e) {
+                  console.error("Error parsing transcript to JSON:", e);
+                  transcriptJson = [{ role: 'system', message: formattedTranscript }];
+                }
+              }
+
               const callData = {
                 organizationId: user.organizationId,
                 agentId: agent.id,
+                conversationId: conversation.conversation_id, // Add missing conversationId field
                 elevenLabsCallId: conversation.conversation_id,
                 duration: details.call_duration_secs || conversation.call_duration_secs || 0,
-                transcript: formattedTranscript || "",
+                transcript: transcriptJson, // Use proper JSON array instead of string
                 audioUrl: audioUrl || "",
                 cost: calculateCallCost(
                   details.call_duration_secs || conversation.call_duration_secs || 0,
