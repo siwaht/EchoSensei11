@@ -145,12 +145,12 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
               </div>
               
               <div
-                className={`flex-1 ${
+                className={`flex-1 min-w-0 ${
                   msg.role === 'agent' ? 'mr-12' : 'ml-12'
                 }`}
               >
                 <div
-                  className={`p-3 rounded-lg ${
+                  className={`p-3 rounded-lg overflow-hidden ${
                     msg.role === 'agent'
                       ? 'bg-gray-700/50 border border-gray-600'
                       : 'bg-blue-900/30 border border-blue-800/50'
@@ -166,7 +166,7 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-200 whitespace-pre-wrap break-words">
+                  <p className="text-sm text-gray-200 whitespace-pre-wrap break-all">
                     {msg.message}
                   </p>
                 </div>
