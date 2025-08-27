@@ -11,6 +11,7 @@ import {
   batchCallRecipients,
   systemTemplates,
   quickActionButtons,
+  adminTasks,
   type User,
   type UpsertUser,
   type Organization,
@@ -34,6 +35,8 @@ import {
   type InsertSystemTemplate,
   type QuickActionButton,
   type InsertQuickActionButton,
+  type AdminTask,
+  type InsertAdminTask,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sum, avg, max, or } from "drizzle-orm";
@@ -53,7 +56,14 @@ export interface IStorage {
   getIntegration(organizationId: string, provider: string): Promise<Integration | undefined>;
   getAllIntegrations(): Promise<Integration[]>;
   upsertIntegration(integration: InsertIntegration): Promise<Integration>;
-  updateIntegrationStatus(id: string, status: "ACTIVE" | "INACTIVE" | "ERROR", lastTested?: Date): Promise<void>;
+  updateIntegrationStatus(id: string, status: "ACTIVE" | "INACTIVE" | "ERROR" | "PENDING_APPROVAL", lastTested?: Date): Promise<void>;
+  
+  // Admin task operations
+  createAdminTask(task: InsertAdminTask): Promise<AdminTask>;
+  getAdminTasks(status?: "pending" | "in_progress" | "completed" | "rejected"): Promise<AdminTask[]>;
+  getAdminTask(id: string): Promise<AdminTask | undefined>;
+  updateAdminTask(id: string, updates: Partial<AdminTask>): Promise<AdminTask>;
+  completeApprovalTask(taskId: string, adminId: string): Promise<void>;
 
   // Agent operations
   getAgents(organizationId: string): Promise<Agent[]>;
@@ -255,7 +265,7 @@ export class DatabaseStorage implements IStorage {
     return integration;
   }
 
-  async updateIntegrationStatus(id: string, status: "ACTIVE" | "INACTIVE" | "ERROR", lastTested?: Date): Promise<void> {
+  async updateIntegrationStatus(id: string, status: "ACTIVE" | "INACTIVE" | "ERROR" | "PENDING_APPROVAL", lastTested?: Date): Promise<void> {
     await db()
       .update(integrations)
       .set({
@@ -769,6 +779,57 @@ export class DatabaseStorage implements IStorage {
 
   async deleteQuickActionButton(id: string): Promise<void> {
     await db().delete(quickActionButtons).where(eq(quickActionButtons.id, id));
+  }
+
+  // Admin task operations
+  async createAdminTask(task: InsertAdminTask): Promise<AdminTask> {
+    const [adminTask] = await db().insert(adminTasks).values(task).returning();
+    return adminTask;
+  }
+
+  async getAdminTasks(status?: "pending" | "in_progress" | "completed" | "rejected"): Promise<AdminTask[]> {
+    if (status) {
+      return db().select().from(adminTasks).where(eq(adminTasks.status, status));
+    }
+    return db().select().from(adminTasks).orderBy(desc(adminTasks.createdAt));
+  }
+
+  async getAdminTask(id: string): Promise<AdminTask | undefined> {
+    const [task] = await db().select().from(adminTasks).where(eq(adminTasks.id, id));
+    return task;
+  }
+
+  async updateAdminTask(id: string, updates: Partial<AdminTask>): Promise<AdminTask> {
+    const [task] = await db()
+      .update(adminTasks)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(adminTasks.id, id))
+      .returning();
+    return task;
+  }
+
+  async completeApprovalTask(taskId: string, adminId: string): Promise<void> {
+    // Get the task
+    const task = await this.getAdminTask(taskId);
+    if (!task) {
+      throw new Error("Task not found");
+    }
+
+    // Update the task status
+    await this.updateAdminTask(taskId, {
+      status: "completed",
+      approvedBy: adminId,
+      completedAt: new Date(),
+    });
+
+    // Update the related entity based on type
+    if (task.relatedEntityType === "integration") {
+      await this.updateIntegrationStatus(task.relatedEntityId, "ACTIVE");
+    }
+    // Add more entity types as needed (webhook, agent, etc.)
   }
 }
 

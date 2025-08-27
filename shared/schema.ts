@@ -67,7 +67,7 @@ export const organizations = pgTable("organizations", {
 });
 
 // Integration status enum
-export const integrationStatusEnum = pgEnum("integration_status", ["ACTIVE", "INACTIVE", "ERROR"]);
+export const integrationStatusEnum = pgEnum("integration_status", ["ACTIVE", "INACTIVE", "ERROR", "PENDING_APPROVAL"]);
 
 // Phone number provider enum
 export const phoneProviderEnum = pgEnum("phone_provider", ["twilio", "sip_trunk"]);
@@ -75,13 +75,19 @@ export const phoneProviderEnum = pgEnum("phone_provider", ["twilio", "sip_trunk"
 // Phone number status enum  
 export const phoneStatusEnum = pgEnum("phone_status", ["active", "inactive", "pending"]);
 
+// Task status enum
+export const taskStatusEnum = pgEnum("task_status", ["pending", "in_progress", "completed", "rejected"]);
+
+// Task type enum
+export const taskTypeEnum = pgEnum("task_type", ["integration_approval", "webhook_approval", "agent_approval"]);
+
 // Integrations table for storing API keys
 export const integrations = pgTable("integrations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id").notNull(),
   provider: varchar("provider").notNull(), // 'elevenlabs'
   apiKey: varchar("api_key").notNull(), // encrypted
-  status: integrationStatusEnum("status").notNull().default("INACTIVE"),
+  status: integrationStatusEnum("status").notNull().default("PENDING_APPROVAL"),
   lastTested: timestamp("last_tested"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -89,6 +95,25 @@ export const integrations = pgTable("integrations", {
   // Unique constraint on organizationId and provider for upsert operations
   uniqueOrgProvider: unique("unique_org_provider").on(table.organizationId, table.provider),
 }));
+
+// Admin tasks table for tracking approvals
+export const adminTasks = pgTable("admin_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: taskTypeEnum("type").notNull(),
+  status: taskStatusEnum("status").notNull().default("pending"),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  relatedEntityId: varchar("related_entity_id").notNull(), // ID of integration/webhook/agent
+  relatedEntityType: varchar("related_entity_type").notNull(), // 'integration', 'webhook', 'agent'
+  organizationId: varchar("organization_id").notNull(),
+  requestedBy: varchar("requested_by").notNull(), // User ID who requested
+  approvedBy: varchar("approved_by"), // Admin ID who approved
+  rejectedBy: varchar("rejected_by"), // Admin ID who rejected
+  metadata: json("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
 // Phone numbers table
 export const phoneNumbers = pgTable("phone_numbers", {
@@ -555,6 +580,12 @@ export const insertSystemTemplateSchema = createInsertSchema(systemTemplates).om
   updatedAt: true,
 });
 
+export const insertAdminTaskSchema = createInsertSchema(adminTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertQuickActionButtonSchema = createInsertSchema(quickActionButtons).omit({
   id: true,
   createdAt: true,
@@ -633,3 +664,5 @@ export type QuickActionButton = typeof quickActionButtons.$inferSelect;
 export type InsertQuickActionButton = z.infer<typeof insertQuickActionButtonSchema>;
 export type GoogleOAuthToken = typeof googleOAuthTokens.$inferSelect;
 export type InsertGoogleOAuthToken = z.infer<typeof insertGoogleOAuthTokenSchema>;
+export type AdminTask = typeof adminTasks.$inferSelect;
+export type InsertAdminTask = z.infer<typeof insertAdminTaskSchema>;

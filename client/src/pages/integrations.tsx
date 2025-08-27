@@ -109,6 +109,13 @@ export default function Integrations() {
             Disconnected
           </Badge>
         );
+      case "PENDING_APPROVAL":
+        return (
+          <Badge className="bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" data-testid="badge-status-pending">
+            <AlertCircle className="w-4 h-4 mr-2" />
+            Pending Approval
+          </Badge>
+        );
       case "INACTIVE":
         return (
           <Badge className="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200" data-testid="badge-status-inactive">
@@ -147,6 +154,31 @@ export default function Integrations() {
         </p>
       </div>
       
+      {/* Pending Approval Alert */}
+      {(integration as any)?.status === "PENDING_APPROVAL" && (
+        <Card className="p-4 sm:p-6 bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+          <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            Integration Pending Approval
+          </h3>
+          <p className="text-sm text-muted-foreground mb-3">
+            Your ElevenLabs integration has been submitted and is waiting for administrator approval.
+          </p>
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>Once approved by the administrator, you will be able to:</p>
+            <ul className="list-disc list-inside space-y-1 pl-2">
+              <li>Create and manage voice AI agents</li>
+              <li>Access voice call recordings and transcripts</li>
+              <li>Configure webhook tools and integrations</li>
+              <li>Monitor agent performance and analytics</li>
+            </ul>
+            <p className="text-xs italic mt-3">
+              You will be notified once the administrator has reviewed your integration request.
+            </p>
+          </div>
+        </Card>
+      )}
+
       {/* Disconnection Alert - Show when connection is lost */}
       {(integration as any)?.status === "ERROR" && (
         <Card className="p-4 sm:p-6 bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
@@ -188,7 +220,7 @@ export default function Integrations() {
       )}
 
       {/* Step-by-step Guide - Show guide when not configured or inactive */}
-      {(!(integration as any)?.status || ((integration as any)?.status !== "ACTIVE" && (integration as any)?.status !== "ERROR")) ? (
+      {(!(integration as any)?.status || ((integration as any)?.status !== "ACTIVE" && (integration as any)?.status !== "ERROR" && (integration as any)?.status !== "PENDING_APPROVAL")) ? (
         <Card className="p-4 sm:p-6 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
           <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
             <HelpCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -246,6 +278,7 @@ export default function Integrations() {
             <p className="font-medium" data-testid="text-api-key-status">
               {(integration as any)?.status === "ACTIVE" ? "Active" : 
                (integration as any)?.status === "ERROR" ? "Disconnected - Reconnect Required" : 
+               (integration as any)?.status === "PENDING_APPROVAL" ? "Awaiting Admin Approval" :
                (integration as any)?.status === "INACTIVE" ? "Inactive" : "Not Configured"}
             </p>
           </div>
@@ -264,15 +297,17 @@ export default function Integrations() {
               {(integration as any)?.status === "ACTIVE" && (integration as any)?.createdAt 
                 ? new Date((integration as any).createdAt).toLocaleDateString()
                 : (integration as any)?.status === "ERROR" ? "Disconnected" 
+                : (integration as any)?.status === "PENDING_APPROVAL" ? "Pending Approval"
                 : "Not connected"
               }
             </p>
           </div>
           <div>
             <p className="text-gray-600 dark:text-gray-400">Webhook Status:</p>
-            <p className={`font-medium ${(integration as any)?.status === "ACTIVE" ? "text-green-600" : (integration as any)?.status === "ERROR" ? "text-red-600" : "text-gray-600"}`} data-testid="text-webhook-status">
+            <p className={`font-medium ${(integration as any)?.status === "ACTIVE" ? "text-green-600" : (integration as any)?.status === "ERROR" ? "text-red-600" : (integration as any)?.status === "PENDING_APPROVAL" ? "text-amber-600" : "text-gray-600"}`} data-testid="text-webhook-status">
               {(integration as any)?.status === "ACTIVE" ? "Receiving data" : 
-               (integration as any)?.status === "ERROR" ? "Connection lost" : "Not configured"}
+               (integration as any)?.status === "ERROR" ? "Connection lost" : 
+               (integration as any)?.status === "PENDING_APPROVAL" ? "Awaiting Approval" : "Not configured"}
             </p>
           </div>
         </div>

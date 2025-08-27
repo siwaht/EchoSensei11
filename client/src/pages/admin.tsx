@@ -16,6 +16,7 @@ import { Users, Building2, DollarSign, Edit, Trash2, Plus, Shield, Phone, Sparkl
 import type { User, Organization, BillingPackage } from "@shared/schema";
 import AdminQuickActions from "./admin-quick-actions";
 import ApiSync from "./admin/api-sync";
+import ApprovalTasks from "./admin/approval-tasks";
 
 interface BillingData {
   totalUsers: number;
@@ -197,10 +198,14 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-6">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="organizations">Organizations</TabsTrigger>
           <TabsTrigger value="billing">Billing Overview</TabsTrigger>
+          <TabsTrigger value="approval-tasks">
+            <Shield className="w-4 h-4 mr-1" />
+            Approvals
+          </TabsTrigger>
           <TabsTrigger value="quick-actions">
             <Sparkles className="w-4 h-4 mr-1" />
             Quick Actions
@@ -483,6 +488,11 @@ export default function AdminDashboard() {
         {/* Quick Actions Tab */}
         <TabsContent value="quick-actions" className="space-y-4">
           <AdminQuickActions />
+        </TabsContent>
+
+        {/* Approval Tasks Tab */}
+        <TabsContent value="approval-tasks" className="space-y-4">
+          <ApprovalTasks />
         </TabsContent>
 
         {/* API Sync Tab */}

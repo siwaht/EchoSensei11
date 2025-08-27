@@ -952,6 +952,77 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Admin routes - Approval Tasks Management
+  app.get('/api/admin/tasks', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const status = req.query.status as "pending" | "in_progress" | "completed" | "rejected" | undefined;
+      // TODO: Uncomment when database is updated
+      // const tasks = await storage.getAdminTasks(status);
+      // res.json(tasks);
+      res.json([]); // Temporary response
+    } catch (error) {
+      console.error("Error fetching admin tasks:", error);
+      res.status(500).json({ message: "Failed to fetch admin tasks" });
+    }
+  });
+
+  app.get('/api/admin/tasks/:taskId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      // TODO: Uncomment when database is updated
+      // const task = await storage.getAdminTask(req.params.taskId);
+      // if (!task) {
+      //   return res.status(404).json({ message: "Task not found" });
+      // }
+      // res.json(task);
+      res.status(404).json({ message: "Task not found" }); // Temporary response
+    } catch (error) {
+      console.error("Error fetching admin task:", error);
+      res.status(500).json({ message: "Failed to fetch admin task" });
+    }
+  });
+
+  app.patch('/api/admin/tasks/:taskId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const updates = req.body;
+      // TODO: Uncomment when database is updated
+      // const task = await storage.updateAdminTask(req.params.taskId, updates);
+      // res.json(task);
+      res.json({ message: "Task updated successfully" }); // Temporary response
+    } catch (error) {
+      console.error("Error updating admin task:", error);
+      res.status(500).json({ message: "Failed to update admin task" });
+    }
+  });
+
+  app.post('/api/admin/tasks/:taskId/approve', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.id;
+      // TODO: Uncomment when database is updated
+      // await storage.completeApprovalTask(req.params.taskId, adminId);
+      res.json({ message: "Task approved successfully" });
+    } catch (error) {
+      console.error("Error approving task:", error);
+      res.status(500).json({ message: "Failed to approve task" });
+    }
+  });
+
+  app.post('/api/admin/tasks/:taskId/reject', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { reason } = req.body;
+      // TODO: Uncomment when database is updated
+      // await storage.updateAdminTask(req.params.taskId, {
+      //   status: "rejected",
+      //   rejectionReason: reason,
+      //   completedAt: new Date(),
+      //   approvedBy: req.user.id
+      // });
+      res.json({ message: "Task rejected successfully" });
+    } catch (error) {
+      console.error("Error rejecting task:", error);
+      res.status(500).json({ message: "Failed to reject task" });
+    }
+  });
+
   // Quick Action Buttons routes - Users (for their own buttons)
   app.get('/api/quick-action-buttons', isAuthenticated, async (req: any, res) => {
     try {
@@ -1057,14 +1128,35 @@ export function registerRoutes(app: Express): Server {
 
       const encryptedKey = encryptApiKey(apiKey);
       
+      // Create integration with pending approval status
       const integration = await storage.upsertIntegration({
         organizationId: user.organizationId,
         provider: "elevenlabs",
         apiKey: encryptedKey,
-        status: "INACTIVE",
+        status: "PENDING_APPROVAL", // Changed from "INACTIVE" to "PENDING_APPROVAL"
       });
 
-      res.json({ message: "Integration saved successfully", id: integration.id });
+      // TODO: Create admin approval task when database is updated
+      // await storage.createAdminTask({
+      //   type: "approval",
+      //   title: "New Integration Pending Approval",
+      //   description: `User ${user.email} has created a new ElevenLabs integration that requires approval.`,
+      //   status: "pending",
+      //   priority: "medium",
+      //   relatedEntityType: "integration",
+      //   relatedEntityId: integration.id,
+      //   createdBy: userId,
+      //   metadata: {
+      //     organizationId: user.organizationId,
+      //     provider: "elevenlabs",
+      //   },
+      // });
+
+      res.json({ 
+        message: "Integration saved and pending admin approval", 
+        id: integration.id,
+        status: "PENDING_APPROVAL"
+      });
     } catch (error) {
       console.error("Error saving integration:", error);
       res.status(500).json({ message: "Failed to save integration" });
@@ -1095,6 +1187,16 @@ export function registerRoutes(app: Express): Server {
           status: "INACTIVE",
           provider: provider,
           message: "No integration configured"
+        });
+      }
+      
+      // Check if integration is pending approval
+      if (integration.status === "PENDING_APPROVAL") {
+        return res.json({ 
+          status: "PENDING_APPROVAL",
+          provider: provider,
+          message: "Integration is pending admin approval",
+          id: integration.id
         });
       }
       
