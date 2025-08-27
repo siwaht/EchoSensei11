@@ -1252,20 +1252,6 @@ export default function Tools() {
                           data-testid="input-sheets-sheet-name"
                         />
                       </div>
-                      {testResults[webhook.id] && (
-                        <div className={`mt-3 p-3 rounded-md text-xs ${
-                          testResults[webhook.id].success 
-                            ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
-                            : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
-                        }`}>
-                          <p className="font-medium mb-1">
-                            {testResults[webhook.id].success ? '✓ Test Passed' : '✗ Test Failed'}
-                          </p>
-                          <pre className="whitespace-pre-wrap break-all font-mono text-xs opacity-90">
-                            {testResults[webhook.id].message}
-                          </pre>
-                        </div>
-                      )}
                     </div>
 
                     <GoogleAuthButton
@@ -1449,20 +1435,6 @@ export default function Tools() {
                           </ol>
                         </div>
                       </div>
-                      {testResults[webhook.id] && (
-                        <div className={`mt-3 p-3 rounded-md text-xs ${
-                          testResults[webhook.id].success 
-                            ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
-                            : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
-                        }`}>
-                          <p className="font-medium mb-1">
-                            {testResults[webhook.id].success ? '✓ Test Passed' : '✗ Test Failed'}
-                          </p>
-                          <pre className="whitespace-pre-wrap break-all font-mono text-xs opacity-90">
-                            {testResults[webhook.id].message}
-                          </pre>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -1594,20 +1566,6 @@ export default function Tools() {
                           </ol>
                         </div>
                       </div>
-                      {testResults[webhook.id] && (
-                        <div className={`mt-3 p-3 rounded-md text-xs ${
-                          testResults[webhook.id].success 
-                            ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
-                            : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
-                        }`}>
-                          <p className="font-medium mb-1">
-                            {testResults[webhook.id].success ? '✓ Test Passed' : '✗ Test Failed'}
-                          </p>
-                          <pre className="whitespace-pre-wrap break-all font-mono text-xs opacity-90">
-                            {testResults[webhook.id].message}
-                          </pre>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
