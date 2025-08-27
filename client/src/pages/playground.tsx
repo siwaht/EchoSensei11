@@ -58,6 +58,7 @@ export default function Playground() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
+  const transcriptScrollRef = useRef<HTMLDivElement>(null);
   const audioQueueRef = useRef<string[]>([]);
   const isPlayingRef = useRef(false);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -75,9 +76,16 @@ export default function Playground() {
     retry: 1,
   });
 
-  // Auto-scroll transcript
+  // Auto-scroll transcript - updated to work properly with ScrollArea
   useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (transcript.length > 0 && transcriptScrollRef.current) {
+      // Find the viewport element inside ScrollArea
+      const viewport = transcriptScrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        // Scroll to bottom of the viewport
+        viewport.scrollTop = viewport.scrollHeight;
+      }
+    }
   }, [transcript]);
 
   // Cleanup on unmount
@@ -923,7 +931,7 @@ export default function Playground() {
               <div className="p-3 border-b bg-gradient-to-r from-muted/30 to-muted/50">
                 <h4 className="text-sm font-medium">Call Transcript</h4>
               </div>
-              <ScrollArea className="h-48">
+              <ScrollArea ref={transcriptScrollRef} className="h-64">
                 <div className="p-4 space-y-3">
                   {transcript.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
