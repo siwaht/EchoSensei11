@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { User, Organization, BillingPackage } from "@shared/schema";
 import ApiSync from "./admin/api-sync";
+import ApprovalTasks from "./admin/approval-tasks";
 
 interface BillingData {
   totalUsers: number;
@@ -322,7 +323,7 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="w-full flex flex-col lg:grid lg:grid-cols-5 gap-1 lg:gap-0 h-auto lg:h-10">
+        <TabsList className="w-full flex flex-col lg:grid lg:grid-cols-6 gap-1 lg:gap-0 h-auto lg:h-10">
           <TabsTrigger value="users" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
             <Users className="w-4 h-4 mr-2 flex-shrink-0" />
             <span className="hidden xl:inline">User Management</span>
@@ -342,6 +343,11 @@ export default function AdminDashboard() {
             <Wallet className="w-4 h-4 mr-2 flex-shrink-0" />
             <span className="hidden xl:inline">Payment Gateways</span>
             <span className="xl:hidden">Payments</span>
+          </TabsTrigger>
+          <TabsTrigger value="approval-tasks" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
+            <CheckCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="hidden xl:inline">Approval Tasks</span>
+            <span className="xl:hidden">Approvals</span>
           </TabsTrigger>
           <TabsTrigger value="api-sync" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
             <RefreshCw className="w-4 h-4 mr-2 flex-shrink-0" />
@@ -1028,6 +1034,11 @@ export default function AdminDashboard() {
               </div>
             )}
           </Card>
+        </TabsContent>
+
+        {/* Approval Tasks Tab */}
+        <TabsContent value="approval-tasks" className="space-y-4">
+          <ApprovalTasks />
         </TabsContent>
 
         {/* API Sync Tab */}
