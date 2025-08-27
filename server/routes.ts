@@ -1016,34 +1016,36 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ message: "No integration found" });
       }
 
-      const apiKey = decryptApiKey(integration.apiKey);
+      // Use the new ElevenLabs service for better error handling and retries
+      const { createElevenLabsClient } = await import("./services/elevenlabs");
+      const client = createElevenLabsClient(integration.apiKey);
       
-      try {
-        console.log("Testing ElevenLabs API connection...");
-        // Use the /v1/user endpoint to validate the API key
-        const userData = await callElevenLabsAPI(apiKey, "/v1/user", "GET", undefined, integration.id);
-        console.log("ElevenLabs user data retrieved:", userData);
-        
+      console.log("Testing ElevenLabs API connection...");
+      const userResult = await client.getUser();
+      
+      if (userResult.success && userResult.data) {
+        console.log("ElevenLabs user data retrieved:", userResult.data);
         await storage.updateIntegrationStatus(integration.id, "ACTIVE", new Date());
+        
         res.json({ 
           message: "Connection successful", 
           status: "ACTIVE",
-          subscription: userData.subscription || null
+          subscription: userResult.data.subscription || null
         });
-      } catch (error: any) {
-        console.error("ElevenLabs API test failed:", error.message);
+      } else {
+        console.error("ElevenLabs API test failed:", userResult.error);
         await storage.updateIntegrationStatus(integration.id, "ERROR", new Date());
         
-        // Return more specific error message
+        // Return more specific error message based on status code
         let errorMessage = "Connection failed";
-        if (error.message.includes("401") || error.message.includes("Unauthorized")) {
+        if (userResult.statusCode === 401) {
           errorMessage = "Invalid API key. Please check your ElevenLabs API key.";
-        } else if (error.message.includes("403") || error.message.includes("Forbidden")) {
+        } else if (userResult.statusCode === 403) {
           errorMessage = "Access forbidden. Your API key may not have the required permissions.";
-        } else if (error.message.includes("404")) {
+        } else if (userResult.statusCode === 404) {
           errorMessage = "ElevenLabs API endpoint not found. Please try again later.";
-        } else if (error.message) {
-          errorMessage = error.message;
+        } else if (userResult.error) {
+          errorMessage = userResult.error;
         }
         
         res.status(400).json({ 
@@ -4788,8 +4790,10 @@ Generate the complete prompt now:`;
       }
       console.log("Integration found, status:", integration.status);
 
-      const apiKey = decryptApiKey(integration.apiKey);
-      console.log("API key decrypted successfully");
+      // Use the improved ElevenLabs service with retry logic
+      const { createElevenLabsClient } = await import("./services/elevenlabs");
+      const client = createElevenLabsClient(integration.apiKey);
+      console.log("ElevenLabs client initialized with retry logic");
       
       const agents = await storage.getAgents(user.organizationId);
       console.log(`Found ${agents.length} agents to sync`);
@@ -4801,14 +4805,19 @@ Generate the complete prompt now:`;
         try {
           console.log(`\n--- Syncing agent: ${agent.name} (${agent.elevenLabsAgentId}) ---`);
           
-          // Get conversations for this agent
-          const conversations = await callElevenLabsAPI(
-            apiKey, 
-            `/v1/convai/conversations?agent_id=${agent.elevenLabsAgentId}&page_size=100`,
-            "GET",
-            undefined,
-            integration.id
-          );
+          // Get conversations for this agent with automatic retry
+          const conversationsResult = await client.getConversations({
+            agent_id: agent.elevenLabsAgentId,
+            page_size: 100
+          });
+          
+          if (!conversationsResult.success) {
+            console.error(`Failed to fetch conversations for agent ${agent.name}:`, conversationsResult.error);
+            totalErrors++;
+            continue;
+          }
+          
+          const conversations = conversationsResult.data;
           
           console.log(`API response:`, conversations);
           console.log(`Found ${conversations.conversations?.length || 0} conversations for agent ${agent.name}`);
@@ -4826,14 +4835,15 @@ Generate the complete prompt now:`;
               
               console.log(`  Fetching details for conversation: ${conversation.conversation_id}`);
               
-              // Get detailed conversation data
-              const details = await callElevenLabsAPI(
-                apiKey,
-                `/v1/convai/conversations/${conversation.conversation_id}`,
-                "GET",
-                undefined,
-                integration.id
-              );
+              // Get detailed conversation data with retry logic
+              const detailsResult = await client.getConversation(conversation.conversation_id);
+              
+              if (!detailsResult.success) {
+                console.error(`  Failed to fetch conversation details:`, detailsResult.error);
+                continue;
+              }
+              
+              const details = detailsResult.data;
               
               console.log(`  Conversation details received:`, {
                 id: details.conversation_id || details.id,
