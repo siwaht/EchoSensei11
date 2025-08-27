@@ -4,7 +4,16 @@
 
 VoiceAI Dashboard is a white-label, multi-tenant SaaS platform for managing and monitoring voice AI agents. The platform follows a "Bring Your Own Key" (BYOK) model where clients securely connect their VoiceAI API credentials to monitor call logs, agent performance, and usage analytics. The application provides comprehensive dashboards for tracking voice agent interactions, billing information, and system integrations. While the platform is powered by advanced voice AI technology, it operates as a fully branded solution where customers interact with the VoiceAI brand without awareness of the underlying infrastructure.
 
-### Recent Updates (August 26, 2025)
+### Recent Updates (August 27, 2025)
+- **Webhook Integration for Approval Tasks**: Implemented comprehensive webhook functionality for approval notifications
+- **Webhook Triggers Added**: Webhooks now fire automatically when approval tasks are created, approved, or rejected
+- **Webhook Management UI**: Added interface in admin panel to configure webhook endpoints, events, and custom headers
+- **Security Features**: Implemented webhook signature verification with HMAC-SHA256 for secure payload validation
+- **Event Types Supported**: task.created, task.approved, task.rejected, task.status_changed events
+- **Database Recovery**: Fixed critical database corruption issues and restored missing tables (admin_tasks, integrations, agents, call_logs)
+- **Testing Infrastructure**: Created sample approval tasks and test webhooks for verification
+
+### Previous Updates (August 26, 2025)
 - **RAG Query-Specific Response Fixed**: Completely resolved issue where RAG webhook was returning identical responses regardless of query
 - **Intelligent Content Extraction**: Implemented smart sentence extraction that analyzes query keywords to return only relevant portions of documents
 - **Confidence Threshold Optimization**: Adjusted vector search confidence thresholds to work effectively with limited training data

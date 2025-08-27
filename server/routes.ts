@@ -1044,6 +1044,17 @@ export function registerRoutes(app: Express): Server {
         completedAt: new Date(),
       });
       
+      // Trigger webhooks for task approval
+      await triggerApprovalWebhooks('task.approved', {
+        taskId: taskId,
+        taskType: task.type,
+        taskTitle: task.title,
+        organizationId: task.organizationId,
+        approvedBy: adminId,
+        approvedAt: new Date().toISOString(),
+        metadata: task.metadata
+      });
+      
       res.json({ message: "Task approved successfully" });
     } catch (error) {
       console.error("Error approving task:", error);
@@ -1054,13 +1065,43 @@ export function registerRoutes(app: Express): Server {
   app.post('/api/admin/tasks/:taskId/reject', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const { reason } = req.body;
-      // TODO: Uncomment when database is updated
-      // await storage.updateAdminTask(req.params.taskId, {
-      //   status: "rejected",
-      //   rejectionReason: reason,
-      //   completedAt: new Date(),
-      //   approvedBy: req.user.id
-      // });
+      const adminId = req.user.id;
+      const taskId = req.params.taskId;
+      
+      // Get the task before updating
+      const task = await storage.getAdminTask(taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      
+      // Update task status to rejected
+      await storage.updateAdminTask(taskId, {
+        status: "rejected",
+        rejectedBy: adminId,
+        completedAt: new Date(),
+        metadata: { ...task.metadata, rejectionReason: reason }
+      });
+      
+      // Handle rejection based on entity type
+      if (task.relatedEntityType === 'rag_configuration') {
+        // Reject the RAG configuration
+        await storage.updateRagConfiguration(task.relatedEntityId, {
+          approvalStatus: "REJECTED"
+        });
+      }
+      
+      // Trigger webhooks for task rejection
+      await triggerApprovalWebhooks('task.rejected', {
+        taskId: taskId,
+        taskType: task.type,
+        taskTitle: task.title,
+        organizationId: task.organizationId,
+        rejectedBy: adminId,
+        rejectedAt: new Date().toISOString(),
+        rejectionReason: reason,
+        metadata: task.metadata
+      });
+      
       res.json({ message: "Task rejected successfully" });
     } catch (error) {
       console.error("Error rejecting task:", error);
@@ -1378,21 +1419,32 @@ export function registerRoutes(app: Express): Server {
         status: "PENDING_APPROVAL", // Changed from "INACTIVE" to "PENDING_APPROVAL"
       });
 
-      // TODO: Create admin approval task when database is updated
-      // await storage.createAdminTask({
-      //   type: "approval",
-      //   title: "New Integration Pending Approval",
-      //   description: `User ${user.email} has created a new ElevenLabs integration that requires approval.`,
-      //   status: "pending",
-      //   priority: "medium",
-      //   relatedEntityType: "integration",
-      //   relatedEntityId: integration.id,
-      //   createdBy: userId,
-      //   metadata: {
-      //     organizationId: user.organizationId,
-      //     provider: "elevenlabs",
-      //   },
-      // });
+      // Create admin approval task
+      const newTask = await storage.createAdminTask({
+        type: "integration_approval",
+        title: "New Integration Pending Approval",
+        description: `User ${user.email} has created a new ElevenLabs integration that requires approval.`,
+        status: "pending",
+        relatedEntityType: "integration",
+        relatedEntityId: integration.id,
+        organizationId: user.organizationId,
+        requestedBy: userId,
+        metadata: {
+          userEmail: user.email,
+          integrationProvider: "elevenlabs",
+        },
+      });
+      
+      // Trigger webhooks for new task creation
+      await triggerApprovalWebhooks('task.created', {
+        taskId: newTask.id,
+        taskType: newTask.type,
+        taskTitle: newTask.title,
+        organizationId: newTask.organizationId,
+        createdBy: userId,
+        createdAt: new Date().toISOString(),
+        metadata: newTask.metadata
+      });
 
       res.json({ 
         message: "Integration saved and pending admin approval", 
@@ -4883,8 +4935,8 @@ Generate the complete prompt now:`;
         
         // Create approval task for admin
         const organization = await storage.getOrganization(organizationId);
-        await storage.createAdminTask({
-          type: "approval",
+        const newTask = await storage.createAdminTask({
+          type: "webhook_approval",
           status: "pending",
           title: "New RAG Configuration Approval",
           description: `RAG webhook configuration requires approval for organization: ${organization?.name || organizationId}`,
@@ -4905,6 +4957,17 @@ Generate the complete prompt now:`;
             systemPrompt: config.config?.systemPrompt || "",
             ragName: config.name || "Custom RAG",
           },
+        });
+        
+        // Trigger webhooks for new task creation
+        await triggerApprovalWebhooks('task.created', {
+          taskId: newTask.id,
+          taskType: newTask.type,
+          taskTitle: newTask.title,
+          organizationId: newTask.organizationId,
+          createdBy: userId,
+          createdAt: new Date().toISOString(),
+          metadata: newTask.metadata
         });
         
         console.log("Created RAG configuration pending approval:", newConfig.id);
