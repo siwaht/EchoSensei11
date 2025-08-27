@@ -5435,9 +5435,11 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Import and use the optimized sync function
-  import("./sync-optimized.js").then(({ setupOptimizedSync }) => {
-    setupOptimizedSync(app, storage, isAuthenticated, calculateCallCost);
+  // Import and use the ElevenLabs best practices sync function
+  import("./sync-elevenlabs-best-practices.js").then(({ setupElevenLabsSyncOptimized }) => {
+    setupElevenLabsSyncOptimized(app, storage, isAuthenticated, calculateCallCost);
+  }).catch(err => {
+    console.error("Failed to load optimized sync:", err);
   });
 
   /* COMMENTED OUT - OLD BROKEN SYNC FUNCTION
