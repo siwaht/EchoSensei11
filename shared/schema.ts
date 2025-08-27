@@ -118,6 +118,22 @@ export const adminTasks = pgTable("admin_tasks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Approval webhooks table for notification endpoints
+export const approvalWebhooks = pgTable("approval_webhooks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  webhookUrl: text("webhook_url").notNull(),
+  secret: varchar("secret"), // For webhook signature verification
+  events: json("events").$type<string[]>().notNull(), // ['task.created', 'task.approved', 'task.rejected']
+  isActive: boolean("is_active").notNull().default(true),
+  headers: json("headers").$type<Record<string, string>>(), // Custom headers to send with webhook
+  lastTriggered: timestamp("last_triggered"),
+  failureCount: integer("failure_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // RAG Configurations table - tracks approval status for RAG webhooks
 export const ragConfigurations = pgTable("rag_configurations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -606,6 +622,12 @@ export const insertAdminTaskSchema = createInsertSchema(adminTasks).omit({
   updatedAt: true,
 });
 
+export const insertApprovalWebhookSchema = createInsertSchema(approvalWebhooks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertQuickActionButtonSchema = createInsertSchema(quickActionButtons).omit({
   id: true,
   createdAt: true,
@@ -692,5 +714,7 @@ export type GoogleOAuthToken = typeof googleOAuthTokens.$inferSelect;
 export type InsertGoogleOAuthToken = z.infer<typeof insertGoogleOAuthTokenSchema>;
 export type AdminTask = typeof adminTasks.$inferSelect;
 export type InsertAdminTask = z.infer<typeof insertAdminTaskSchema>;
+export type ApprovalWebhook = typeof approvalWebhooks.$inferSelect;
+export type InsertApprovalWebhook = z.infer<typeof insertApprovalWebhookSchema>;
 export type RagConfiguration = typeof ragConfigurations.$inferSelect;
 export type InsertRagConfiguration = z.infer<typeof insertRagConfigurationSchema>;

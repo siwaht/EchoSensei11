@@ -13,6 +13,7 @@ import {
   quickActionButtons,
   adminTasks,
   ragConfigurations,
+  approvalWebhooks,
   type User,
   type UpsertUser,
   type Organization,
@@ -38,6 +39,8 @@ import {
   type InsertQuickActionButton,
   type AdminTask,
   type InsertAdminTask,
+  type ApprovalWebhook,
+  type InsertApprovalWebhook,
   type RagConfiguration,
   type InsertRagConfiguration,
 } from "@shared/schema";
@@ -162,6 +165,13 @@ export interface IStorage {
   getBatchCallRecipients(batchCallId: string): Promise<BatchCallRecipient[]>;
   createBatchCallRecipients(recipients: InsertBatchCallRecipient[]): Promise<BatchCallRecipient[]>;
   updateBatchCallRecipient(id: string, data: Partial<BatchCallRecipient>): Promise<BatchCallRecipient>;
+  
+  // Approval webhook operations
+  getApprovalWebhooks(): Promise<ApprovalWebhook[]>;
+  getApprovalWebhook(id: string): Promise<ApprovalWebhook | undefined>;
+  createApprovalWebhook(webhook: InsertApprovalWebhook): Promise<ApprovalWebhook>;
+  updateApprovalWebhook(id: string, updates: Partial<InsertApprovalWebhook>): Promise<ApprovalWebhook>;
+  deleteApprovalWebhook(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -876,6 +886,45 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(ragConfigurations.id, id));
+  }
+
+  // Approval webhook operations
+  async getApprovalWebhooks(): Promise<ApprovalWebhook[]> {
+    return await db().select().from(approvalWebhooks).orderBy(desc(approvalWebhooks.createdAt));
+  }
+
+  async getApprovalWebhook(id: string): Promise<ApprovalWebhook | undefined> {
+    const [webhook] = await db()
+      .select()
+      .from(approvalWebhooks)
+      .where(eq(approvalWebhooks.id, id));
+    return webhook;
+  }
+
+  async createApprovalWebhook(webhookData: InsertApprovalWebhook): Promise<ApprovalWebhook> {
+    const [webhook] = await db()
+      .insert(approvalWebhooks)
+      .values(webhookData)
+      .returning();
+    return webhook;
+  }
+
+  async updateApprovalWebhook(id: string, updates: Partial<InsertApprovalWebhook>): Promise<ApprovalWebhook> {
+    const [webhook] = await db()
+      .update(approvalWebhooks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(approvalWebhooks.id, id))
+      .returning();
+    if (!webhook) {
+      throw new Error("Approval webhook not found");
+    }
+    return webhook;
+  }
+
+  async deleteApprovalWebhook(id: string): Promise<void> {
+    await db()
+      .delete(approvalWebhooks)
+      .where(eq(approvalWebhooks.id, id));
   }
 }
 

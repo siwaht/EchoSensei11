@@ -1088,6 +1088,183 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Helper function to trigger approval webhooks
+  async function triggerApprovalWebhooks(event: string, taskData: any) {
+    try {
+      // Get all active webhooks that are subscribed to this event
+      const webhooks = await storage.getApprovalWebhooks();
+      const activeWebhooks = webhooks.filter(w => 
+        w.isActive && 
+        w.events && 
+        (w.events.includes(event) || w.events.includes('task.status_changed'))
+      );
+      
+      // Send webhook to each endpoint
+      for (const webhook of activeWebhooks) {
+        try {
+          const payload = {
+            event,
+            timestamp: new Date().toISOString(),
+            data: taskData
+          };
+          
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            ...webhook.headers
+          };
+          
+          // Add signature if secret is configured
+          if (webhook.secret) {
+            const crypto = require('crypto');
+            const signature = crypto
+              .createHmac('sha256', webhook.secret)
+              .update(JSON.stringify(payload))
+              .digest('hex');
+            headers['X-Webhook-Signature'] = signature;
+          }
+          
+          const response = await fetch(webhook.webhookUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload)
+          });
+          
+          if (response.ok) {
+            await storage.updateApprovalWebhook(webhook.id, {
+              lastTriggered: new Date()
+            });
+          } else {
+            await storage.updateApprovalWebhook(webhook.id, {
+              failureCount: (webhook.failureCount || 0) + 1
+            });
+          }
+        } catch (error) {
+          console.error(`Failed to send webhook to ${webhook.name}:`, error);
+          await storage.updateApprovalWebhook(webhook.id, {
+            failureCount: (webhook.failureCount || 0) + 1
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error triggering approval webhooks:', error);
+    }
+  }
+  
+  // Approval Webhook routes
+  app.get('/api/admin/approval-webhooks', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const webhooks = await storage.getApprovalWebhooks();
+      res.json(webhooks);
+    } catch (error) {
+      console.error("Error fetching approval webhooks:", error);
+      res.status(500).json({ message: "Failed to fetch approval webhooks" });
+    }
+  });
+
+  app.post('/api/admin/approval-webhooks', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const webhookData = {
+        ...req.body,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        failureCount: 0
+      };
+      
+      const newWebhook = await storage.createApprovalWebhook(webhookData);
+      res.json(newWebhook);
+    } catch (error) {
+      console.error("Error creating approval webhook:", error);
+      res.status(500).json({ message: "Failed to create approval webhook" });
+    }
+  });
+
+  app.patch('/api/admin/approval-webhooks/:webhookId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const webhook = await storage.getApprovalWebhook(req.params.webhookId);
+      if (!webhook) {
+        return res.status(404).json({ message: "Webhook not found" });
+      }
+      
+      const updatedWebhook = await storage.updateApprovalWebhook(req.params.webhookId, {
+        ...req.body,
+        updatedAt: new Date()
+      });
+      res.json(updatedWebhook);
+    } catch (error) {
+      console.error("Error updating approval webhook:", error);
+      res.status(500).json({ message: "Failed to update approval webhook" });
+    }
+  });
+
+  app.delete('/api/admin/approval-webhooks/:webhookId', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const webhook = await storage.getApprovalWebhook(req.params.webhookId);
+      if (!webhook) {
+        return res.status(404).json({ message: "Webhook not found" });
+      }
+      
+      await storage.deleteApprovalWebhook(req.params.webhookId);
+      res.json({ message: "Webhook deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting approval webhook:", error);
+      res.status(500).json({ message: "Failed to delete approval webhook" });
+    }
+  });
+
+  // Test webhook endpoint
+  app.post('/api/admin/approval-webhooks/:webhookId/test', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const webhook = await storage.getApprovalWebhook(req.params.webhookId);
+      if (!webhook) {
+        return res.status(404).json({ message: "Webhook not found" });
+      }
+      
+      // Send test webhook
+      const testPayload = {
+        event: 'test',
+        timestamp: new Date().toISOString(),
+        data: {
+          message: 'This is a test webhook from VoiceAI Dashboard',
+          webhookId: webhook.id,
+          webhookName: webhook.name
+        }
+      };
+      
+      try {
+        const response = await fetch(webhook.webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...webhook.headers,
+            ...(webhook.secret ? { 'X-Webhook-Secret': webhook.secret } : {})
+          },
+          body: JSON.stringify(testPayload)
+        });
+        
+        if (response.ok) {
+          await storage.updateApprovalWebhook(req.params.webhookId, {
+            lastTriggered: new Date()
+          });
+          res.json({ message: "Test webhook sent successfully", status: response.status });
+        } else {
+          await storage.updateApprovalWebhook(req.params.webhookId, {
+            failureCount: webhook.failureCount + 1
+          });
+          res.status(500).json({ message: "Webhook test failed", status: response.status });
+        }
+      } catch (fetchError) {
+        await storage.updateApprovalWebhook(req.params.webhookId, {
+          failureCount: webhook.failureCount + 1
+        });
+        console.error("Error sending test webhook:", fetchError);
+        res.status(500).json({ message: "Failed to send test webhook" });
+      }
+    } catch (error) {
+      console.error("Error testing webhook:", error);
+      res.status(500).json({ message: "Failed to test webhook" });
+    }
+  });
+
   // Quick Action Buttons routes - Users (for their own buttons)
   app.get('/api/quick-action-buttons', isAuthenticated, async (req: any, res) => {
     try {

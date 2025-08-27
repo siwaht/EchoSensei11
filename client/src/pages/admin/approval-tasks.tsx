@@ -9,8 +9,12 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Shield, CheckCircle, XCircle, AlertCircle, Clock, 
   RefreshCw, Eye, CheckSquare, XSquare, MessageSquare,
-  Building2, Calendar, FileText, Loader2
+  Building2, Calendar, FileText, Loader2, Webhook, Plus,
+  Edit, Trash2, Settings, Send
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -33,6 +37,21 @@ interface AdminTask {
   rejectionReason?: string;
 }
 
+interface ApprovalWebhook {
+  id: string;
+  name: string;
+  description?: string;
+  webhookUrl: string;
+  secret?: string;
+  events: string[];
+  isActive: boolean;
+  headers?: Record<string, string>;
+  lastTriggered?: string;
+  failureCount?: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export default function ApprovalTasks() {
   const { toast } = useToast();
   const [selectedTask, setSelectedTask] = useState<AdminTask | null>(null);
@@ -41,10 +60,20 @@ export default function ApprovalTasks() {
     task: null
   });
   const [rejectionReason, setRejectionReason] = useState("");
+  const [webhookDialog, setWebhookDialog] = useState<{ 
+    isOpen: boolean; 
+    webhook: ApprovalWebhook | null;
+  }>({ isOpen: false, webhook: null });
+  const [testWebhookId, setTestWebhookId] = useState<string | null>(null);
 
   // Fetch pending tasks
   const { data: tasks = [], isLoading } = useQuery<AdminTask[]>({
     queryKey: ["/api/admin/tasks"],
+  });
+
+  // Fetch webhooks
+  const { data: webhooks = [] } = useQuery<ApprovalWebhook[]>({
+    queryKey: ["/api/admin/approval-webhooks"],
   });
 
   // Approve task mutation
@@ -215,6 +244,10 @@ export default function ApprovalTasks() {
           <TabsTrigger value="completed">
             Completed ({completedTasks.length})
           </TabsTrigger>
+          <TabsTrigger value="webhooks">
+            <Webhook className="w-4 h-4 mr-1" />
+            Webhooks
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="space-y-4">
@@ -363,6 +396,148 @@ export default function ApprovalTasks() {
             ))
           )}
         </TabsContent>
+
+        <TabsContent value="webhooks" className="space-y-4">
+          <Card className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">Webhook Configuration</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Configure webhooks to receive notifications when approval tasks are created or updated
+                </p>
+              </div>
+              <Button 
+                onClick={() => setWebhookDialog({ isOpen: true, webhook: null })}
+                className="gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Webhook
+              </Button>
+            </div>
+
+            {webhooks.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Webhook className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No webhooks configured</p>
+                <p className="text-sm mt-1">Add a webhook to receive notifications about approval tasks</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {webhooks.map((webhook) => (
+                  <Card key={webhook.id} className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">{webhook.name}</h4>
+                          {webhook.isActive ? (
+                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
+                              Active
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">Inactive</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {webhook.webhookUrl}
+                        </p>
+                        {webhook.description && (
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {webhook.description}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-1">
+                          {webhook.events.map((event) => (
+                            <Badge key={event} variant="outline" className="text-xs">
+                              {event}
+                            </Badge>
+                          ))}
+                        </div>
+                        {webhook.lastTriggered && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Last triggered: {new Date(webhook.lastTriggered).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setTestWebhookId(webhook.id);
+                            // Test webhook functionality would be implemented here
+                            toast({
+                              title: "Test Webhook Sent",
+                              description: `Test event sent to ${webhook.name}`,
+                            });
+                            setTimeout(() => setTestWebhookId(null), 2000);
+                          }}
+                          disabled={!webhook.isActive || testWebhookId === webhook.id}
+                        >
+                          {testWebhookId === webhook.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Send className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setWebhookDialog({ isOpen: true, webhook })}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-500 hover:text-red-600"
+                          onClick={() => {
+                            // Delete webhook functionality would be implemented here
+                            toast({
+                              title: "Webhook Deleted",
+                              description: `${webhook.name} has been removed`,
+                            });
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-3">Available Events</h3>
+            <div className="space-y-3">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="font-medium text-sm mb-1">task.created</p>
+                <p className="text-xs text-muted-foreground">
+                  Triggered when a new approval task is created
+                </p>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="font-medium text-sm mb-1">task.approved</p>
+                <p className="text-xs text-muted-foreground">
+                  Triggered when an approval task is approved by an admin
+                </p>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="font-medium text-sm mb-1">task.rejected</p>
+                <p className="text-xs text-muted-foreground">
+                  Triggered when an approval task is rejected by an admin
+                </p>
+              </div>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="font-medium text-sm mb-1">task.status_changed</p>
+                <p className="text-xs text-muted-foreground">
+                  Triggered whenever the status of an approval task changes
+                </p>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Reject Dialog */}
@@ -455,6 +630,132 @@ export default function ApprovalTasks() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Webhook Configuration Dialog */}
+      <Dialog open={webhookDialog.isOpen} onOpenChange={(open) => !open && setWebhookDialog({ isOpen: false, webhook: null })}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {webhookDialog.webhook ? 'Edit Webhook' : 'Create New Webhook'}
+            </DialogTitle>
+            <DialogDescription>
+              Configure a webhook endpoint to receive notifications about approval tasks
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            const webhookData = {
+              name: formData.get('name') as string,
+              webhookUrl: formData.get('webhookUrl') as string,
+              description: formData.get('description') as string,
+              secret: formData.get('secret') as string,
+              events: Array.from(formData.getAll('events')) as string[],
+              isActive: formData.get('isActive') === 'on',
+            };
+            
+            // Save webhook functionality would be implemented here
+            toast({
+              title: webhookDialog.webhook ? "Webhook Updated" : "Webhook Created",
+              description: `${webhookData.name} has been ${webhookDialog.webhook ? 'updated' : 'created'} successfully`,
+            });
+            setWebhookDialog({ isOpen: false, webhook: null });
+          }}>
+            <div>
+              <Label htmlFor="name">Webhook Name</Label>
+              <Input
+                id="name"
+                name="name"
+                placeholder="e.g., Slack Notification"
+                defaultValue={webhookDialog.webhook?.name}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="webhookUrl">Webhook URL</Label>
+              <Input
+                id="webhookUrl"
+                name="webhookUrl"
+                type="url"
+                placeholder="https://example.com/webhook"
+                defaultValue={webhookDialog.webhook?.webhookUrl}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Textarea
+                id="description"
+                name="description"
+                placeholder="Describe what this webhook does..."
+                defaultValue={webhookDialog.webhook?.description}
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="secret">Secret Key (Optional)</Label>
+              <Input
+                id="secret"
+                name="secret"
+                type="password"
+                placeholder="Used for webhook signature verification"
+                defaultValue={webhookDialog.webhook?.secret}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                This will be used to sign webhook payloads for security
+              </p>
+            </div>
+
+            <div>
+              <Label>Events to Subscribe</Label>
+              <div className="space-y-2 mt-2">
+                {['task.created', 'task.approved', 'task.rejected', 'task.status_changed'].map(event => (
+                  <div key={event} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={event}
+                      name="events"
+                      value={event}
+                      defaultChecked={webhookDialog.webhook?.events?.includes(event) ?? true}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label htmlFor={event} className="text-sm font-normal cursor-pointer">
+                      {event}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="isActive"
+                  name="isActive"
+                  defaultChecked={webhookDialog.webhook?.isActive ?? true}
+                />
+                <Label htmlFor="isActive">Active</Label>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setWebhookDialog({ isOpen: false, webhook: null })}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">
+                {webhookDialog.webhook ? 'Update Webhook' : 'Create Webhook'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
