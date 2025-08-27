@@ -11,7 +11,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { GettingStarted } from "@/components/getting-started";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Success Rate Chart Component
@@ -786,9 +785,6 @@ export default function Dashboard() {
   return (
     <TooltipProvider>
     <div className="space-y-8">
-      {/* Getting Started Guide */}
-      <GettingStarted />
-      
       {/* Sync Section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
