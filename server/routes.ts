@@ -3894,14 +3894,27 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Simple test endpoint for RAG webhook
+  // ElevenLabs SDK webhook test endpoint
   app.get("/api/public/rag/test", async (req: any, res: any) => {
     res.json({
       status: "OK",
-      message: "RAG webhook is working! Configure this webhook in your ElevenLabs agent to enable knowledge base search.",
+      message: "ElevenLabs RAG webhook is operational! Configure this webhook in your ElevenLabs agent.",
       webhook_url: `${req.protocol}://${req.get('host')}/api/public/rag`,
       test_query: `${req.protocol}://${req.get('host')}/api/public/rag?query=where does john live`,
-      instructions: "Add this webhook to your agent in ElevenLabs dashboard with a 'query' parameter"
+      instructions: "Add this webhook to your ElevenLabs agent with a 'query' parameter (GET) or body field (POST)",
+      elevenlabs_format: {
+        method: "GET or POST",
+        query_parameters: [{
+          key: "query",
+          description: "The search query for the knowledge base",
+          required: true,
+          dataType: "String",
+          valueType: "LLM Prompt"
+        }],
+        expected_response: {
+          message: "Text that the agent will speak based on search results"
+        }
+      }
     });
   });
 
@@ -4037,43 +4050,44 @@ Generate the complete prompt now:`;
     description: "Search the knowledge base for relevant information"
   };
 
-  // Custom RAG Tool Webhook endpoint for agents
+  // Custom RAG Tool Webhook endpoint for agents - ElevenLabs SDK compliant
   const handleRAGTool = async (req: any, res: any) => {
     try {
-      console.log("=== CUSTOM RAG TOOL CALLED ===");
+      console.log("=== ELEVENLABS CUSTOM TOOL: RAG WEBHOOK ===");
       console.log("Method:", req.method);
       console.log("Headers:", req.headers);
       console.log("Query Parameters:", req.query);
       console.log("Body:", req.body);
       
-      // Get the search query from request - support both query params and body
-      // ElevenLabs might send as searchQuery in body based on the configuration
-      const query = req.query.query || 
-                   req.query.q || 
-                   req.body?.query || 
-                   req.body?.searchQuery || 
-                   req.body?.question || 
-                   req.body?.search_query || '';
-      const agentId = req.query.agent_id || req.body?.agent_id || req.headers['x-agent-id'] || '';
+      // ElevenLabs SDK sends parameters based on webhook configuration
+      // For GET: query parameters, For POST: body parameters
+      // Support both methods as per ElevenLabs documentation
+      const query = req.method === 'GET' 
+        ? (req.query.query || req.query.q || req.query.searchQuery || '')
+        : (req.body?.query || req.body?.searchQuery || req.body?.question || '');
+      
+      // Extract optional metadata sent by ElevenLabs
+      const agentId = req.query.agent_id || req.body?.agent_id || req.headers['x-elevenlabs-agent-id'] || '';
+      const conversationId = req.query.conversation_id || req.body?.conversation_id || req.headers['x-elevenlabs-conversation-id'] || '';
       const organizationId = req.query.organization_id || req.body?.organization_id || req.headers['x-organization-id'] || '';
       const limit = parseInt(req.query.limit || req.body?.limit || ragConfiguration.topK || '5');
       
       console.log("RAG Query:", query);
       console.log("Agent ID:", agentId);
+      console.log("Conversation ID:", conversationId);
       console.log("Organization ID:", organizationId);
       
       if (!query) {
-        console.log("No query provided, returning help message");
-        // Return a response that ElevenLabs can understand
+        console.log("No query provided, returning ElevenLabs SDK compliant response");
+        // ElevenLabs SDK expects a simple message field for the agent to speak
         return res.json({
-          message: "I need more information to search the knowledge base. Please ask a specific question.",
-          success: false
+          message: "I need more information to search the knowledge base. Please ask a specific question."
         });
       }
 
       // Check if OpenAI API key is configured for embeddings
       if (!process.env.OPENAI_API_KEY && !ragConfiguration.openaiApiKey) {
-        // Return simple message format like n8n would
+        // ElevenLabs SDK expects simple message format for agent response
         return res.json({
           message: "The knowledge base is not configured. Please set up the OpenAI API key."
         });
@@ -4123,7 +4137,7 @@ Generate the complete prompt now:`;
         
         if (searchResults.length === 0) {
           console.log("No results found in RAG system");
-          // Return exactly like n8n would - just a simple message
+          // ElevenLabs SDK format - simple message field for agent to speak
           return res.json({
             message: "No relevant information found in the knowledge base for your query."
           });
@@ -4290,10 +4304,11 @@ Generate the complete prompt now:`;
           // For now, we return the content directly but could enhance this with OpenAI completion
         }
         
-        // Return a simple response that ElevenLabs can use directly
-        console.log("Returning RAG results to agent");
+        // Return ElevenLabs SDK compliant response format
+        // The 'message' field contains the text for the agent to speak
+        console.log("Returning ElevenLabs SDK formatted response");
         return res.json({
-          message: responseMessage  // ElevenLabs agents expect a 'message' field
+          message: responseMessage  // ElevenLabs SDK expects 'message' field for agent speech
         });
         
       } catch (searchError) {
@@ -4322,15 +4337,22 @@ Generate the complete prompt now:`;
   app.get("/api/tools/info", handleInfoTool);
   app.post("/api/tools/info", handleInfoTool);
   
-  // Custom RAG Tool webhook endpoints
+  // ElevenLabs SDK Compliant Custom Tool Endpoints
+  // Standard tool endpoints (authenticated)
   app.get("/api/tools/rag", handleRAGTool);
   app.post("/api/tools/rag", handleRAGTool);
+  
+  // Public webhook endpoints for ElevenLabs agents (no auth required)
   app.get("/api/public/rag", handleRAGTool);
   app.post("/api/public/rag", handleRAGTool);
   
-  // Public webhook endpoint for external agents (no auth required)
-  app.get("/api/public/rag", handleRAGTool);
-  app.post("/api/public/rag", handleRAGTool);
+  // Model Context Protocol (MCP) endpoints for advanced ElevenLabs integrations
+  app.get("/api/mcp/tools/rag", handleRAGTool);
+  app.post("/api/mcp/tools/rag", handleRAGTool);
+  
+  // Webhook endpoints for backward compatibility
+  app.get("/api/webhooks/rag", handleRAGTool);
+  app.post("/api/webhooks/rag", handleRAGTool);
   
   // RAG Configuration endpoint (for saving system prompts and settings)
   app.post("/api/tools/rag-config", isAuthenticated, async (req: any, res) => {
@@ -4653,10 +4675,10 @@ Generate the complete prompt now:`;
   app.get("/api/tools/elevenlabs/voice-clone", isAuthenticated, handleVoiceClone);
   app.post("/api/tools/elevenlabs/voice-clone", isAuthenticated, handleVoiceClone);
 
-  // Webhook endpoint for VoiceAI callbacks (new endpoint)
+  // ElevenLabs SDK Webhook endpoint for conversation events
   app.post("/api/webhooks/voiceai", async (req, res) => {
     try {
-      console.log("VoiceAI webhook received:", JSON.stringify(req.body, null, 2));
+      console.log("ElevenLabs conversation event received:", JSON.stringify(req.body, null, 2));
       
       const { type, data } = req.body;
       
