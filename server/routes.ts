@@ -956,10 +956,8 @@ export function registerRoutes(app: Express): Server {
   app.get('/api/admin/tasks', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const status = req.query.status as "pending" | "in_progress" | "completed" | "rejected" | undefined;
-      // TODO: Uncomment when database is updated
-      // const tasks = await storage.getAdminTasks(status);
-      // res.json(tasks);
-      res.json([]); // Temporary response
+      const tasks = await storage.getAdminTasks(status);
+      res.json(tasks);
     } catch (error) {
       console.error("Error fetching admin tasks:", error);
       res.status(500).json({ message: "Failed to fetch admin tasks" });
@@ -968,13 +966,11 @@ export function registerRoutes(app: Express): Server {
 
   app.get('/api/admin/tasks/:taskId', isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      // TODO: Uncomment when database is updated
-      // const task = await storage.getAdminTask(req.params.taskId);
-      // if (!task) {
-      //   return res.status(404).json({ message: "Task not found" });
-      // }
-      // res.json(task);
-      res.status(404).json({ message: "Task not found" }); // Temporary response
+      const task = await storage.getAdminTask(req.params.taskId);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      res.json(task);
     } catch (error) {
       console.error("Error fetching admin task:", error);
       res.status(500).json({ message: "Failed to fetch admin task" });
