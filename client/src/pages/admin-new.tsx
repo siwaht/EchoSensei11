@@ -323,36 +323,30 @@ export default function AdminDashboard() {
 
       {/* Tabs for different admin sections */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="w-full flex flex-col lg:grid lg:grid-cols-6 gap-1 lg:gap-0 h-auto lg:h-10">
-          <TabsTrigger value="users" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
-            <Users className="w-4 h-4 mr-2 flex-shrink-0" />
-            <span className="hidden xl:inline">User Management</span>
-            <span className="xl:hidden">Users</span>
+        <TabsList className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 h-auto">
+          <TabsTrigger value="users" className="flex items-center justify-center gap-1 px-2 py-2">
+            <Users className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs lg:text-sm">Users</span>
           </TabsTrigger>
-          <TabsTrigger value="billing" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
-            <CreditCard className="w-4 h-4 mr-2 flex-shrink-0" />
-            <span className="hidden xl:inline">Billing & Packages</span>
-            <span className="xl:hidden">Billing</span>
+          <TabsTrigger value="billing" className="flex items-center justify-center gap-1 px-2 py-2">
+            <CreditCard className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs lg:text-sm">Billing</span>
           </TabsTrigger>
-          <TabsTrigger value="organizations" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
-            <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
-            <span className="hidden xl:inline">Organizations</span>
-            <span className="xl:hidden">Orgs</span>
+          <TabsTrigger value="organizations" className="flex items-center justify-center gap-1 px-2 py-2">
+            <Building2 className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs lg:text-sm">Orgs</span>
           </TabsTrigger>
-          <TabsTrigger value="payments" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
-            <Wallet className="w-4 h-4 mr-2 flex-shrink-0" />
-            <span className="hidden xl:inline">Payment Gateways</span>
-            <span className="xl:hidden">Payments</span>
+          <TabsTrigger value="payments" className="flex items-center justify-center gap-1 px-2 py-2">
+            <Wallet className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs lg:text-sm">Payments</span>
           </TabsTrigger>
-          <TabsTrigger value="approval-tasks" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
-            <CheckCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-            <span className="hidden xl:inline">Approval Tasks</span>
-            <span className="xl:hidden">Approvals</span>
+          <TabsTrigger value="approval-tasks" className="flex items-center justify-center gap-1 px-2 py-2">
+            <CheckCircle className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs lg:text-sm">Approvals</span>
           </TabsTrigger>
-          <TabsTrigger value="api-sync" className="w-full justify-start lg:justify-center text-xs lg:text-sm px-2 py-2">
-            <RefreshCw className="w-4 h-4 mr-2 flex-shrink-0" />
-            <span className="hidden xl:inline">API Sync</span>
-            <span className="xl:hidden">API</span>
+          <TabsTrigger value="api-sync" className="flex items-center justify-center gap-1 px-2 py-2">
+            <RefreshCw className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs lg:text-sm">API</span>
           </TabsTrigger>
         </TabsList>
 
