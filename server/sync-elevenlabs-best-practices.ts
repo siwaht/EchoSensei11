@@ -88,14 +88,32 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
       
       // First check if the response is JSON
       const contentType = response.headers.get('content-type');
+      const responseText = await response.text();
+      
+      // Log full response details for debugging
+      console.log('Response status:', response.status);
+      console.log('Response content-type:', contentType);
+      console.log('Response text preview (first 500 chars):', responseText.substring(0, 500));
+      
       if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Unexpected response format. Expected JSON but got:', contentType);
-        console.error('Response text (first 500 chars):', text.substring(0, 500));
-        throw new Error(`API returned non-JSON response. This usually means authentication failed or the API endpoint has changed.`);
+        console.error('=== AUTHENTICATION ERROR ===');
+        console.error('API returned HTML instead of JSON. This typically means:');
+        console.error('1. The API key is invalid or not being sent correctly');
+        console.error('2. The API endpoint URL is incorrect');
+        console.error('3. Rate limiting or IP blocking');
+        console.error('Response HTML:', responseText.substring(0, 1000));
+        throw new Error(`Authentication failed - API returned HTML instead of JSON. Please check your ElevenLabs API key.`);
       }
       
-      const data = await response.json();
+      // Try to parse JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse JSON response:', parseError);
+        console.error('Raw response:', responseText);
+        throw new Error('Failed to parse API response as JSON');
+      }
       
       // Log the first conversation to understand the structure
       if (data.conversations && data.conversations.length > 0) {
