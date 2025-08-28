@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Plus, Trash2, Eye, Play, RefreshCw, ExternalLink, HelpCircle } from "lucide-react";
+import { Bot, Plus, Trash2, Eye, Play, RefreshCw, ExternalLink, HelpCircle, Settings } from "lucide-react";
 import { AddAgentModal } from "@/components/modals/add-agent-modal";
 import { AgentDetailModal } from "@/components/modals/agent-detail-modal";
 import { useToast } from "@/hooks/use-toast";
@@ -264,6 +264,19 @@ export default function Agents() {
               
               {/* Action Buttons */}
               <div className="flex flex-col gap-2 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full hover:bg-primary/10 hover:text-primary hover:border-primary transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLocation(`/agent-settings?agentId=${agent.id}`);
+                  }}
+                  data-testid={`button-settings-${agent.id}`}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Agent Settings
+                </Button>
                 <div className="flex gap-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -278,7 +291,7 @@ export default function Agents() {
                         data-testid={`button-test-${agent.id}`}
                       >
                         <Play className="w-4 h-4 mr-1" />
-                        Test in Playground
+                        Test
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>

@@ -21,6 +21,7 @@ import PhoneNumbers from "@/pages/phone-numbers";
 import OutboundCalling from "@/pages/outbound-calling";
 import Tools from "@/pages/tools";
 import KnowledgeBase from "@/pages/knowledge-base";
+import AgentSettings from "@/pages/agent-settings";
 import AppShell from "@/components/layout/app-shell";
 
 function Router() {
@@ -40,6 +41,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/agents" component={Agents} />
+        <Route path="/agent-settings" component={AgentSettings} />
         <Route path="/voices" component={Voices} />
         <Route path="/phone-numbers" component={PhoneNumbers} />
         <Route path="/outbound-calling" component={OutboundCalling} />
