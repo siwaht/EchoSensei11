@@ -598,22 +598,28 @@ export default function ApprovalTasks() {
           </DialogHeader>
           {selectedTask && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Type</p>
-                  <p className="font-medium capitalize">{selectedTask.relatedEntityType}</p>
+                  <p className="font-medium capitalize break-words">{selectedTask.relatedEntityType}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Priority</p>
-                  {getPriorityBadge(selectedTask.priority)}
+                  <div className="mt-1">
+                    {getPriorityBadge(selectedTask.priority)}
+                  </div>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  {getStatusBadge(selectedTask.status)}
+                  <div className="mt-1">
+                    {getStatusBadge(selectedTask.status)}
+                  </div>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Created</p>
-                  <p className="font-medium">{new Date(selectedTask.createdAt).toLocaleString()}</p>
+                  <p className="font-medium text-sm whitespace-nowrap">
+                    {new Date(selectedTask.createdAt).toLocaleDateString()} {new Date(selectedTask.createdAt).toLocaleTimeString()}
+                  </p>
                 </div>
               </div>
               <div>
