@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -19,14 +18,10 @@ import {
   Save, 
   Play, 
   MessageSquare, 
-  FileText, 
   Mic, 
   Brain,
-  Wrench,
-  MoreHorizontal,
   Sparkles,
-  Volume2,
-  Zap
+  Globe
 } from "lucide-react";
 import type { Agent } from "@shared/schema";
 
@@ -43,18 +38,17 @@ export default function AgentSettings() {
   const [hasChanges, setHasChanges] = useState(false);
   
   // Form states
-  const [firstMessage, setFirstMessage] = useState("Hello! How can I help you today?");
-  const [systemPrompt, setSystemPrompt] = useState("You are a helpful AI assistant");
+  const [name, setName] = useState("");
+  const [firstMessage, setFirstMessage] = useState("");
+  const [systemPrompt, setSystemPrompt] = useState("");
   const [promptGenerator, setPromptGenerator] = useState("");
-  const [selectedVoice, setSelectedVoice] = useState("Rachel");
+  const [language, setLanguage] = useState("en");
+  const [selectedVoice, setSelectedVoice] = useState("");
   const [stability, setStability] = useState([0.5]);
   const [similarityBoost, setSimilarityBoost] = useState([0.75]);
-  const [styleExaggeration, setStyleExaggeration] = useState([0.0]);
-  const [model, setModel] = useState("GPT-4");
+  const [model, setModel] = useState("gpt-4o-mini");
   const [temperature, setTemperature] = useState([0.7]);
   const [maxTokens, setMaxTokens] = useState("150");
-  const [enableInterruptions, setEnableInterruptions] = useState(true);
-  const [responseSpeed, setResponseSpeed] = useState([0.8]);
   
   const { data: agent, isLoading } = useQuery<Agent>({
     queryKey: ["/api/agents", agentId],
@@ -71,22 +65,43 @@ export default function AgentSettings() {
     enabled: activeTab === "voice",
   });
 
+  // Load agent data into form
+  useEffect(() => {
+    if (agent) {
+      setName(agent.name || "");
+      setFirstMessage(agent.firstMessage || "");
+      setSystemPrompt(agent.systemPrompt || "");
+      setLanguage(agent.language || "en");
+      setSelectedVoice(agent.voiceId || "");
+      if (agent.voiceSettings) {
+        setStability([agent.voiceSettings.stability || 0.5]);
+        setSimilarityBoost([agent.voiceSettings.similarityBoost || 0.75]);
+      }
+      if (agent.llmSettings) {
+        setModel(agent.llmSettings.model || "gpt-4o-mini");
+        setTemperature([agent.llmSettings.temperature || 0.7]);
+        setMaxTokens(agent.llmSettings.maxTokens?.toString() || "150");
+      }
+    }
+  }, [agent]);
+
   const saveMutation = useMutation({
     mutationFn: async (settings: any) => {
-      await apiRequest("PATCH", `/api/agents/${agentId}/settings`, settings);
+      const response = await apiRequest("PATCH", `/api/agents/${agentId}/settings`, settings);
+      return response;
     },
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Agent settings saved successfully",
+        description: "Agent settings synced with ElevenLabs successfully",
       });
       setHasChanges(false);
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "Failed to save agent settings",
+        description: error.message || "Failed to sync settings with ElevenLabs",
         variant: "destructive",
       });
     },
@@ -123,463 +138,408 @@ Always maintain a professional yet conversational tone, and ensure all responses
 
   const handleSave = () => {
     const settings = {
+      name,
       firstMessage,
       systemPrompt,
-      voice: selectedVoice,
+      language,
+      voiceId: selectedVoice,
       voiceSettings: {
         stability: stability[0],
-        similarityBoost: similarityBoost[0],
-        styleExaggeration: styleExaggeration[0],
+        similarity_boost: similarityBoost[0],
       },
       llmSettings: {
         model,
         temperature: temperature[0],
         maxTokens: parseInt(maxTokens),
       },
-      conversationSettings: {
-        enableInterruptions,
-        responseSpeed: responseSpeed[0],
-      },
     };
-    
     saveMutation.mutate(settings);
   };
 
-  if (!agentId) {
-    return (
-      <div className="container py-8">
-        <p>No agent selected. Please go back to the agents page.</p>
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
-      <div className="container py-8">
-        <p>Loading agent settings...</p>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading agent settings...</p>
+        </div>
       </div>
     );
   }
 
   if (!agent) {
     return (
-      <div className="container py-8">
-        <p>Agent not found.</p>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-muted-foreground">Agent not found</p>
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => setLocation("/agents")}
+          >
+            Back to Agents
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="container mx-auto p-6 max-w-7xl">
       {/* Header */}
-      <div className="border-b bg-card">
-        <div className="container flex items-center justify-between py-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setLocation("/agents")}
-              data-testid="button-back"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Agent Settings</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Configure your agent's behavior and capabilities
-              </p>
-            </div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation("/agents")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Agent Settings</h1>
+            <p className="text-muted-foreground">Configure {agent.name}</p>
           </div>
-          
-          <Button 
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setLocation(`/playground?agentId=${agentId}`)}
+          >
+            <Play className="h-4 w-4 mr-2" />
+            Test Agent
+          </Button>
+          <Button
             onClick={handleSave}
             disabled={!hasChanges || saveMutation.isPending}
-            data-testid="button-save"
           >
-            <Save className="w-4 h-4 mr-2" />
-            Save Changes
+            <Save className="h-4 w-4 mr-2" />
+            {saveMutation.isPending ? "Syncing..." : "Save Changes"}
           </Button>
         </div>
       </div>
 
-      {/* Agent Info Bar */}
-      <div className="border-b bg-muted/30">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h2 className="text-xl font-semibold">{agent.name}</h2>
-              <Badge variant={agent.isActive ? "default" : "secondary"}>
-                {agent.isActive ? "Active" : "Inactive"}
-              </Badge>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => setLocation(`/playground?agentId=${agent.id}`)}
-              data-testid="button-test"
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Test Agent
-            </Button>
-          </div>
-        </div>
-      </div>
+      {/* Warning about ElevenLabs sync */}
+      {agent.elevenLabsAgentId ? (
+        <Card className="p-4 mb-6 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            ✓ This agent is synced with ElevenLabs. All changes will be updated in real-time.
+          </p>
+        </Card>
+      ) : (
+        <Card className="p-4 mb-6 bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
+          <p className="text-sm text-yellow-700 dark:text-yellow-300">
+            ⚠️ This agent is not synced with ElevenLabs. Run sync from the Agents page first.
+          </p>
+        </Card>
+      )}
 
-      {/* Main Content */}
-      <div className="container py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-6 w-full max-w-3xl mx-auto mb-8">
-            <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Chat
-            </TabsTrigger>
-            <TabsTrigger value="templates" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Templates
-            </TabsTrigger>
-            <TabsTrigger value="voice" className="flex items-center gap-2">
-              <Mic className="w-4 h-4" />
-              Voice
-            </TabsTrigger>
-            <TabsTrigger value="llm" className="flex items-center gap-2">
-              <Brain className="w-4 h-4" />
-              LLM
-            </TabsTrigger>
-            <TabsTrigger value="tools" className="flex items-center gap-2">
-              <Wrench className="w-4 h-4" />
-              Tools
-            </TabsTrigger>
-            <TabsTrigger value="more" className="flex items-center gap-2">
-              <MoreHorizontal className="w-4 h-4" />
-              More
-            </TabsTrigger>
-          </TabsList>
+      {/* Settings Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="chat" className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Chat
+          </TabsTrigger>
+          <TabsTrigger value="voice" className="flex items-center gap-2">
+            <Mic className="h-4 w-4" />
+            Voice
+          </TabsTrigger>
+          <TabsTrigger value="llm" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            LLM
+          </TabsTrigger>
+          <TabsTrigger value="language" className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            Language
+          </TabsTrigger>
+        </TabsList>
 
-          {/* Chat Settings */}
-          <TabsContent value="chat" className="space-y-6 max-w-3xl mx-auto">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-6">Conversation Settings</h3>
-              
-              <div className="space-y-6">
-                <div>
-                  <Label htmlFor="firstMessage">First Message</Label>
-                  <Textarea
-                    id="firstMessage"
-                    value={firstMessage}
-                    onChange={(e) => {
-                      setFirstMessage(e.target.value);
-                      setHasChanges(true);
-                    }}
-                    placeholder="Enter the initial greeting message"
-                    className="mt-2 min-h-[100px]"
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    The initial message your agent will say when starting a conversation
-                  </p>
+        {/* Chat Settings */}
+        <TabsContent value="chat" className="space-y-6">
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold mb-4">Conversation Settings</h2>
+            
+            <div className="space-y-4">
+              {/* Agent Name */}
+              <div>
+                <Label htmlFor="name">Agent Name</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setHasChanges(true);
+                  }}
+                  placeholder="Enter agent name"
+                  className="mt-2"
+                />
+              </div>
+
+              {/* First Message */}
+              <div>
+                <Label htmlFor="firstMessage">First Message</Label>
+                <Textarea
+                  id="firstMessage"
+                  value={firstMessage}
+                  onChange={(e) => {
+                    setFirstMessage(e.target.value);
+                    setHasChanges(true);
+                  }}
+                  placeholder="What should the agent say when the conversation starts?"
+                  className="mt-2 min-h-[80px]"
+                />
+              </div>
+
+              <Separator />
+
+              {/* System Prompt */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="systemPrompt">System Prompt</Label>
+                  <Badge variant="outline">Core behavior definition</Badge>
                 </div>
+                <Textarea
+                  id="systemPrompt"
+                  value={systemPrompt}
+                  onChange={(e) => {
+                    setSystemPrompt(e.target.value);
+                    setHasChanges(true);
+                  }}
+                  placeholder="Define your agent's behavior, personality, and instructions..."
+                  className="mt-2 min-h-[200px] font-mono text-sm"
+                />
+              </div>
 
-                <Separator />
-
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <Label htmlFor="systemPrompt">System Prompt</Label>
-                    <Badge variant="secondary" className="gap-1">
-                      <Sparkles className="w-3 h-3" />
-                      AI Enhanced
-                    </Badge>
-                  </div>
-                  
-                  {/* AI Prompt Generator */}
-                  <div className="bg-muted/50 p-4 rounded-lg mb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Zap className="w-4 h-4 text-primary" />
-                      <span className="font-medium text-sm">AI Prompt Generator</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Describe your desired agent and we'll generate a comprehensive system prompt for you
-                    </p>
-                    <div className="flex gap-2">
-                      <Input
-                        value={promptGenerator}
-                        onChange={(e) => setPromptGenerator(e.target.value)}
-                        placeholder="e.g., a customer support agent for ElevenLabs"
-                        className="flex-1"
-                      />
-                      <Button onClick={generatePrompt} variant="secondary">
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Generate
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <Textarea
-                    id="systemPrompt"
-                    value={systemPrompt}
-                    onChange={(e) => {
-                      setSystemPrompt(e.target.value);
-                      setHasChanges(true);
-                    }}
-                    placeholder="Enter the system prompt for your agent"
-                    className="min-h-[200px]"
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Define your agent's personality, knowledge, and behavior
-                  </p>
+              {/* AI Prompt Generator */}
+              <div className="border rounded-lg p-4 bg-muted/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span className="font-medium">AI Prompt Generator</span>
                 </div>
-
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="interruptions">Allow Interruptions</Label>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Let users interrupt the agent while it's speaking
-                    </p>
-                  </div>
-                  <Switch
-                    id="interruptions"
-                    checked={enableInterruptions}
-                    onCheckedChange={(checked) => {
-                      setEnableInterruptions(checked);
-                      setHasChanges(true);
-                    }}
+                <p className="text-sm text-muted-foreground mb-3">
+                  Describe your agent and we'll generate a comprehensive system prompt
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    value={promptGenerator}
+                    onChange={(e) => setPromptGenerator(e.target.value)}
+                    placeholder="e.g., customer support agent for a tech company"
+                    onKeyDown={(e) => e.key === "Enter" && generatePrompt()}
                   />
-                </div>
-
-                <div>
-                  <Label htmlFor="responseSpeed">Response Speed</Label>
-                  <div className="mt-3">
-                    <Slider
-                      id="responseSpeed"
-                      value={responseSpeed}
-                      onValueChange={(value) => {
-                        setResponseSpeed(value);
-                        setHasChanges(true);
-                      }}
-                      max={1}
-                      step={0.1}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                      <span>Slower</span>
-                      <span>{responseSpeed[0].toFixed(1)}</span>
-                      <span>Faster</span>
-                    </div>
-                  </div>
+                  <Button onClick={generatePrompt}>
+                    Generate
+                  </Button>
                 </div>
               </div>
-            </Card>
-          </TabsContent>
+            </div>
+          </Card>
+        </TabsContent>
 
-          {/* Voice Settings */}
-          <TabsContent value="voice" className="space-y-6 max-w-3xl mx-auto">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-6">Voice Fine-tuning</h3>
-              
-              <div className="space-y-6">
+        {/* Voice Settings */}
+        <TabsContent value="voice" className="space-y-6">
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold mb-4">Voice Configuration</h2>
+            
+            <div className="space-y-4">
+              {/* Voice Selection */}
+              <div>
+                <Label htmlFor="voice">Voice</Label>
+                <Select 
+                  value={selectedVoice} 
+                  onValueChange={(value) => {
+                    setSelectedVoice(value);
+                    setHasChanges(true);
+                  }}
+                >
+                  <SelectTrigger id="voice" className="mt-2">
+                    <SelectValue placeholder="Select a voice" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {voices && Array.isArray(voices) ? (
+                      voices.map((voice: any) => (
+                        <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                          {voice.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="rachel">Rachel</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Separator />
+
+              {/* Voice Settings */}
+              <div className="space-y-4">
                 <div>
-                  <Label>Selected Voice</Label>
-                  <div className="mt-3 flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Volume2 className="w-5 h-5 text-primary" />
-                      <div>
-                        <p className="font-medium">{selectedVoice}</p>
-                        <p className="text-sm text-muted-foreground">american</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      Change Voice
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Select a different voice from the Voice Library
-                  </p>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <Label htmlFor="stability">Stability</Label>
-                    <span className="text-sm text-muted-foreground">{stability[0].toFixed(2)}</span>
+                  <div className="flex justify-between mb-2">
+                    <Label>Stability</Label>
+                    <span className="text-sm text-muted-foreground">{stability[0]}</span>
                   </div>
                   <Slider
-                    id="stability"
                     value={stability}
                     onValueChange={(value) => {
                       setStability(value);
                       setHasChanges(true);
                     }}
+                    min={0}
                     max={1}
                     step={0.01}
-                    className="w-full"
+                    className="mt-2"
                   />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Controls voice consistency. Lower values = more variation
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Controls consistency between generations
                   </p>
                 </div>
 
                 <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <Label htmlFor="similarity">Similarity Boost</Label>
-                    <span className="text-sm text-muted-foreground">{similarityBoost[0].toFixed(2)}</span>
+                  <div className="flex justify-between mb-2">
+                    <Label>Similarity Boost</Label>
+                    <span className="text-sm text-muted-foreground">{similarityBoost[0]}</span>
                   </div>
                   <Slider
-                    id="similarity"
                     value={similarityBoost}
                     onValueChange={(value) => {
                       setSimilarityBoost(value);
                       setHasChanges(true);
                     }}
+                    min={0}
                     max={1}
                     step={0.01}
-                    className="w-full"
+                    className="mt-2"
                   />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Enhances voice similarity. Higher values = closer to original voice
-                  </p>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <Label htmlFor="style">Style Exaggeration</Label>
-                    <span className="text-sm text-muted-foreground">{styleExaggeration[0].toFixed(2)}</span>
-                  </div>
-                  <Slider
-                    id="style"
-                    value={styleExaggeration}
-                    onValueChange={(value) => {
-                      setStyleExaggeration(value);
-                      setHasChanges(true);
-                    }}
-                    max={1}
-                    step={0.01}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Amplifies the style of the original voice
+                  <p className="text-xs text-muted-foreground mt-1">
+                    How closely to match the original voice
                   </p>
                 </div>
               </div>
-            </Card>
-          </TabsContent>
+            </div>
+          </Card>
+        </TabsContent>
 
-          {/* LLM Settings */}
-          <TabsContent value="llm" className="space-y-6 max-w-3xl mx-auto">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-6">LLM Settings</h3>
-              
-              <div className="space-y-6">
-                <div>
-                  <Label htmlFor="model">Model</Label>
-                  <Select value={model} onValueChange={(value) => {
+        {/* LLM Settings */}
+        <TabsContent value="llm" className="space-y-6">
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold mb-4">Language Model Settings</h2>
+            
+            <div className="space-y-4">
+              {/* Model Selection */}
+              <div>
+                <Label htmlFor="model">Model</Label>
+                <Select 
+                  value={model} 
+                  onValueChange={(value) => {
                     setModel(value);
                     setHasChanges(true);
-                  }}>
-                    <SelectTrigger id="model" className="mt-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="GPT-4">GPT-4</SelectItem>
-                      <SelectItem value="GPT-4-Turbo">GPT-4 Turbo</SelectItem>
-                      <SelectItem value="GPT-3.5-Turbo">GPT-3.5 Turbo</SelectItem>
-                      <SelectItem value="Claude-3">Claude 3</SelectItem>
-                      <SelectItem value="Claude-2">Claude 2</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <Label htmlFor="temperature">Temperature</Label>
-                    <span className="text-sm text-muted-foreground">{temperature[0].toFixed(2)}</span>
-                  </div>
-                  <Slider
-                    id="temperature"
-                    value={temperature}
-                    onValueChange={(value) => {
-                      setTemperature(value);
-                      setHasChanges(true);
-                    }}
-                    max={2}
-                    step={0.01}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Controls randomness. 0 = deterministic, 2 = very creative
-                  </p>
-                </div>
-
-                <div>
-                  <Label htmlFor="maxTokens">Max Tokens</Label>
-                  <Input
-                    id="maxTokens"
-                    type="number"
-                    value={maxTokens}
-                    onChange={(e) => {
-                      setMaxTokens(e.target.value);
-                      setHasChanges(true);
-                    }}
-                    className="mt-2"
-                    min="1"
-                    max="4000"
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Maximum response length in tokens
-                  </p>
-                </div>
+                  }}
+                >
+                  <SelectTrigger id="model" className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gpt-4o">GPT-4o (Latest)</SelectItem>
+                    <SelectItem value="gpt-4o-mini">GPT-4o Mini (Fast)</SelectItem>
+                    <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                    <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                    <SelectItem value="claude-3-5-sonnet">Claude 3.5 Sonnet</SelectItem>
+                    <SelectItem value="claude-3-5-haiku">Claude 3.5 Haiku</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </Card>
-          </TabsContent>
 
-          {/* Tools Settings */}
-          <TabsContent value="tools" className="space-y-6 max-w-3xl mx-auto">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-6">Tools & Integrations</h3>
-              
-              <div className="space-y-4">
-                <div className="bg-muted/50 p-4 rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    Tools configuration coming soon. This will allow you to add custom tools, 
-                    webhooks, and integrations to enhance your agent's capabilities.
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
+              <Separator />
 
-          {/* Templates */}
-          <TabsContent value="templates" className="space-y-6 max-w-3xl mx-auto">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-6">Response Templates</h3>
-              
-              <div className="space-y-4">
-                <div className="bg-muted/50 p-4 rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    Response templates coming soon. This will allow you to define 
-                    standard responses for common questions and scenarios.
-                  </p>
+              {/* Temperature */}
+              <div>
+                <div className="flex justify-between mb-2">
+                  <Label>Temperature</Label>
+                  <span className="text-sm text-muted-foreground">{temperature[0]}</span>
                 </div>
+                <Slider
+                  value={temperature}
+                  onValueChange={(value) => {
+                    setTemperature(value);
+                    setHasChanges(true);
+                  }}
+                  min={0}
+                  max={2}
+                  step={0.1}
+                  className="mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Controls randomness. Lower = more focused, Higher = more creative
+                </p>
               </div>
-            </Card>
-          </TabsContent>
 
-          {/* More Settings */}
-          <TabsContent value="more" className="space-y-6 max-w-3xl mx-auto">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-6">Additional Settings</h3>
-              
-              <div className="space-y-4">
-                <div className="bg-muted/50 p-4 rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    Additional configuration options coming soon. This will include 
-                    advanced settings for analytics, compliance, and custom behaviors.
-                  </p>
-                </div>
+              {/* Max Tokens */}
+              <div>
+                <Label htmlFor="maxTokens">Max Response Length (tokens)</Label>
+                <Input
+                  id="maxTokens"
+                  type="number"
+                  value={maxTokens}
+                  onChange={(e) => {
+                    setMaxTokens(e.target.value);
+                    setHasChanges(true);
+                  }}
+                  placeholder="150"
+                  className="mt-2"
+                  min="50"
+                  max="4000"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Maximum length of each response (1 token ≈ 4 characters)
+                </p>
               </div>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+            </div>
+          </Card>
+        </TabsContent>
+
+        {/* Language Settings */}
+        <TabsContent value="language" className="space-y-6">
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold mb-4">Language Settings</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="language">Primary Language</Label>
+                <Select 
+                  value={language} 
+                  onValueChange={(value) => {
+                    setLanguage(value);
+                    setHasChanges(true);
+                  }}
+                >
+                  <SelectTrigger id="language" className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="es">Spanish</SelectItem>
+                    <SelectItem value="fr">French</SelectItem>
+                    <SelectItem value="de">German</SelectItem>
+                    <SelectItem value="it">Italian</SelectItem>
+                    <SelectItem value="pt">Portuguese</SelectItem>
+                    <SelectItem value="nl">Dutch</SelectItem>
+                    <SelectItem value="pl">Polish</SelectItem>
+                    <SelectItem value="ru">Russian</SelectItem>
+                    <SelectItem value="zh">Chinese</SelectItem>
+                    <SelectItem value="ja">Japanese</SelectItem>
+                    <SelectItem value="ko">Korean</SelectItem>
+                    <SelectItem value="ar">Arabic</SelectItem>
+                    <SelectItem value="hi">Hindi</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  The primary language the agent will use for conversations
+                </p>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

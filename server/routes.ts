@@ -3228,28 +3228,110 @@ Generate the complete prompt now:`;
     }
   });
 
-  // Update agent settings endpoint
+  // Update agent settings endpoint - syncs with ElevenLabs
   app.patch("/api/agents/:id/settings", isAuthenticated, async (req: any, res) => {
     try {
-      const { id } = req.params;
-      const settings = req.body;
       const userId = req.user.id;
       const user = await storage.getUser(userId);
-      
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      const agentId = req.params.id;
+      const updates = req.body;
       
-      // In a real implementation, this would update the agent settings in ElevenLabs
-      // For now, we just store these settings locally or return success
-      // The settings include: firstMessage, systemPrompt, voice settings, LLM settings, etc.
+      // Check if agent exists
+      const agent = await storage.getAgent(agentId, user.organizationId);
+      if (!agent) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      // Must have ElevenLabs integration to update settings
+      const integration = await storage.getIntegration(user.organizationId, "elevenlabs");
+      if (!integration || !integration.apiKey) {
+        return res.status(400).json({ message: "ElevenLabs integration not configured" });
+      }
+
+      const decryptedKey = decryptApiKey(integration.apiKey);
       
-      console.log("Updating agent settings for:", id, settings);
+      // Build ElevenLabs update payload
+      const elevenLabsPayload: any = {
+        conversation_config: {
+          agent: {},
+          tts: {},
+          llm: {}
+        }
+      };
       
-      res.json({ 
-        success: true,
-        message: "Agent settings updated successfully"
-      });
+      // Update name if provided
+      if (updates.name !== undefined) {
+        elevenLabsPayload.name = updates.name;
+      }
+      
+      // Update first message
+      if (updates.firstMessage !== undefined) {
+        elevenLabsPayload.conversation_config.agent.first_message = updates.firstMessage;
+      }
+      
+      // Update system prompt and language
+      if (updates.systemPrompt !== undefined || updates.language !== undefined) {
+        elevenLabsPayload.conversation_config.agent.prompt = {
+          prompt: updates.systemPrompt || agent.systemPrompt,
+          language: updates.language || agent.language || "en"
+        };
+      }
+      
+      // Update voice settings
+      if (updates.voiceId !== undefined || updates.voiceSettings) {
+        elevenLabsPayload.conversation_config.tts = {
+          voice_id: updates.voiceId || agent.voiceId,
+          ...(updates.voiceSettings || {})
+        };
+      }
+      
+      // Update LLM settings
+      if (updates.llmSettings) {
+        elevenLabsPayload.conversation_config.llm = {
+          model: updates.llmSettings.model || agent.llmSettings?.model || "gpt-4",
+          temperature: updates.llmSettings.temperature || agent.llmSettings?.temperature || 0.7,
+          max_tokens: updates.llmSettings.maxTokens || agent.llmSettings?.maxTokens || 150
+        };
+      }
+      
+      // Update in ElevenLabs
+      try {
+        const elevenLabsAgentId = agent.elevenLabsAgentId;
+        if (!elevenLabsAgentId) {
+          return res.status(400).json({ message: "Agent not synced with ElevenLabs" });
+        }
+        
+        console.log("Updating ElevenLabs agent:", elevenLabsAgentId, elevenLabsPayload);
+        
+        const response = await callElevenLabsAPI(
+          decryptedKey,
+          `/v1/convai/agents/${elevenLabsAgentId}`,
+          "PATCH",
+          elevenLabsPayload,
+          integration.id
+        );
+        
+        console.log("ElevenLabs update response:", response);
+        
+        // Update local database
+        await storage.updateAgent(user.organizationId, agentId, updates);
+        
+        // Return updated agent
+        const updatedAgent = await storage.getAgent(agentId, user.organizationId);
+        res.json(updatedAgent);
+        
+      } catch (elevenLabsError: any) {
+        console.error("Error updating agent in ElevenLabs:", elevenLabsError);
+        return res.status(500).json({ 
+          message: "Failed to update agent in ElevenLabs",
+          error: elevenLabsError.message || "Unknown error"
+        });
+      }
+      
     } catch (error) {
       console.error("Error updating agent settings:", error);
       res.status(500).json({ error: "Failed to update agent settings" });
