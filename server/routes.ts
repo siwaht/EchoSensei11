@@ -10,7 +10,7 @@ import type { RequestHandler } from "express";
 import { seedAdminUser } from "./seedAdmin";
 import { vectorDB } from "./vectordb";
 import { registerMultiTenantRoutes } from "./multiTenantRoutes";
-import { seedMultiTenantData } from "./seedMultiTenant";
+
 
 // Authentication middleware
 const isAuthenticated: RequestHandler = (req, res, next) => {
@@ -274,7 +274,7 @@ export function registerRoutes(app: Express): Server {
   seedAdminUser().catch(console.error);
   
   // Seed multi-tenant demo data
-  seedMultiTenantData().catch(console.error);
+  
   
   // Auth middleware
   setupAuth(app);

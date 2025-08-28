@@ -1,26 +1,35 @@
 import { storage } from "./storage";
+import { randomUUID } from "crypto";
 
 export async function seedAdminUser() {
   try {
-    // Check if admin user already exists
-    const existingUser = await storage.getUserByEmail("cc@siwaht.com");
+    console.log("Checking for admin user...");
     
-    if (existingUser) {
-      console.log("Admin user already exists");
-      return;
+    // Check if admin user already exists
+    const existingAdmin = await storage.getUserByEmail("cc@siwaht.com");
+    
+    if (existingAdmin) {
+      console.log("Admin user already exists:", existingAdmin.email);
+      return existingAdmin;
     }
     
-    // Create admin user with plain password (will be handled specially in auth.ts)
+    console.log("Creating super admin user...");
+    
+    // Create admin user with minimal required fields and manual UUID
     const adminUser = await storage.createUser({
+      id: randomUUID().toString(), // Ensure it's a string
       email: "cc@siwaht.com",
-      password: "Hola173!", // This will be checked directly in auth.ts
-      firstName: "Admin",
-      lastName: "User",
+      password: "Hola173!",
+      firstName: "Super",
+      lastName: "Admin",
       isAdmin: true,
     });
     
-    console.log("Admin user created successfully:", adminUser.email);
+    console.log("✅ Super admin user created:", adminUser.email);
+    return adminUser;
+    
   } catch (error) {
-    console.error("Error seeding admin user:", error);
+    console.log("Admin user seeding skipped:", (error as Error).message);
+    return null;
   }
 }

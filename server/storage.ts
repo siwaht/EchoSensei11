@@ -43,22 +43,6 @@ import {
   type InsertApprovalWebhook,
   type RagConfiguration,
   type InsertRagConfiguration,
-  // Multi-tenant types
-  agencies,
-  clients,
-  agencyPlans,
-  whiteLabelSettings,
-  resourceUsage,
-  type Agency,
-  type InsertAgency,
-  type Client,
-  type InsertClient,
-  type AgencyPlan,
-  type InsertAgencyPlan,
-  type WhiteLabelSettings,
-  type InsertWhiteLabelSettings,
-  type ResourceUsage,
-  type InsertResourceUsage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sum, avg, max, or } from "drizzle-orm";
@@ -188,46 +172,12 @@ export interface IStorage {
   createApprovalWebhook(webhook: InsertApprovalWebhook): Promise<ApprovalWebhook>;
   updateApprovalWebhook(id: string, updates: Partial<InsertApprovalWebhook>): Promise<ApprovalWebhook>;
   deleteApprovalWebhook(id: string): Promise<void>;
-
-  // ========== MULTI-TENANT OPERATIONS ==========
-  
-  // Agency operations
-  getAgencies(): Promise<Agency[]>;
-  getAgency(id: string): Promise<Agency | undefined>;
-  getAgencyByOwnerId(ownerId: string): Promise<Agency | undefined>;
-  createAgency(agencyData: InsertAgency): Promise<Agency>;
-  updateAgency(id: string, updates: Partial<Agency>): Promise<Agency>;
-  deleteAgency(id: string): Promise<void>;
-  
-  // Client operations
-  getClients(agencyId: string): Promise<Client[]>;
-  getClient(id: string): Promise<Client | undefined>;
-  getClientByUserId(userId: string): Promise<Client | undefined>;
-  createClient(clientData: InsertClient): Promise<Client>;
-  updateClient(id: string, updates: Partial<Client>): Promise<Client>;
-  deleteClient(id: string): Promise<void>;
-  
-  // Agency Plan operations
-  getAgencyPlans(agencyId: string): Promise<AgencyPlan[]>;
-  getAgencyPlan(id: string): Promise<AgencyPlan | undefined>;
-  createAgencyPlan(planData: InsertAgencyPlan): Promise<AgencyPlan>;
-  updateAgencyPlan(id: string, updates: Partial<AgencyPlan>): Promise<AgencyPlan>;
-  deleteAgencyPlan(id: string): Promise<void>;
-  
-  // White Label Settings operations
-  getWhiteLabelSettings(agencyId: string): Promise<WhiteLabelSettings | undefined>;
-  upsertWhiteLabelSettings(settingsData: InsertWhiteLabelSettings): Promise<WhiteLabelSettings>;
-  
-  // Resource Usage operations
-  getResourceUsage(entityId: string, year: number, month: number): Promise<ResourceUsage | undefined>;
-  upsertResourceUsage(usageData: InsertResourceUsage): Promise<ResourceUsage>;
-  getAgencyResourceUsage(agencyId: string, year: number, month: number): Promise<ResourceUsage[]>;
 }
 
 export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db().select().from(users).where(eq(users.id, id));
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
@@ -242,19 +192,22 @@ export class DatabaseStorage implements IStorage {
     
     if (!organizationId) {
       const [org] = await db.insert(organizations).values({
+        id: userData.id ? userData.id.split('-')[0] + '-org' : undefined,
         name: userData.email?.split('@')[0] || 'Personal Organization'
       }).returning();
       organizationId = org.id;
     }
 
     const [user] = await db.insert(users).values({
+      id: userData.id || undefined,
       email: userData.email!,
       password: userData.password,
       firstName: userData.firstName,
       lastName: userData.lastName,
       profileImageUrl: userData.profileImageUrl,
       organizationId,
-      isAdmin: userData.email === "cc@siwaht.com",
+      role: userData.role || "client",
+      isAdmin: userData.email === "cc@siwaht.com" ? 1 : 0,
     }).returning();
     return user;
   }
@@ -300,7 +253,7 @@ export class DatabaseStorage implements IStorage {
 
   // Integration operations
   async getIntegration(organizationId: string, provider: string): Promise<Integration | undefined> {
-    const [integration] = await db()
+    const [integration] = await db
       .select()
       .from(integrations)
       .where(and(eq(integrations.organizationId, organizationId), eq(integrations.provider, provider)));
@@ -308,13 +261,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllIntegrations(): Promise<Integration[]> {
-    return await db()
+    return await db
       .select()
       .from(integrations);
   }
 
   async upsertIntegration(integrationData: InsertIntegration): Promise<Integration> {
-    const [integration] = await db()
+    const [integration] = await db
       .insert(integrations)
       .values(integrationData)
       .onConflictDoUpdate({
@@ -329,7 +282,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateIntegrationStatus(id: string, status: "ACTIVE" | "INACTIVE" | "ERROR" | "PENDING_APPROVAL", lastTested?: Date): Promise<void> {
-    await db()
+    await db
       .update(integrations)
       .set({
         status,
@@ -341,11 +294,11 @@ export class DatabaseStorage implements IStorage {
 
   // Agent operations
   async getAgents(organizationId: string): Promise<Agent[]> {
-    return db().select().from(agents).where(eq(agents.organizationId, organizationId));
+    return db.select().from(agents).where(eq(agents.organizationId, organizationId));
   }
 
   async getAgent(id: string, organizationId: string): Promise<Agent | undefined> {
-    const [agent] = await db()
+    const [agent] = await db
       .select()
       .from(agents)
       .where(and(eq(agents.id, id), eq(agents.organizationId, organizationId)));
@@ -353,7 +306,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAgentByElevenLabsId(elevenLabsAgentId: string, organizationId: string): Promise<Agent | undefined> {
-    const [agent] = await db()
+    const [agent] = await db
       .select()
       .from(agents)
       .where(and(eq(agents.elevenLabsAgentId, elevenLabsAgentId), eq(agents.organizationId, organizationId)));
@@ -371,12 +324,12 @@ export class DatabaseStorage implements IStorage {
       evaluationCriteria: agentData.evaluationCriteria || null,
       dataCollection: agentData.dataCollection || null,
     };
-    const [agent] = await db().insert(agents).values([data]).returning();
+    const [agent] = await db.insert(agents).values([data]).returning();
     return agent;
   }
 
   async updateAgent(id: string, organizationId: string, updates: Partial<Omit<Agent, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'>>): Promise<Agent> {
-    const [agent] = await db()
+    const [agent] = await db
       .update(agents)
       .set({ ...updates, updatedAt: new Date() })
       .where(and(eq(agents.id, id), eq(agents.organizationId, organizationId)))
@@ -385,14 +338,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAgent(organizationId: string, id: string): Promise<void> {
-    await db()
+    await db
       .delete(agents)
       .where(and(eq(agents.id, id), eq(agents.organizationId, organizationId)));
   }
 
   // Call log operations
   async getCallLogs(organizationId: string, limit = 50, offset = 0, agentId?: string): Promise<CallLog[]> {
-    let query = db()
+    let query = db
       .select()
       .from(callLogs)
       .where(eq(callLogs.organizationId, organizationId))
@@ -401,7 +354,7 @@ export class DatabaseStorage implements IStorage {
       .offset(offset);
 
     if (agentId) {
-      query = db()
+      query = db
         .select()
         .from(callLogs)
         .where(and(eq(callLogs.organizationId, organizationId), eq(callLogs.agentId, agentId)))
@@ -414,7 +367,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCallLog(id: string, organizationId: string): Promise<CallLog | undefined> {
-    const [callLog] = await db()
+    const [callLog] = await db
       .select()
       .from(callLogs)
       .where(and(eq(callLogs.id, id), eq(callLogs.organizationId, organizationId)));
@@ -422,12 +375,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCallLog(callLogData: InsertCallLog & { createdAt?: Date }): Promise<CallLog> {
-    const [callLog] = await db().insert(callLogs).values(callLogData).returning();
+    const [callLog] = await db.insert(callLogs).values(callLogData).returning();
     return callLog;
   }
 
   async getCallLogByElevenLabsId(elevenLabsCallId: string, organizationId: string): Promise<CallLog | undefined> {
-    const [callLog] = await db()
+    const [callLog] = await db
       .select()
       .from(callLogs)
       .where(and(eq(callLogs.elevenLabsCallId, elevenLabsCallId), eq(callLogs.organizationId, organizationId)));
@@ -442,7 +395,7 @@ export class DatabaseStorage implements IStorage {
     activeAgents: number;
     lastSync?: Date;
   }> {
-    const [callStats] = await db()
+    const [callStats] = await db
       .select({
         totalCalls: count(callLogs.id),
         totalMinutes: sum(callLogs.duration),
@@ -452,7 +405,7 @@ export class DatabaseStorage implements IStorage {
       .from(callLogs)
       .where(eq(callLogs.organizationId, organizationId));
 
-    const [agentStats] = await db()
+    const [agentStats] = await db
       .select({
         activeAgents: count(agents.id),
       })
@@ -470,11 +423,11 @@ export class DatabaseStorage implements IStorage {
 
   // Admin operations
   async getAllUsers(): Promise<User[]> {
-    return await db().select().from(users);
+    return await db.select().from(users);
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
-    const [updatedUser] = await db()
+    const [updatedUser] = await db
       .update(users)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(users.id, id))
@@ -486,15 +439,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<void> {
-    await db().delete(users).where(eq(users.id, id));
+    await db.delete(users).where(eq(users.id, id));
   }
 
   async getAllOrganizations(): Promise<Organization[]> {
-    return await db().select().from(organizations);
+    return await db.select().from(organizations);
   }
 
   async updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization> {
-    const [updatedOrg] = await db()
+    const [updatedOrg] = await db
       .update(organizations)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(organizations.id, id))
@@ -525,23 +478,23 @@ export class DatabaseStorage implements IStorage {
     }>;
   }> {
     // Get total counts
-    const [userCount] = await db().select({ count: count(users.id) }).from(users);
-    const [orgCount] = await db().select({ count: count(organizations.id) }).from(organizations);
-    const [callCount] = await db().select({ 
+    const [userCount] = await db.select({ count: count(users.id) }).from(users);
+    const [orgCount] = await db.select({ count: count(organizations.id) }).from(organizations);
+    const [callCount] = await db.select({ 
       count: count(callLogs.id),
       totalCost: sum(callLogs.cost) 
     }).from(callLogs);
 
     // Get organization-specific data
-    const orgs = await db().select().from(organizations);
+    const orgs = await db.select().from(organizations);
     const organizationsData = await Promise.all(
-      orgs.map(async (org) => {
-        const [userStats] = await db()
+      orgs.map(async (org: Organization) => {
+        const [userStats] = await db
           .select({ count: count(users.id) })
           .from(users)
           .where(eq(users.organizationId, org.id));
 
-        const [callStats] = await db()
+        const [callStats] = await db
           .select({
             totalCalls: count(callLogs.id),
             totalMinutes: sum(callLogs.duration),
@@ -577,21 +530,21 @@ export class DatabaseStorage implements IStorage {
 
   // Billing operations
   async getBillingPackages(): Promise<BillingPackage[]> {
-    return await db().select().from(billingPackages);
+    return await db.select().from(billingPackages);
   }
 
   async getBillingPackage(id: string): Promise<BillingPackage | undefined> {
-    const [pkg] = await db().select().from(billingPackages).where(eq(billingPackages.id, id));
+    const [pkg] = await db.select().from(billingPackages).where(eq(billingPackages.id, id));
     return pkg;
   }
 
   async createBillingPackage(pkg: Partial<BillingPackage>): Promise<BillingPackage> {
-    const [newPkg] = await db().insert(billingPackages).values(pkg as any).returning();
+    const [newPkg] = await db.insert(billingPackages).values(pkg as any).returning();
     return newPkg;
   }
 
   async updateBillingPackage(id: string, updates: Partial<BillingPackage>): Promise<BillingPackage> {
-    const [updatedPkg] = await db()
+    const [updatedPkg] = await db
       .update(billingPackages)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(billingPackages.id, id))
@@ -603,12 +556,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteBillingPackage(id: string): Promise<void> {
-    await db().delete(billingPackages).where(eq(billingPackages.id, id));
+    await db.delete(billingPackages).where(eq(billingPackages.id, id));
   }
 
   // Payment operations
   async getPaymentHistory(organizationId: string): Promise<Payment[]> {
-    return await db()
+    return await db
       .select()
       .from(payments)
       .where(eq(payments.organizationId, organizationId))
@@ -616,19 +569,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllPayments(): Promise<Payment[]> {
-    return await db()
+    return await db
       .select()
-      .from(payments)
       .orderBy(desc(payments.createdAt));
   }
 
   async createPayment(data: InsertPayment): Promise<Payment> {
-    const [payment] = await db().insert(payments).values(data).returning();
+    const [payment] = await db.insert(payments).values(data).returning();
     return payment;
   }
 
   async updatePayment(id: string, data: Partial<Payment>): Promise<Payment> {
-    const [updated] = await db()
+    const [updated] = await db
       .update(payments)
       .set(data)
       .where(eq(payments.id, id))
@@ -641,7 +593,7 @@ export class DatabaseStorage implements IStorage {
 
   // Phone number operations
   async getPhoneNumbers(organizationId: string): Promise<PhoneNumber[]> {
-    return await db()
+    return await db
       .select()
       .from(phoneNumbers)
       .where(eq(phoneNumbers.organizationId, organizationId))
@@ -649,7 +601,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPhoneNumber(id: string, organizationId: string): Promise<PhoneNumber | undefined> {
-    const [phoneNumber] = await db()
+    const [phoneNumber] = await db
       .select()
       .from(phoneNumbers)
       .where(and(eq(phoneNumbers.id, id), eq(phoneNumbers.organizationId, organizationId)));
@@ -657,12 +609,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPhoneNumber(phoneNumber: InsertPhoneNumber): Promise<PhoneNumber> {
-    const [newPhoneNumber] = await db().insert(phoneNumbers).values(phoneNumber).returning();
+    const [newPhoneNumber] = await db.insert(phoneNumbers).values(phoneNumber).returning();
     return newPhoneNumber;
   }
 
   async updatePhoneNumber(id: string, organizationId: string, updates: Partial<InsertPhoneNumber>): Promise<PhoneNumber> {
-    const [updated] = await db()
+    const [updated] = await db
       .update(phoneNumbers)
       .set({ ...updates, updatedAt: new Date() })
       .where(and(eq(phoneNumbers.id, id), eq(phoneNumbers.organizationId, organizationId)))
@@ -674,14 +626,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePhoneNumber(id: string, organizationId: string): Promise<void> {
-    await db()
+    await db
       .delete(phoneNumbers)
       .where(and(eq(phoneNumbers.id, id), eq(phoneNumbers.organizationId, organizationId)));
   }
 
   // Batch call operations
   async getBatchCalls(organizationId: string): Promise<BatchCall[]> {
-    return await db()
+    return await db
       .select()
       .from(batchCalls)
       .where(eq(batchCalls.organizationId, organizationId))
@@ -689,7 +641,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBatchCall(id: string, organizationId: string): Promise<BatchCall | undefined> {
-    const [batchCall] = await db()
+    const [batchCall] = await db
       .select()
       .from(batchCalls)
       .where(and(eq(batchCalls.id, id), eq(batchCalls.organizationId, organizationId)));
@@ -697,12 +649,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBatchCall(data: InsertBatchCall): Promise<BatchCall> {
-    const [batchCall] = await db().insert(batchCalls).values(data).returning();
+    const [batchCall] = await db.insert(batchCalls).values(data).returning();
     return batchCall;
   }
 
   async updateBatchCall(id: string, organizationId: string, data: Partial<BatchCall>): Promise<BatchCall> {
-    const [updated] = await db()
+    const [updated] = await db
       .update(batchCalls)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(batchCalls.id, id), eq(batchCalls.organizationId, organizationId)))
@@ -714,14 +666,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteBatchCall(id: string, organizationId: string): Promise<void> {
-    await db()
+    await db
       .delete(batchCalls)
       .where(and(eq(batchCalls.id, id), eq(batchCalls.organizationId, organizationId)));
   }
 
   // Batch call recipient operations
   async getBatchCallRecipients(batchCallId: string): Promise<BatchCallRecipient[]> {
-    return await db()
+    return await db
       .select()
       .from(batchCallRecipients)
       .where(eq(batchCallRecipients.batchCallId, batchCallId))
@@ -729,12 +681,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBatchCallRecipients(recipients: InsertBatchCallRecipient[]): Promise<BatchCallRecipient[]> {
-    const created = await db().insert(batchCallRecipients).values(recipients).returning();
+    const created = await db.insert(batchCallRecipients).values(recipients).returning();
     return created;
   }
 
   async updateBatchCallRecipient(id: string, data: Partial<BatchCallRecipient>): Promise<BatchCallRecipient> {
-    const [updated] = await db()
+    const [updated] = await db
       .update(batchCallRecipients)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(batchCallRecipients.id, id))
@@ -747,7 +699,7 @@ export class DatabaseStorage implements IStorage {
 
   // System template operations (admin only)
   async getSystemTemplates(): Promise<SystemTemplate[]> {
-    return await db()
+    return await db
       .select()
       .from(systemTemplates)
       .where(eq(systemTemplates.isActive, true))
@@ -755,7 +707,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSystemTemplate(id: string): Promise<SystemTemplate | undefined> {
-    const [template] = await db()
+    const [template] = await db
       .select()
       .from(systemTemplates)
       .where(eq(systemTemplates.id, id));
@@ -763,12 +715,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSystemTemplate(template: InsertSystemTemplate): Promise<SystemTemplate> {
-    const [created] = await db().insert(systemTemplates).values(template).returning();
+    const [created] = await db.insert(systemTemplates).values(template).returning();
     return created;
   }
 
   async updateSystemTemplate(id: string, updates: Partial<InsertSystemTemplate>): Promise<SystemTemplate> {
-    const [updated] = await db()
+    const [updated] = await db
       .update(systemTemplates)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(systemTemplates.id, id))
@@ -780,14 +732,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteSystemTemplate(id: string): Promise<void> {
-    await db().delete(systemTemplates).where(eq(systemTemplates.id, id));
+    await db.delete(systemTemplates).where(eq(systemTemplates.id, id));
   }
 
   // Quick Action Button operations
   async getQuickActionButtons(organizationId?: string): Promise<QuickActionButton[]> {
     if (organizationId) {
       // Get system buttons and user's organization buttons
-      return await db()
+      return await db
         .select()
         .from(quickActionButtons)
         .where(
@@ -802,7 +754,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(quickActionButtons.order);
     } else {
       // Get only system buttons
-      return await db()
+      return await db
         .select()
         .from(quickActionButtons)
         .where(
@@ -816,7 +768,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getQuickActionButton(id: string): Promise<QuickActionButton | undefined> {
-    const [button] = await db()
+    const [button] = await db
       .select()
       .from(quickActionButtons)
       .where(eq(quickActionButtons.id, id));
@@ -824,12 +776,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createQuickActionButton(button: InsertQuickActionButton): Promise<QuickActionButton> {
-    const [created] = await db().insert(quickActionButtons).values(button).returning();
+    const [created] = await db.insert(quickActionButtons).values(button).returning();
     return created;
   }
 
   async updateQuickActionButton(id: string, updates: Partial<InsertQuickActionButton>): Promise<QuickActionButton> {
-    const [updated] = await db()
+    const [updated] = await db
       .update(quickActionButtons)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(quickActionButtons.id, id))
@@ -841,29 +793,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteQuickActionButton(id: string): Promise<void> {
-    await db().delete(quickActionButtons).where(eq(quickActionButtons.id, id));
+    await db.delete(quickActionButtons).where(eq(quickActionButtons.id, id));
   }
 
   // Admin task operations
   async createAdminTask(task: InsertAdminTask): Promise<AdminTask> {
-    const [adminTask] = await db().insert(adminTasks).values(task).returning();
+    const [adminTask] = await db.insert(adminTasks).values(task).returning();
     return adminTask;
   }
 
   async getAdminTasks(status?: "pending" | "in_progress" | "completed" | "rejected"): Promise<AdminTask[]> {
     if (status) {
-      return db().select().from(adminTasks).where(eq(adminTasks.status, status));
+      return db.select().from(adminTasks).where(eq(adminTasks.status, status));
     }
-    return db().select().from(adminTasks).orderBy(desc(adminTasks.createdAt));
+    return db.select().from(adminTasks).orderBy(desc(adminTasks.createdAt));
   }
 
   async getAdminTask(id: string): Promise<AdminTask | undefined> {
-    const [task] = await db().select().from(adminTasks).where(eq(adminTasks.id, id));
+    const [task] = await db.select().from(adminTasks).where(eq(adminTasks.id, id));
     return task;
   }
 
   async updateAdminTask(id: string, updates: Partial<AdminTask>): Promise<AdminTask> {
-    const [task] = await db()
+    const [task] = await db
       .update(adminTasks)
       .set({
         ...updates,
@@ -900,7 +852,7 @@ export class DatabaseStorage implements IStorage {
 
   // RAG Configuration operations
   async getRagConfiguration(organizationId: string): Promise<RagConfiguration | undefined> {
-    const [config] = await db()
+    const [config] = await db
       .select()
       .from(ragConfigurations)
       .where(eq(ragConfigurations.organizationId, organizationId))
@@ -910,12 +862,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRagConfiguration(data: InsertRagConfiguration): Promise<RagConfiguration> {
-    const [config] = await db().insert(ragConfigurations).values(data).returning();
+    const [config] = await db.insert(ragConfigurations).values(data).returning();
     return config;
   }
 
   async updateRagConfiguration(id: string, data: Partial<InsertRagConfiguration>): Promise<RagConfiguration> {
-    const [updated] = await db()
+    const [updated] = await db
       .update(ragConfigurations)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(ragConfigurations.id, id))
@@ -927,7 +879,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async approveRagConfiguration(id: string, adminId: string): Promise<void> {
-    await db()
+    await db
       .update(ragConfigurations)
       .set({
         approvalStatus: "ACTIVE",
@@ -940,11 +892,11 @@ export class DatabaseStorage implements IStorage {
 
   // Approval webhook operations
   async getApprovalWebhooks(): Promise<ApprovalWebhook[]> {
-    return await db().select().from(approvalWebhooks).orderBy(desc(approvalWebhooks.createdAt));
+    return await db.select().from(approvalWebhooks).orderBy(desc(approvalWebhooks.createdAt));
   }
 
   async getApprovalWebhook(id: string): Promise<ApprovalWebhook | undefined> {
-    const [webhook] = await db()
+    const [webhook] = await db
       .select()
       .from(approvalWebhooks)
       .where(eq(approvalWebhooks.id, id));
@@ -952,7 +904,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createApprovalWebhook(webhookData: InsertApprovalWebhook): Promise<ApprovalWebhook> {
-    const [webhook] = await db()
+    const [webhook] = await db
       .insert(approvalWebhooks)
       .values(webhookData as any)
       .returning();
@@ -960,7 +912,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateApprovalWebhook(id: string, updates: Partial<InsertApprovalWebhook>): Promise<ApprovalWebhook> {
-    const [webhook] = await db()
+    const [webhook] = await db
       .update(approvalWebhooks)
       .set({ ...updates as any, updatedAt: new Date() })
       .where(eq(approvalWebhooks.id, id))
@@ -971,182 +923,8 @@ export class DatabaseStorage implements IStorage {
     return webhook;
   }
 
-  // ========== MULTI-TENANT OPERATIONS ==========
-
-  // Agency operations
-  async getAgencies(): Promise<Agency[]> {
-    return await db().select().from(agencies).orderBy(desc(agencies.createdAt));
-  }
-
-  async getAgency(id: string): Promise<Agency | undefined> {
-    const [agency] = await db().select().from(agencies).where(eq(agencies.id, id));
-    return agency;
-  }
-
-  async getAgencyByOwnerId(ownerId: string): Promise<Agency | undefined> {
-    const [agency] = await db().select().from(agencies).where(eq(agencies.ownerId, ownerId));
-    return agency;
-  }
-
-  async createAgency(agencyData: InsertAgency): Promise<Agency> {
-    const [agency] = await db().insert(agencies).values(agencyData).returning();
-    return agency;
-  }
-
-  async updateAgency(id: string, updates: Partial<Agency>): Promise<Agency> {
-    const [updated] = await db()
-      .update(agencies)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(agencies.id, id))
-      .returning();
-    if (!updated) {
-      throw new Error("Agency not found");
-    }
-    return updated;
-  }
-
-  async deleteAgency(id: string): Promise<void> {
-    await db().delete(agencies).where(eq(agencies.id, id));
-  }
-
-  // Client operations
-  async getClients(agencyId: string): Promise<Client[]> {
-    return await db()
-      .select()
-      .from(clients)
-      .where(eq(clients.agencyId, agencyId))
-      .orderBy(desc(clients.createdAt));
-  }
-
-  async getClient(id: string): Promise<Client | undefined> {
-    const [client] = await db().select().from(clients).where(eq(clients.id, id));
-    return client;
-  }
-
-  async getClientByUserId(userId: string): Promise<Client | undefined> {
-    const [client] = await db().select().from(clients).where(eq(clients.userId, userId));
-    return client;
-  }
-
-  async createClient(clientData: InsertClient): Promise<Client> {
-    const [client] = await db().insert(clients).values(clientData).returning();
-    return client;
-  }
-
-  async updateClient(id: string, updates: Partial<Client>): Promise<Client> {
-    const [updated] = await db()
-      .update(clients)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(clients.id, id))
-      .returning();
-    if (!updated) {
-      throw new Error("Client not found");
-    }
-    return updated;
-  }
-
-  async deleteClient(id: string): Promise<void> {
-    await db().delete(clients).where(eq(clients.id, id));
-  }
-
-  // Agency Plan operations
-  async getAgencyPlans(agencyId: string): Promise<AgencyPlan[]> {
-    return await db()
-      .select()
-      .from(agencyPlans)
-      .where(eq(agencyPlans.agencyId, agencyId))
-      .orderBy(desc(agencyPlans.createdAt));
-  }
-
-  async getAgencyPlan(id: string): Promise<AgencyPlan | undefined> {
-    const [plan] = await db().select().from(agencyPlans).where(eq(agencyPlans.id, id));
-    return plan;
-  }
-
-  async createAgencyPlan(planData: InsertAgencyPlan): Promise<AgencyPlan> {
-    const [plan] = await db().insert(agencyPlans).values(planData).returning();
-    return plan;
-  }
-
-  async updateAgencyPlan(id: string, updates: Partial<AgencyPlan>): Promise<AgencyPlan> {
-    const [updated] = await db()
-      .update(agencyPlans)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(agencyPlans.id, id))
-      .returning();
-    if (!updated) {
-      throw new Error("Agency plan not found");
-    }
-    return updated;
-  }
-
-  async deleteAgencyPlan(id: string): Promise<void> {
-    await db().delete(agencyPlans).where(eq(agencyPlans.id, id));
-  }
-
-  // White Label Settings operations
-  async getWhiteLabelSettings(agencyId: string): Promise<WhiteLabelSettings | undefined> {
-    const [settings] = await db()
-      .select()
-      .from(whiteLabelSettings)
-      .where(eq(whiteLabelSettings.agencyId, agencyId));
-    return settings;
-  }
-
-  async upsertWhiteLabelSettings(settingsData: InsertWhiteLabelSettings): Promise<WhiteLabelSettings> {
-    const [settings] = await db()
-      .insert(whiteLabelSettings)
-      .values(settingsData)
-      .onConflictDoUpdate({
-        target: whiteLabelSettings.agencyId,
-        set: { ...settingsData, updatedAt: new Date() },
-      })
-      .returning();
-    return settings;
-  }
-
-  // Resource Usage operations
-  async getResourceUsage(entityId: string, year: number, month: number): Promise<ResourceUsage | undefined> {
-    const [usage] = await db()
-      .select()
-      .from(resourceUsage)
-      .where(
-        and(
-          eq(resourceUsage.entityId, entityId),
-          eq(resourceUsage.year, year),
-          eq(resourceUsage.month, month)
-        )
-      );
-    return usage;
-  }
-
-  async upsertResourceUsage(usageData: InsertResourceUsage): Promise<ResourceUsage> {
-    const [usage] = await db()
-      .insert(resourceUsage)
-      .values(usageData)
-      .onConflictDoUpdate({
-        target: [resourceUsage.entityId, resourceUsage.year, resourceUsage.month],
-        set: { ...usageData, updatedAt: new Date() },
-      })
-      .returning();
-    return usage;
-  }
-
-  async getAgencyResourceUsage(agencyId: string, year: number, month: number): Promise<ResourceUsage[]> {
-    return await db()
-      .select()
-      .from(resourceUsage)
-      .where(
-        and(
-          eq(resourceUsage.agencyId, agencyId),
-          eq(resourceUsage.year, year),
-          eq(resourceUsage.month, month)
-        )
-      );
-  }
-
   async deleteApprovalWebhook(id: string): Promise<void> {
-    await db()
+    await db
       .delete(approvalWebhooks)
       .where(eq(approvalWebhooks.id, id));
   }

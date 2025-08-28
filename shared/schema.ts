@@ -28,35 +28,28 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User role enum for hierarchy
-export const userRoleEnum = pgEnum("user_role", ["super_admin", "agency", "client"]);
-
 // User storage table
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique().notNull(),
+  id: varchar("id").primaryKey(),
+  email: varchar("email").notNull().unique(),
   password: varchar("password"),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   organizationId: varchar("organization_id").notNull(),
-  role: userRoleEnum("role").notNull().default("client"),
-  agencyId: varchar("agency_id"), // For clients, references agencies.id
-  isAdmin: boolean("is_admin").default(false), // Legacy field, kept for compatibility
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  role: varchar("role").notNull().default("client"),
+  isAdmin: boolean("is_admin").default(false),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
 });
 
-// Billing package enum
-export const billingPackageEnum = pgEnum("billing_package", ["starter", "professional", "enterprise", "custom"]);
-
-// Organizations table for multi-tenancy
+// Organizations table
 export const organizations = pgTable("organizations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
   name: varchar("name").notNull(),
-  billingPackage: billingPackageEnum("billing_package").default("starter"),
-  perCallRate: decimal("per_call_rate", { precision: 10, scale: 4 }).default('0.30'),
-  perMinuteRate: decimal("per_minute_rate", { precision: 10, scale: 4 }).default('0.30'),
+  billingPackage: varchar("billing_package").default("starter"),
+  perCallRate: decimal("per_call_rate", { precision: 10, scale: 4 }).default("0.30"),
+  perMinuteRate: decimal("per_minute_rate", { precision: 10, scale: 4 }).default("0.30"),
   monthlyCredits: integer("monthly_credits").default(0),
   usedCredits: integer("used_credits").default(0),
   creditResetDate: timestamp("credit_reset_date"),
@@ -65,40 +58,22 @@ export const organizations = pgTable("organizations", {
   maxUsers: integer("max_users").default(10),
   stripeCustomerId: varchar("stripe_customer_id"),
   subscriptionId: varchar("subscription_id"),
-  billingStatus: varchar("billing_status").default('inactive'), // active, inactive, past_due
+  billingStatus: varchar("billing_status").default("inactive"),
   lastPaymentDate: timestamp("last_payment_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
 });
-
-// Integration status enum
-export const integrationStatusEnum = pgEnum("integration_status", ["ACTIVE", "INACTIVE", "ERROR", "PENDING_APPROVAL"]);
-
-// Phone number provider enum
-export const phoneProviderEnum = pgEnum("phone_provider", ["twilio", "sip_trunk"]);
-
-// Phone number status enum  
-export const phoneStatusEnum = pgEnum("phone_status", ["active", "inactive", "pending"]);
-
-// Task status enum
-export const taskStatusEnum = pgEnum("task_status", ["pending", "in_progress", "completed", "rejected"]);
-
-// Task type enum
-export const taskTypeEnum = pgEnum("task_type", ["integration_approval", "webhook_approval", "agent_approval"]);
-
-// RAG Configuration approval status enum
-export const ragApprovalStatusEnum = pgEnum("rag_approval_status", ["PENDING_APPROVAL", "ACTIVE", "REJECTED"]);
 
 // Integrations table for storing API keys
 export const integrations = pgTable("integrations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
   organizationId: varchar("organization_id").notNull(),
   provider: varchar("provider").notNull(), // 'elevenlabs'
   apiKey: varchar("api_key").notNull(), // encrypted
-  status: integrationStatusEnum("status").notNull().default("PENDING_APPROVAL"),
+  status: varchar("status").notNull().default("PENDING_APPROVAL"),
   lastTested: timestamp("last_tested"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
 }, (table) => ({
   // Unique constraint on organizationId and provider for upsert operations
   uniqueOrgProvider: unique("unique_org_provider").on(table.organizationId, table.provider),
@@ -106,112 +81,112 @@ export const integrations = pgTable("integrations", {
 
 // Admin tasks table for tracking approvals
 export const adminTasks = pgTable("admin_tasks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  type: taskTypeEnum("type").notNull(),
-  status: taskStatusEnum("status").notNull().default("pending"),
+  id: varchar("id").primaryKey(),
+  type: varchar("type").notNull(),
+  status: varchar("status").notNull().default("pending"),
   title: varchar("title").notNull(),
   description: text("description"),
-  relatedEntityId: varchar("related_entity_id").notNull(), // ID of integration/webhook/agent
-  relatedEntityType: varchar("related_entity_type").notNull(), // 'integration', 'webhook', 'agent'
+  relatedEntityId: varchar("related_entity_id").notNull(),
+  relatedEntityType: varchar("related_entity_type").notNull(),
   organizationId: varchar("organization_id").notNull(),
-  requestedBy: varchar("requested_by").notNull(), // User ID who requested
-  approvedBy: varchar("approved_by"), // Admin ID who approved
-  rejectedBy: varchar("rejected_by"), // Admin ID who rejected
+  requestedBy: varchar("requested_by").notNull(),
+  approvedBy: varchar("approved_by"),
+  rejectedBy: varchar("rejected_by"),
   metadata: json("metadata").$type<Record<string, any>>(),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at"),
   completedAt: timestamp("completed_at"),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
 });
 
 // Approval webhooks table for notification endpoints
 export const approvalWebhooks = pgTable("approval_webhooks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
   name: varchar("name").notNull(),
   description: text("description"),
   webhookUrl: text("webhook_url").notNull(),
-  secret: varchar("secret"), // For webhook signature verification
-  events: json("events").$type<string[]>().notNull(), // ['task.created', 'task.approved', 'task.rejected']
+  secret: varchar("secret"),
+  events: json("events").$type<string[]>().notNull(),
   isActive: boolean("is_active").notNull().default(true),
-  headers: json("headers").$type<Record<string, string>>(), // Custom headers to send with webhook
+  headers: json("headers").$type<Record<string, string>>(),
   lastTriggered: timestamp("last_triggered"),
   failureCount: integer("failure_count").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
 });
 
-// RAG Configurations table - tracks approval status for RAG webhooks
+// RAG Configurations table
 export const ragConfigurations = pgTable("rag_configurations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
   organizationId: varchar("organization_id").notNull(),
   name: varchar("name").notNull().default("Custom RAG"),
   description: text("description"),
   webhookUrl: text("webhook_url").notNull(),
   systemPrompt: text("system_prompt"),
   configuration: json("configuration").$type<any>(),
-  approvalStatus: ragApprovalStatusEnum("approval_status").notNull().default("PENDING_APPROVAL"),
+  approvalStatus: varchar("approval_status").notNull().default("PENDING_APPROVAL"),
   approvedBy: varchar("approved_by"),
   approvedAt: timestamp("approved_at"),
   firstSavedAt: timestamp("first_saved_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
 });
 
 // Phone numbers table
 export const phoneNumbers = pgTable("phone_numbers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
   organizationId: varchar("organization_id").notNull(),
   label: varchar("label").notNull(),
   phoneNumber: varchar("phone_number").notNull(),
   countryCode: varchar("country_code").notNull().default("+1"),
-  provider: phoneProviderEnum("provider").notNull(),
+  provider: varchar("provider").notNull(),
   twilioAccountSid: varchar("twilio_account_sid"),
-  twilioAuthToken: varchar("twilio_auth_token"), // encrypted
+  twilioAuthToken: varchar("twilio_auth_token"),
   sipTrunkUri: varchar("sip_trunk_uri"),
   sipUsername: varchar("sip_username"),
-  sipPassword: varchar("sip_password"), // encrypted
+  sipPassword: varchar("sip_password"),
   elevenLabsPhoneId: varchar("eleven_labs_phone_id"),
-  agentId: varchar("agent_id"), // Local agent ID
-  elevenLabsAgentId: varchar("elevenlabs_agent_id"), // ElevenLabs agent ID
-  status: phoneStatusEnum("status").notNull().default("pending"),
+  agentId: varchar("agent_id"),
+  elevenLabsAgentId: varchar("elevenlabs_agent_id"),
+  status: varchar("status").notNull().default("pending"),
   lastSynced: timestamp("last_synced"),
   metadata: json("metadata").$type<Record<string, any>>(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
 });
 
-// System Templates table (managed by admins only)
+// System Templates table
 export const systemTemplates = pgTable("system_templates", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
   name: varchar("name").notNull(),
   content: text("content").notNull(),
-  icon: varchar("icon"), // Icon name from lucide-react
-  color: varchar("color"), // Tailwind color class
+  icon: varchar("icon"),
+  color: varchar("color"),
   order: integer("order").default(0),
   isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
 });
 
-// Quick Action Buttons table (system buttons managed by admins, user buttons by users)
+// Quick Action Buttons table
 export const quickActionButtons = pgTable("quick_action_buttons", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
   name: varchar("name").notNull(),
   prompt: text("prompt").notNull(),
-  icon: varchar("icon").default("Sparkles"), // Icon name from lucide-react
-  color: varchar("color").default("bg-blue-500 hover:bg-blue-600"), // Tailwind color classes
-  category: varchar("category"), // To group related buttons
+  icon: varchar("icon").default("Sparkles"),
+  color: varchar("color").default("bg-blue-500 hover:bg-blue-600"),
+  category: varchar("category"),
   order: integer("order").default(0),
-  isSystem: boolean("is_system").notNull().default(false), // System buttons managed by admin only
+  isSystem: boolean("is_system").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
-  createdBy: varchar("created_by"), // User who created the button
-  organizationId: varchar("organization_id"), // For user-created buttons
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: varchar("created_by"),
+  organizationId: varchar("organization_id"),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
 });
 
 // Agents table
 export const agents = pgTable("agents", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
   organizationId: varchar("organization_id").notNull(),
   elevenLabsAgentId: varchar("eleven_labs_agent_id").notNull(),
   name: varchar("name").notNull(),
@@ -232,7 +207,6 @@ export const agents = pgTable("agents", {
     maxTokens?: number;
   }>(),
   tools: json("tools").$type<{
-    // ElevenLabs System Tools
     systemTools?: {
       endCall?: {
         enabled: boolean;
@@ -286,7 +260,6 @@ export const agents = pgTable("agents", {
         disableInterruptions?: boolean;
       };
     };
-    // Webhooks
     webhooks?: Array<{
       id: string;
       name: string;
@@ -296,7 +269,6 @@ export const agents = pgTable("agents", {
       description?: string;
       enabled?: boolean;
     }>;
-    // Platform webhook settings
     conversationInitiationWebhook?: {
       enabled: boolean;
       url?: string;
@@ -307,7 +279,6 @@ export const agents = pgTable("agents", {
       url?: string;
       description?: string;
     };
-    // Integrations
     integrations?: Array<{
       id: string;
       name: string;
@@ -315,7 +286,6 @@ export const agents = pgTable("agents", {
       configuration?: Record<string, any>;
       enabled?: boolean;
     }>;
-    // Custom Tools (webhooks, integrations, MCP servers)
     customTools?: Array<{
       id: string;
       name: string;
@@ -327,14 +297,12 @@ export const agents = pgTable("agents", {
       configuration?: Record<string, any>;
       description?: string;
       enabled: boolean;
-      // MCP-specific fields
       mcpConfig?: {
         serverType: 'sse' | 'streamable_http';
         secretToken?: string;
         approvalMode: 'always_ask' | 'fine_grained' | 'no_approval';
         trusted: boolean;
       };
-      // Webhook-specific parameter fields
       queryParameters?: Array<{
         name: string;
         type: string;
@@ -357,9 +325,7 @@ export const agents = pgTable("agents", {
         description: string;
       }>;
     }>;
-    // Tool IDs for ElevenLabs
     toolIds?: string[];
-    // Legacy MCP Servers (for backward compatibility)
     mcpServers?: Array<{
       id: string;
       name: string;
@@ -388,45 +354,99 @@ export const agents = pgTable("agents", {
     content: string;
   }>>(),
   isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
 });
 
 // Call logs table
 export const callLogs = pgTable("call_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  conversationId: varchar("conversation_id").notNull(), // Required ElevenLabs conversation ID
+  id: varchar("id").primaryKey(),
+  conversationId: varchar("conversation_id").notNull(),
   organizationId: varchar("organization_id").notNull(),
   agentId: varchar("agent_id"),
   elevenLabsCallId: varchar("eleven_labs_call_id"),
-  duration: integer("duration"), // in seconds
+  duration: integer("duration"),
   transcript: json("transcript"),
   audioUrl: varchar("audio_url"),
   cost: decimal("cost", { precision: 10, scale: 4 }),
-  status: varchar("status"), // completed, failed, in_progress
-  createdAt: timestamp("created_at").defaultNow(),
+  status: varchar("status"),
+  createdAt: timestamp("created_at"),
 });
 
-// Payment status enum
-export const paymentStatusEnum = pgEnum("payment_status", ["pending", "completed", "failed", "refunded"]);
-
-// Payments table for tracking all payments
+// Payments table
 export const payments = pgTable("payments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
   organizationId: varchar("organization_id").notNull(),
   packageId: varchar("package_id"),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  currency: varchar("currency").default('usd'),
-  status: paymentStatusEnum("status").notNull().default("pending"),
-  paymentMethod: varchar("payment_method"), // stripe, paypal
-  transactionId: varchar("transaction_id"), // External payment provider transaction ID
+  currency: varchar("currency").default("usd"),
+  status: varchar("status").notNull().default("pending"),
+  paymentMethod: varchar("payment_method"),
+  transactionId: varchar("transaction_id"),
   description: text("description"),
   completedAt: timestamp("completed_at"),
   failedAt: timestamp("failed_at"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at"),
 });
 
+// Batch Calls table
+export const batchCalls = pgTable("batch_calls", {
+  id: varchar("id").primaryKey(),
+  organizationId: varchar("organization_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  name: varchar("name").notNull(),
+  agentId: varchar("agent_id").notNull(),
+  phoneNumberId: varchar("phone_number_id"),
+  elevenlabsBatchId: varchar("elevenlabs_batch_id"),
+  status: varchar("status").notNull().default("draft"),
+  totalRecipients: integer("total_recipients").default(0),
+  completedCalls: integer("completed_calls").default(0),
+  failedCalls: integer("failed_calls").default(0),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 4 }),
+  actualCost: decimal("actual_cost", { precision: 10, scale: 4 }),
+  metadata: jsonb("metadata"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
+});
 
+// Batch Call Recipients table
+export const batchCallRecipients = pgTable("batch_call_recipients", {
+  id: varchar("id").primaryKey(),
+  batchCallId: varchar("batch_call_id").notNull(),
+  phoneNumber: varchar("phone_number").notNull(),
+  status: varchar("status").notNull().default("pending"),
+  variables: jsonb("variables"),
+  callDuration: integer("call_duration"),
+  callCost: decimal("call_cost", { precision: 10, scale: 4 }),
+  errorMessage: text("error_message"),
+  conversationId: varchar("conversation_id"),
+  calledAt: timestamp("called_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
+});
+
+// Billing Packages table
+export const billingPackages = pgTable("billing_packages", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name").notNull(),
+  displayName: varchar("display_name").notNull(),
+  perCallRate: decimal("per_call_rate", { precision: 10, scale: 4 }).notNull(),
+  perMinuteRate: decimal("per_minute_rate", { precision: 10, scale: 4 }).notNull(),
+  monthlyCredits: integer("monthly_credits").notNull(),
+  maxAgents: integer("max_agents").notNull(),
+  maxUsers: integer("max_users").notNull(),
+  features: jsonb("features").notNull().default('[]'),
+  monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull(),
+  yearlyPrice: decimal("yearly_price", { precision: 10, scale: 2 }),
+  stripeProductId: varchar("stripe_product_id"),
+  stripePriceId: varchar("stripe_price_id"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
+});
 
 // Relations
 export const organizationsRelations = relations(organizations, ({ many }) => ({
@@ -443,10 +463,6 @@ export const usersRelations = relations(users, ({ one }) => ({
   organization: one(organizations, {
     fields: [users.organizationId],
     references: [organizations.id],
-  }),
-  agency: one(agencies, {
-    fields: [users.agencyId],
-    references: [agencies.id],
   }),
 }));
 
@@ -517,86 +533,6 @@ export const insertPhoneNumberSchema = createInsertSchema(phoneNumbers).omit({
   updatedAt: true,
 });
 
-// Google OAuth tokens table
-export const googleOAuthTokens = pgTable(
-  "google_oauth_tokens",
-  {
-    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    organizationId: varchar("organization_id").notNull(),
-    userId: varchar("user_id").notNull(),
-    email: varchar("email").notNull(),
-    accessToken: text("access_token").notNull(),
-    refreshToken: text("refresh_token"),
-    expiresAt: timestamp("expires_at"),
-    scope: text("scope"),
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
-  },
-  (table) => ({
-    organizationUserIdx: index("org_user_idx").on(table.organizationId, table.userId),
-    emailIdx: index("email_idx").on(table.email),
-  })
-);
-
-// Batch Calls table for outbound calling
-export const batchCalls = pgTable("batch_calls", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: varchar("organization_id").notNull(),
-  userId: varchar("user_id").notNull(),
-  name: varchar("name").notNull(),
-  agentId: varchar("agent_id").notNull(),
-  phoneNumberId: varchar("phone_number_id"),
-  elevenlabsBatchId: varchar("elevenlabs_batch_id"),
-  status: varchar("status").notNull().default("draft"), // draft, pending, in_progress, completed, failed, cancelled
-  totalRecipients: integer("total_recipients").default(0),
-  completedCalls: integer("completed_calls").default(0),
-  failedCalls: integer("failed_calls").default(0),
-  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 4 }),
-  actualCost: decimal("actual_cost", { precision: 10, scale: 4 }),
-  metadata: jsonb("metadata"),
-  startedAt: timestamp("started_at"),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Batch Call Recipients table
-export const batchCallRecipients = pgTable("batch_call_recipients", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  batchCallId: varchar("batch_call_id").notNull(),
-  phoneNumber: varchar("phone_number").notNull(),
-  status: varchar("status").notNull().default("pending"), // pending, calling, completed, failed, no_answer, busy
-  variables: jsonb("variables"), // Dynamic variables for personalization
-  callDuration: integer("call_duration"), // in seconds
-  callCost: decimal("call_cost", { precision: 10, scale: 4 }),
-  errorMessage: text("error_message"),
-  conversationId: varchar("conversation_id"),
-  calledAt: timestamp("called_at"),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Billing Packages table
-export const billingPackages = pgTable("billing_packages", {
-  id: varchar("id").primaryKey(),
-  name: varchar("name").notNull(),
-  displayName: varchar("display_name").notNull(),
-  perCallRate: decimal("per_call_rate", { precision: 10, scale: 4 }).notNull(),
-  perMinuteRate: decimal("per_minute_rate", { precision: 10, scale: 4 }).notNull(),
-  monthlyCredits: integer("monthly_credits").notNull(),
-  maxAgents: integer("max_agents").notNull(),
-  maxUsers: integer("max_users").notNull(),
-  features: jsonb("features").notNull().default('[]'),
-  monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull(),
-  yearlyPrice: decimal("yearly_price", { precision: 10, scale: 2 }),
-  stripeProductId: varchar("stripe_product_id"),
-  stripePriceId: varchar("stripe_price_id"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 export const insertBillingPackageSchema = createInsertSchema(billingPackages).omit({
   createdAt: true,
   updatedAt: true,
@@ -609,12 +545,6 @@ export const insertBatchCallSchema = createInsertSchema(batchCalls).omit({
 });
 
 export const insertBatchCallRecipientSchema = createInsertSchema(batchCallRecipients).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertGoogleOAuthTokenSchema = createInsertSchema(googleOAuthTokens).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -650,264 +580,6 @@ export const insertRagConfigurationSchema = createInsertSchema(ragConfigurations
   updatedAt: true,
 });
 
-// ========== MULTI-TENANT SAAS TABLES ==========
-
-// Agencies table (middle tier between super admin and clients)
-export const agencies = pgTable("agencies", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(),
-  email: varchar("email").notNull(),
-  ownerId: varchar("owner_id").notNull(), // References users.id (role: agency)
-  organizationId: varchar("organization_id").notNull(), // References organizations.id
-  
-  // Master quotas assigned by Super Admin
-  masterCharacterQuota: integer("master_character_quota").default(100000), // Monthly ElevenLabs characters
-  maxClients: integer("max_clients").default(10),
-  maxAgentsPerClient: integer("max_agents_per_client").default(3),
-  
-  // Usage tracking
-  usedCharacters: integer("used_characters").default(0),
-  clientCount: integer("client_count").default(0),
-  
-  // Billing
-  subscriptionPlan: varchar("subscription_plan"), // References billingPackages.id
-  stripeCustomerId: varchar("stripe_customer_id"),
-  subscriptionId: varchar("subscription_id"),
-  billingStatus: varchar("billing_status").default('inactive'),
-  nextBillingDate: timestamp("next_billing_date"),
-  
-  // Payment gateway settings for billing clients (Stripe Connect)
-  stripeAccountId: varchar("stripe_account_id"), // Connected Stripe account
-  paymentGatewayConfigured: boolean("payment_gateway_configured").default(false),
-  
-  // Status
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Clients table (end users of agencies)
-export const clients = pgTable("clients", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(),
-  email: varchar("email").notNull(),
-  agencyId: varchar("agency_id").notNull(), // References agencies.id
-  userId: varchar("user_id").notNull(), // References users.id (role: client)
-  
-  // Client-specific quotas (allocated by agency)
-  characterQuota: integer("character_quota").default(1000), // Monthly quota assigned by agency
-  maxAgents: integer("max_agents").default(1),
-  
-  // Usage tracking
-  usedCharacters: integer("used_characters").default(0),
-  agentCount: integer("agent_count").default(0),
-  
-  // Subscription to agency plan
-  subscribedPlanId: varchar("subscribed_plan_id"), // References agencyPlans.id
-  subscriptionStatus: varchar("subscription_status").default('inactive'), // active, cancelled, past_due
-  billingCycle: varchar("billing_cycle").default('monthly'), // monthly, yearly
-  
-  // Client billing
-  stripeCustomerId: varchar("stripe_customer_id"), // In agency's connected account
-  subscriptionId: varchar("subscription_id"), // In agency's connected account
-  nextBillingDate: timestamp("next_billing_date"),
-  
-  // Status
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Agency Plans table (plans created by agencies for their clients)
-export const agencyPlans = pgTable("agency_plans", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  agencyId: varchar("agency_id").notNull(), // References agencies.id
-  
-  // Plan details
-  name: varchar("name").notNull(),
-  description: text("description"),
-  
-  // Resource limits
-  characterQuota: integer("character_quota").notNull(), // Monthly ElevenLabs characters
-  maxAgents: integer("max_agents").default(1),
-  features: jsonb("features").notNull().default('[]'), // Array of enabled features
-  
-  // Pricing
-  monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull(),
-  yearlyPrice: decimal("yearly_price", { precision: 10, scale: 2 }),
-  
-  // Stripe product/price IDs (in agency's connected account)
-  stripeProductId: varchar("stripe_product_id"),
-  stripePriceIdMonthly: varchar("stripe_price_id_monthly"),
-  stripePriceIdYearly: varchar("stripe_price_id_yearly"),
-  
-  // Status
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// White label settings for agencies
-export const whiteLabelSettings = pgTable("white_label_settings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  agencyId: varchar("agency_id").notNull().unique(), // References agencies.id
-  
-  // Branding
-  companyName: varchar("company_name"),
-  logoUrl: varchar("logo_url"),
-  faviconUrl: varchar("favicon_url"),
-  
-  // Colors (CSS color values)
-  primaryColor: varchar("primary_color").default('#6366f1'),
-  secondaryColor: varchar("secondary_color").default('#8b5cf6'),
-  accentColor: varchar("accent_color").default('#06b6d4'),
-  
-  // Domain settings
-  customDomain: varchar("custom_domain"),
-  customDomainVerified: boolean("custom_domain_verified").default(false),
-  sslEnabled: boolean("ssl_enabled").default(false),
-  
-  // Contact info
-  supportEmail: varchar("support_email"),
-  supportPhone: varchar("support_phone"),
-  
-  // Additional customization
-  customCss: text("custom_css"),
-  footerText: text("footer_text"),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Resource usage tracking across all tiers
-export const resourceUsage = pgTable("resource_usage", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
-  // Entity identification
-  entityId: varchar("entity_id").notNull(), // Can be agencyId or clientId
-  entityType: varchar("entity_type").notNull(), // 'agency' or 'client'
-  agencyId: varchar("agency_id"), // For clients, tracks which agency they belong to
-  
-  // Usage period
-  year: integer("year").notNull(),
-  month: integer("month").notNull(), // 1-12
-  
-  // Resource usage
-  charactersUsed: integer("characters_used").default(0),
-  callsMade: integer("calls_made").default(0),
-  minutesUsed: integer("minutes_used").default(0),
-  agentsCreated: integer("agents_created").default(0),
-  
-  // Cost tracking
-  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 4 }).default('0'),
-  
-  // Reset tracking
-  lastReset: timestamp("last_reset"),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => ({
-  entityPeriodIdx: index("entity_period_idx").on(table.entityId, table.year, table.month),
-  agencyPeriodIdx: index("agency_period_idx").on(table.agencyId, table.year, table.month),
-}));
-
-// Payment relations (defined after billingPackages table)
-export const paymentsRelations = relations(payments, ({ one }) => ({
-  organization: one(organizations, {
-    fields: [payments.organizationId],
-    references: [organizations.id],
-  }),
-  package: one(billingPackages, {
-    fields: [payments.packageId],
-    references: [billingPackages.id],
-  }),
-}));
-
-export const billingPackagesRelations = relations(billingPackages, ({ many }) => ({
-  payments: many(payments),
-}));
-
-// Batch call relations (must be after table definitions)
-export const batchCallsRelations = relations(batchCalls, ({ one, many }) => ({
-  organization: one(organizations, {
-    fields: [batchCalls.organizationId],
-    references: [organizations.id],
-  }),
-  user: one(users, {
-    fields: [batchCalls.userId],
-    references: [users.id],
-  }),
-  agent: one(agents, {
-    fields: [batchCalls.agentId],
-    references: [agents.id],
-  }),
-  phoneNumber: one(phoneNumbers, {
-    fields: [batchCalls.phoneNumberId],
-    references: [phoneNumbers.id],
-  }),
-  recipients: many(batchCallRecipients),
-}));
-
-export const batchCallRecipientsRelations = relations(batchCallRecipients, ({ one }) => ({
-  batchCall: one(batchCalls, {
-    fields: [batchCallRecipients.batchCallId],
-    references: [batchCalls.id],
-  }),
-}));
-
-// New relations for multi-tenant tables
-export const agenciesRelations = relations(agencies, ({ one, many }) => ({
-  owner: one(users, {
-    fields: [agencies.ownerId],
-    references: [users.id],
-  }),
-  organization: one(organizations, {
-    fields: [agencies.organizationId],
-    references: [organizations.id],
-  }),
-  clients: many(clients),
-  plans: many(agencyPlans),
-  whiteLabelSettings: one(whiteLabelSettings),
-  resourceUsage: many(resourceUsage),
-}));
-
-export const clientsRelations = relations(clients, ({ one }) => ({
-  agency: one(agencies, {
-    fields: [clients.agencyId],
-    references: [agencies.id],
-  }),
-  user: one(users, {
-    fields: [clients.userId],
-    references: [users.id],
-  }),
-  subscribedPlan: one(agencyPlans, {
-    fields: [clients.subscribedPlanId],
-    references: [agencyPlans.id],
-  }),
-}));
-
-export const agencyPlansRelations = relations(agencyPlans, ({ one, many }) => ({
-  agency: one(agencies, {
-    fields: [agencyPlans.agencyId],
-    references: [agencies.id],
-  }),
-  subscribedClients: many(clients),
-}));
-
-export const whiteLabelSettingsRelations = relations(whiteLabelSettings, ({ one }) => ({
-  agency: one(agencies, {
-    fields: [whiteLabelSettings.agencyId],
-    references: [agencies.id],
-  }),
-}));
-
-export const resourceUsageRelations = relations(resourceUsage, ({ one }) => ({
-  agency: one(agencies, {
-    fields: [resourceUsage.agencyId],
-    references: [agencies.id],
-  }),
-}));
-
 // Types
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -934,54 +606,9 @@ export type SystemTemplate = typeof systemTemplates.$inferSelect;
 export type InsertSystemTemplate = z.infer<typeof insertSystemTemplateSchema>;
 export type QuickActionButton = typeof quickActionButtons.$inferSelect;
 export type InsertQuickActionButton = z.infer<typeof insertQuickActionButtonSchema>;
-export type GoogleOAuthToken = typeof googleOAuthTokens.$inferSelect;
-export type InsertGoogleOAuthToken = z.infer<typeof insertGoogleOAuthTokenSchema>;
 export type AdminTask = typeof adminTasks.$inferSelect;
 export type InsertAdminTask = z.infer<typeof insertAdminTaskSchema>;
 export type ApprovalWebhook = typeof approvalWebhooks.$inferSelect;
 export type InsertApprovalWebhook = z.infer<typeof insertApprovalWebhookSchema>;
 export type RagConfiguration = typeof ragConfigurations.$inferSelect;
 export type InsertRagConfiguration = z.infer<typeof insertRagConfigurationSchema>;
-
-// New Zod schemas for multi-tenant tables
-export const insertAgencySchema = createInsertSchema(agencies).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertClientSchema = createInsertSchema(clients).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertAgencyPlanSchema = createInsertSchema(agencyPlans).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertWhiteLabelSettingsSchema = createInsertSchema(whiteLabelSettings).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertResourceUsageSchema = createInsertSchema(resourceUsage).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-// New types for multi-tenant tables
-export type Agency = typeof agencies.$inferSelect;
-export type InsertAgency = z.infer<typeof insertAgencySchema>;
-export type Client = typeof clients.$inferSelect;
-export type InsertClient = z.infer<typeof insertClientSchema>;
-export type AgencyPlan = typeof agencyPlans.$inferSelect;
-export type InsertAgencyPlan = z.infer<typeof insertAgencyPlanSchema>;
-export type WhiteLabelSettings = typeof whiteLabelSettings.$inferSelect;
-export type InsertWhiteLabelSettings = z.infer<typeof insertWhiteLabelSettingsSchema>;
-export type ResourceUsage = typeof resourceUsage.$inferSelect;
-export type InsertResourceUsage = z.infer<typeof insertResourceUsageSchema>;
