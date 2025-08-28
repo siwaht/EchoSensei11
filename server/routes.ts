@@ -1155,9 +1155,10 @@ export function registerRoutes(app: Express): Server {
     try {
       // Get all active webhooks that are subscribed to this event
       const webhooks = await storage.getApprovalWebhooks();
-      const activeWebhooks = webhooks.filter(w => 
+      const activeWebhooks = webhooks.filter((w: any) => 
         w.isActive && 
         w.events && 
+        Array.isArray(w.events) &&
         (w.events.includes(event) || w.events.includes('task.status_changed'))
       );
       
@@ -1197,13 +1198,13 @@ export function registerRoutes(app: Express): Server {
             });
           } else {
             await storage.updateApprovalWebhook(webhook.id, {
-              failureCount: (webhook.failureCount || 0) + 1
+              failureCount: ((webhook.failureCount ?? 0) + 1)
             });
           }
         } catch (error) {
           console.error(`Failed to send webhook to ${webhook.name}:`, error);
           await storage.updateApprovalWebhook(webhook.id, {
-            failureCount: (webhook.failureCount || 0) + 1
+            failureCount: ((webhook.failureCount ?? 0) + 1)
           });
         }
       }
@@ -1309,14 +1310,14 @@ export function registerRoutes(app: Express): Server {
           });
           res.json({ message: "Test webhook sent successfully", status: response.status });
         } else {
-          await storage.updateApprovalWebhook(req.params.webhookId, {
-            failureCount: webhook.failureCount + 1
-          });
+        await storage.updateApprovalWebhook(req.params.webhookId, {
+        failureCount: (webhook.failureCount || 0) + 1
+        });
           res.status(500).json({ message: "Webhook test failed", status: response.status });
         }
       } catch (fetchError) {
         await storage.updateApprovalWebhook(req.params.webhookId, {
-          failureCount: webhook.failureCount + 1
+        failureCount: (webhook.failureCount || 0) + 1
         });
         console.error("Error sending test webhook:", fetchError);
         res.status(500).json({ message: "Failed to send test webhook" });
@@ -1950,15 +1951,15 @@ Generate the complete prompt now:`;
                 ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/public/rag`
                 : 'https://voiceai-dashboard.replit.app/api/public/rag',
               method: 'GET',
-              queryParameters: [
-                {
-                  name: 'query',
-                  type: 'String',
-                  required: true,
-                  valueType: 'LLM Prompt',
-                  description: 'Extract what the user is asking about. Be specific and include key terms from their question.'
-                }
-              ]
+                  queryParameters: [
+                    {
+                      name: 'query',
+                      type: 'String',
+                      required: true,
+                      valueType: 'LLM Prompt',
+                      description: 'Extract what the user is asking about. Be specific and include key terms from their question.'
+                    }
+                  ]
             }
           ],
           toolIds: []
@@ -2976,7 +2977,7 @@ Generate the complete prompt now:`;
       }
 
       // Delete the agent from local database
-      await storage.deleteAgent(user.organizationId, agentId);
+      await storage.deleteAgent(agentId, user.organizationId);
       
       res.json({ message: "Agent deleted successfully" });
     } catch (error) {
@@ -4681,7 +4682,7 @@ Generate the complete prompt now:`;
   };
 
 
-  // In-memory storage for RAG configuration (could be moved to database later)
+  // Initialize RAG configuration at module level to avoid undefined errors
   let ragConfiguration: any = {
     systemPrompt: "When answering questions, reference the most relevant entries from the knowledge base. If the user inquires about a person's location, preferences, or company information, cite the related information in your answer. Respond concisely, truthfully, and in a helpful manner based on the provided information.",
     topK: 5,

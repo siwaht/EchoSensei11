@@ -46,6 +46,14 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sum, avg, max, or } from "drizzle-orm";
+import { randomBytes } from "crypto";
+
+// Helper function to generate unique IDs
+function generateId(prefix: string = ""): string {
+  const timestamp = Date.now().toString(36);
+  const randomStr = randomBytes(8).toString('hex');
+  return prefix ? `${prefix}_${timestamp}_${randomStr}` : `${timestamp}_${randomStr}`;
+}
 
 export interface IStorage {
   // User operations
@@ -172,6 +180,12 @@ export interface IStorage {
   createApprovalWebhook(webhook: InsertApprovalWebhook): Promise<ApprovalWebhook>;
   updateApprovalWebhook(id: string, updates: Partial<InsertApprovalWebhook>): Promise<ApprovalWebhook>;
   deleteApprovalWebhook(id: string): Promise<void>;
+  
+  // RAG Configuration operations
+  getRagConfiguration(organizationId: string): Promise<RagConfiguration | undefined>;
+  createRagConfiguration(data: InsertRagConfiguration): Promise<RagConfiguration>;
+  updateRagConfiguration(id: string, data: Partial<InsertRagConfiguration>): Promise<RagConfiguration>;
+  approveRagConfiguration(id: string, adminId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -192,14 +206,16 @@ export class DatabaseStorage implements IStorage {
     
     if (!organizationId) {
       const [org] = await db.insert(organizations).values({
-        id: userData.id ? userData.id.split('-')[0] + '-org' : undefined,
-        name: userData.email?.split('@')[0] || 'Personal Organization'
+        id: generateId('org'),
+        name: userData.email?.split('@')[0] || 'Personal Organization',
+        createdAt: new Date(),
+        updatedAt: new Date()
       }).returning();
       organizationId = org.id;
     }
 
     const [user] = await db.insert(users).values({
-      id: userData.id || undefined,
+      id: userData.id || generateId('user'),
       email: userData.email!,
       password: userData.password,
       firstName: userData.firstName,
@@ -207,7 +223,9 @@ export class DatabaseStorage implements IStorage {
       profileImageUrl: userData.profileImageUrl,
       organizationId,
       role: userData.role || "client",
-      isAdmin: userData.email === "cc@siwaht.com" ? 1 : 0,
+      isAdmin: userData.email === "cc@siwaht.com" ? true : false,
+      createdAt: new Date(),
+      updatedAt: new Date()
     }).returning();
     return user;
   }
@@ -226,7 +244,14 @@ export class DatabaseStorage implements IStorage {
 
     const [user] = await db
       .insert(users)
-      .values({ ...userData, organizationId, isAdmin })
+      .values({ 
+        ...userData, 
+        id: generateId('user'),
+        organizationId, 
+        isAdmin,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
       .onConflictDoUpdate({
         target: users.id,
         set: {
@@ -242,7 +267,12 @@ export class DatabaseStorage implements IStorage {
 
   // Organization operations
   async createOrganization(orgData: InsertOrganization): Promise<Organization> {
-    const [org] = await db.insert(organizations).values(orgData).returning();
+    const [org] = await db.insert(organizations).values({
+      ...orgData,
+      id: generateId('org'),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
     return org;
   }
 
@@ -269,7 +299,12 @@ export class DatabaseStorage implements IStorage {
   async upsertIntegration(integrationData: InsertIntegration): Promise<Integration> {
     const [integration] = await db
       .insert(integrations)
-      .values(integrationData)
+      .values({
+        ...integrationData,
+        id: generateId('int'),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
       .onConflictDoUpdate({
         target: [integrations.organizationId, integrations.provider],
         set: {
@@ -317,12 +352,15 @@ export class DatabaseStorage implements IStorage {
     // Ensure the JSON fields are properly typed
     const data = {
       ...agentData,
+      id: agentData.id || generateId('agent'),
       voiceSettings: agentData.voiceSettings || null,
       llmSettings: agentData.llmSettings || null,
       tools: agentData.tools || null,
       dynamicVariables: agentData.dynamicVariables || null,
       evaluationCriteria: agentData.evaluationCriteria || null,
       dataCollection: agentData.dataCollection || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     const [agent] = await db.insert(agents).values([data]).returning();
     return agent;
@@ -375,7 +413,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCallLog(callLogData: InsertCallLog & { createdAt?: Date }): Promise<CallLog> {
-    const [callLog] = await db.insert(callLogs).values(callLogData).returning();
+    const [callLog] = await db.insert(callLogs).values({
+      ...callLogData,
+      id: generateId('call'),
+      createdAt: callLogData.createdAt || new Date()
+    }).returning();
     return callLog;
   }
 
@@ -539,7 +581,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBillingPackage(pkg: Partial<BillingPackage>): Promise<BillingPackage> {
-    const [newPkg] = await db.insert(billingPackages).values(pkg as any).returning();
+    const [newPkg] = await db.insert(billingPackages).values({
+      ...pkg,
+      id: pkg.id || generateId('pkg'),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    } as any).returning();
     return newPkg;
   }
 
@@ -571,11 +618,16 @@ export class DatabaseStorage implements IStorage {
   async getAllPayments(): Promise<Payment[]> {
     return await db
       .select()
+      .from(payments)
       .orderBy(desc(payments.createdAt));
   }
 
   async createPayment(data: InsertPayment): Promise<Payment> {
-    const [payment] = await db.insert(payments).values(data).returning();
+    const [payment] = await db.insert(payments).values({
+      ...data,
+      id: generateId('pay'),
+      createdAt: new Date()
+    }).returning();
     return payment;
   }
 
@@ -609,7 +661,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPhoneNumber(phoneNumber: InsertPhoneNumber): Promise<PhoneNumber> {
-    const [newPhoneNumber] = await db.insert(phoneNumbers).values(phoneNumber).returning();
+    const [newPhoneNumber] = await db.insert(phoneNumbers).values({
+      ...phoneNumber,
+      id: generateId('phone'),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
     return newPhoneNumber;
   }
 
@@ -649,7 +706,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBatchCall(data: InsertBatchCall): Promise<BatchCall> {
-    const [batchCall] = await db.insert(batchCalls).values(data).returning();
+    const [batchCall] = await db.insert(batchCalls).values({
+      ...data,
+      id: generateId('batch'),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
     return batchCall;
   }
 
@@ -681,7 +743,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBatchCallRecipients(recipients: InsertBatchCallRecipient[]): Promise<BatchCallRecipient[]> {
-    const created = await db.insert(batchCallRecipients).values(recipients).returning();
+    const recipientsWithIds = recipients.map(r => ({
+      ...r,
+      id: generateId('recipient'),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
+    const created = await db.insert(batchCallRecipients).values(recipientsWithIds).returning();
     return created;
   }
 
@@ -715,7 +783,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSystemTemplate(template: InsertSystemTemplate): Promise<SystemTemplate> {
-    const [created] = await db.insert(systemTemplates).values(template).returning();
+    const [created] = await db.insert(systemTemplates).values({
+      ...template,
+      id: generateId('template'),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
     return created;
   }
 
@@ -776,7 +849,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createQuickActionButton(button: InsertQuickActionButton): Promise<QuickActionButton> {
-    const [created] = await db.insert(quickActionButtons).values(button).returning();
+    const [created] = await db.insert(quickActionButtons).values({
+      ...button,
+      id: generateId('btn'),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
     return created;
   }
 
@@ -798,7 +876,12 @@ export class DatabaseStorage implements IStorage {
 
   // Admin task operations
   async createAdminTask(task: InsertAdminTask): Promise<AdminTask> {
-    const [adminTask] = await db.insert(adminTasks).values(task).returning();
+    const [adminTask] = await db.insert(adminTasks).values({
+      ...task,
+      id: generateId('task'),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
     return adminTask;
   }
 
@@ -862,7 +945,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRagConfiguration(data: InsertRagConfiguration): Promise<RagConfiguration> {
-    const [config] = await db.insert(ragConfigurations).values(data).returning();
+    const [config] = await db.insert(ragConfigurations).values({
+      ...data,
+      id: generateId('rag'),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
     return config;
   }
 
@@ -906,7 +994,12 @@ export class DatabaseStorage implements IStorage {
   async createApprovalWebhook(webhookData: InsertApprovalWebhook): Promise<ApprovalWebhook> {
     const [webhook] = await db
       .insert(approvalWebhooks)
-      .values(webhookData as any)
+      .values({
+        ...webhookData,
+        id: generateId('webhook'),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      } as any)
       .returning();
     return webhook;
   }

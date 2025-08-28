@@ -17,6 +17,9 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Define role enum for user roles
+export const roleEnum = pgEnum('role', ['client', 'super_admin', 'agency']);
+
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
   "sessions",
@@ -37,10 +40,11 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   organizationId: varchar("organization_id").notNull(),
-  role: varchar("role").notNull().default("client"),
+  role: roleEnum("role").notNull().default("client"),
   isAdmin: boolean("is_admin").default(false),
   createdAt: timestamp("created_at"),
   updatedAt: timestamp("updated_at"),
+  agencyId: varchar("agency_id"),
 });
 
 // Organizations table
@@ -60,6 +64,78 @@ export const organizations = pgTable("organizations", {
   subscriptionId: varchar("subscription_id"),
   billingStatus: varchar("billing_status").default("inactive"),
   lastPaymentDate: timestamp("last_payment_date"),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
+});
+
+// Agency table
+export const agencies = pgTable("agencies", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name").notNull(),
+  address: varchar("address"),
+  city: varchar("city"),
+  zipCode: varchar("zip_code"),
+  state: varchar("state"),
+  country: varchar("country"),
+  companyEmail: varchar("company_email"),
+  companyPhone: varchar("company_phone"),
+  ownerId: varchar("owner_id").notNull(),
+  planId: varchar("plan_id"),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
+});
+
+// Agency Plans table
+export const agencyPlans = pgTable("agency_plans", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  maxClients: integer("max_clients").notNull(),
+  features: json("features").$type<string[]>().notNull(),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
+});
+
+// Client table
+export const clients = pgTable("clients", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name").notNull(),
+  address: varchar("address"),
+  city: varchar("city"),
+  zipCode: varchar("zip_code"),
+  state: varchar("state"),
+  country: varchar("country"),
+  companyEmail: varchar("company_email"),
+  companyPhone: varchar("company_phone"),
+  agencyId: varchar("agency_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
+});
+
+// WhiteLabel Settings table
+export const whiteLabelSettings = pgTable("white_label_settings", {
+  id: varchar("id").primaryKey(),
+  agencyId: varchar("agency_id").notNull().unique(),
+  companyName: varchar("company_name").notNull(),
+  companyLogo: varchar("company_logo"),
+  primaryColor: varchar("primary_color").default("#3182CE"),
+  secondaryColor: varchar("secondary_color").default("#E2E8F0"),
+  favicon: varchar("favicon"),
+  customDomain: varchar("custom_domain"),
+  isEnabled: boolean("is_enabled").default(false),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
+});
+
+// Google OAuth Tokens table
+export const googleOAuthTokens = pgTable("google_oauth_tokens", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull().unique(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  expiresAt: timestamp("expires_at").notNull(),
+  scope: text("scope"),
   createdAt: timestamp("created_at"),
   updatedAt: timestamp("updated_at"),
 });
@@ -96,6 +172,7 @@ export const adminTasks = pgTable("admin_tasks", {
   createdAt: timestamp("created_at"),
   completedAt: timestamp("completed_at"),
   updatedAt: timestamp("updated_at"),
+  createdBy: varchar("created_by"),
 });
 
 // Approval webhooks table for notification endpoints
@@ -464,6 +541,44 @@ export const usersRelations = relations(users, ({ one }) => ({
     fields: [users.organizationId],
     references: [organizations.id],
   }),
+  agency: one(agencies, {
+    fields: [users.agencyId],
+    references: [agencies.id],
+  }),
+}));
+
+export const agenciesRelations = relations(agencies, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [agencies.ownerId],
+    references: [users.id],
+  }),
+  plan: one(agencyPlans, {
+    fields: [agencies.planId],
+    references: [agencyPlans.id],
+  }),
+  clients: many(clients),
+  whiteLabel: one(whiteLabelSettings, {
+    fields: [agencies.id],
+    references: [whiteLabelSettings.agencyId],
+  }),
+}));
+
+export const clientsRelations = relations(clients, ({ one }) => ({
+  agency: one(agencies, {
+    fields: [clients.agencyId],
+    references: [agencies.id],
+  }),
+  user: one(users, {
+    fields: [clients.userId],
+    references: [users.id],
+  }),
+}));
+
+export const whiteLabelSettingsRelations = relations(whiteLabelSettings, ({ one }) => ({
+  agency: one(agencies, {
+    fields: [whiteLabelSettings.agencyId],
+    references: [agencies.id],
+  }),
 }));
 
 export const integrationsRelations = relations(integrations, ({ one }) => ({
@@ -500,6 +615,36 @@ export const upsertUserSchema = createInsertSchema(users).omit({
 });
 
 export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAgencySchema = createInsertSchema(agencies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAgencyPlanSchema = createInsertSchema(agencyPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertClientSchema = createInsertSchema(clients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWhiteLabelSettingsSchema = createInsertSchema(whiteLabelSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertGoogleOAuthTokenSchema = createInsertSchema(googleOAuthTokens).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -585,6 +730,14 @@ export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type Agency = typeof agencies.$inferSelect;
+export type InsertAgency = z.infer<typeof insertAgencySchema>;
+export type AgencyPlan = typeof agencyPlans.$inferSelect;
+export type InsertAgencyPlan = z.infer<typeof insertAgencyPlanSchema>;
+export type Client = typeof clients.$inferSelect;
+export type InsertClient = z.infer<typeof insertClientSchema>;
+export type WhiteLabelSettings = typeof whiteLabelSettings.$inferSelect;
+export type InsertWhiteLabelSettings = z.infer<typeof insertWhiteLabelSettingsSchema>;
 export type Integration = typeof integrations.$inferSelect;
 export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;
 export type Agent = typeof agents.$inferSelect;
