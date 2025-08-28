@@ -278,7 +278,7 @@ export default function Agents() {
                         data-testid={`button-test-${agent.id}`}
                       >
                         <Play className="w-4 h-4 mr-1" />
-                        Test
+                        Test in Playground
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -286,32 +286,19 @@ export default function Agents() {
                     </TooltipContent>
                   </Tooltip>
                   <Button
-                    variant="outline"
+                    variant="destructive"
                     size="sm"
-                    className="flex-1 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all"
+                    className="flex-1"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedAgent(agent);
+                      setAgentToDelete(agent);
                     }}
-                    data-testid={`button-details-${agent.id}`}
+                    data-testid={`button-delete-${agent.id}`}
                   >
-                    <Eye className="w-4 h-4 mr-1" />
-                    Details
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
                   </Button>
                 </div>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="w-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setAgentToDelete(agent);
-                  }}
-                  data-testid={`button-delete-${agent.id}`}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Agent
-                </Button>
               </div>
 
             </Card>
