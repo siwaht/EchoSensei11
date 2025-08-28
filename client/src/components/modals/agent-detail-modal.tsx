@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +17,16 @@ interface AgentDetailModalProps {
 }
 
 export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModalProps) {
+  const [activeTab, setActiveTab] = useState("overview");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Reset tab to overview when modal opens
+  useEffect(() => {
+    if (open) {
+      setActiveTab("overview");
+    }
+  }, [open]);
   
   const { data: callLogs } = useQuery<CallLog[]>({
     queryKey: ["/api/call-logs"],
@@ -76,13 +84,13 @@ export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModal
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="overview" className="w-full flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
             <TabsTrigger value="settings" data-testid="tab-settings">Settings</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="space-y-6 overflow-y-auto flex-1">
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="p-4">
@@ -151,7 +159,7 @@ export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModal
             </Card>
           </TabsContent>
 
-          <TabsContent value="settings" className="space-y-6">
+          <TabsContent value="settings" className="space-y-6 overflow-y-auto flex-1">
             <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <Settings className="w-5 h-5" />
