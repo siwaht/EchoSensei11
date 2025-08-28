@@ -42,7 +42,7 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
     
     while (hasMore) {
       const params = new URLSearchParams({
-        page_size: '100', // Max allowed per documentation
+        limit: '100', // Latest API uses 'limit' instead of 'page_size'
         ...(cursor && { cursor }),
         ...(agentId && { agent_id: agentId })
       });
@@ -179,19 +179,24 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
         const agents = await storage.getAgents(user.organizationId);
         const agentMap = new Map(agents.map(a => [a.elevenLabsAgentId, a]));
         
-        // Add agent info to conversations and normalize the ID field
+        // Add agent info to conversations - API returns 'conversation_id' field
         allConversations = allConversations.map(conv => {
-          // ElevenLabs uses 'id' field for conversation ID
-          const conversationId = conv.id || conv.conversation_id;
+          // According to latest ElevenLabs API docs, field is 'conversation_id'
+          const conversationId = conv.conversation_id;
           const agentId = conv.agent_id;
+          
+          if (!conversationId) {
+            console.error('Missing conversation_id in conversation object:', conv);
+            return null;
+          }
           
           return {
             ...conv,
-            conversation_id: conversationId, // Normalize to conversation_id
+            conversation_id: conversationId,
             agent_id: agentId,
             localAgent: agentMap.get(agentId)
           };
-        }).filter(conv => conv.localAgent); // Only sync conversations for known agents
+        }).filter(conv => conv && conv.localAgent); // Filter out null entries and conversations for unknown agents
         
       } catch (error: any) {
         console.error("Failed to fetch conversations:", error);
@@ -202,8 +207,8 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
       console.log("Filtering existing conversations...");
       const existingChecks = await Promise.all(
         allConversations.map(async (conv) => {
-          // Use the normalized conversation_id field
-          const convId = conv.conversation_id || conv.id;
+          // Use conversation_id field from API response
+          const convId = conv.conversation_id;
           const existing = await storage.getCallLogByElevenLabsId(
             convId,
             user.organizationId
@@ -227,7 +232,7 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
       if (conversationsToSync.length > 0) {
         // Create request functions for each conversation
         const detailRequests = conversationsToSync.map(conv => async () => {
-          const convId = conv.conversation_id || conv.id;  // Declare once at the top of the function
+          const convId = conv.conversation_id;  // Use conversation_id from API response
           
           try {
             const response = await fetch(
