@@ -23,11 +23,22 @@ import Tools from "@/pages/tools";
 import KnowledgeBase from "@/pages/knowledge-base";
 import AgentSettings from "@/pages/agent-settings";
 import AppShell from "@/components/layout/app-shell";
+import SuperAdminDashboard from "@/pages/super-admin-dashboard";
+import AgencyDashboard from "@/pages/agency-dashboard";
+import ClientDashboard from "@/pages/client-dashboard";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, userRole } = useAuth();
 
-  if (isLoading || !isAuthenticated) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
     return (
       <Switch>
         <Route path="/" component={Landing} />
@@ -36,10 +47,40 @@ function Router() {
     );
   }
 
+  // Route based on user role
+  if (userRole === 'super_admin') {
+    return (
+      <AppShell>
+        <Switch>
+          <Route path="/" component={SuperAdminDashboard} />
+          <Route path="/agencies" component={SuperAdminDashboard} />
+          <Route path="/admin" component={Admin} />
+          <Route path="/settings" component={Settings} />
+          <Route component={NotFound} />
+        </Switch>
+      </AppShell>
+    );
+  }
+
+  if (userRole === 'agency') {
+    return (
+      <AppShell>
+        <Switch>
+          <Route path="/" component={AgencyDashboard} />
+          <Route path="/clients" component={AgencyDashboard} />
+          <Route path="/billing" component={Billing} />
+          <Route path="/settings" component={Settings} />
+          <Route component={NotFound} />
+        </Switch>
+      </AppShell>
+    );
+  }
+
+  // Default routes for clients and legacy users
   return (
     <AppShell>
       <Switch>
-        <Route path="/" component={Dashboard} />
+        <Route path="/" component={userRole === 'client' ? ClientDashboard : Dashboard} />
         <Route path="/agents" component={Agents} />
         <Route path="/agent-settings" component={AgentSettings} />
         <Route path="/voices" component={Voices} />

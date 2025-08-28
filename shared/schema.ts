@@ -28,6 +28,9 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+// User role enum for hierarchy
+export const userRoleEnum = pgEnum("user_role", ["super_admin", "agency", "client"]);
+
 // User storage table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -37,7 +40,9 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   organizationId: varchar("organization_id").notNull(),
-  isAdmin: boolean("is_admin").default(false),
+  role: userRoleEnum("role").notNull().default("client"),
+  agencyId: varchar("agency_id"), // For clients, references agencies.id
+  isAdmin: boolean("is_admin").default(false), // Legacy field, kept for compatibility
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -439,6 +444,10 @@ export const usersRelations = relations(users, ({ one }) => ({
     fields: [users.organizationId],
     references: [organizations.id],
   }),
+  agency: one(agencies, {
+    fields: [users.agencyId],
+    references: [agencies.id],
+  }),
 }));
 
 export const integrationsRelations = relations(integrations, ({ one }) => ({
@@ -641,6 +650,167 @@ export const insertRagConfigurationSchema = createInsertSchema(ragConfigurations
   updatedAt: true,
 });
 
+// ========== MULTI-TENANT SAAS TABLES ==========
+
+// Agencies table (middle tier between super admin and clients)
+export const agencies = pgTable("agencies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  email: varchar("email").notNull(),
+  ownerId: varchar("owner_id").notNull(), // References users.id (role: agency)
+  organizationId: varchar("organization_id").notNull(), // References organizations.id
+  
+  // Master quotas assigned by Super Admin
+  masterCharacterQuota: integer("master_character_quota").default(100000), // Monthly ElevenLabs characters
+  maxClients: integer("max_clients").default(10),
+  maxAgentsPerClient: integer("max_agents_per_client").default(3),
+  
+  // Usage tracking
+  usedCharacters: integer("used_characters").default(0),
+  clientCount: integer("client_count").default(0),
+  
+  // Billing
+  subscriptionPlan: varchar("subscription_plan"), // References billingPackages.id
+  stripeCustomerId: varchar("stripe_customer_id"),
+  subscriptionId: varchar("subscription_id"),
+  billingStatus: varchar("billing_status").default('inactive'),
+  nextBillingDate: timestamp("next_billing_date"),
+  
+  // Payment gateway settings for billing clients (Stripe Connect)
+  stripeAccountId: varchar("stripe_account_id"), // Connected Stripe account
+  paymentGatewayConfigured: boolean("payment_gateway_configured").default(false),
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Clients table (end users of agencies)
+export const clients = pgTable("clients", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  email: varchar("email").notNull(),
+  agencyId: varchar("agency_id").notNull(), // References agencies.id
+  userId: varchar("user_id").notNull(), // References users.id (role: client)
+  
+  // Client-specific quotas (allocated by agency)
+  characterQuota: integer("character_quota").default(1000), // Monthly quota assigned by agency
+  maxAgents: integer("max_agents").default(1),
+  
+  // Usage tracking
+  usedCharacters: integer("used_characters").default(0),
+  agentCount: integer("agent_count").default(0),
+  
+  // Subscription to agency plan
+  subscribedPlanId: varchar("subscribed_plan_id"), // References agencyPlans.id
+  subscriptionStatus: varchar("subscription_status").default('inactive'), // active, cancelled, past_due
+  billingCycle: varchar("billing_cycle").default('monthly'), // monthly, yearly
+  
+  // Client billing
+  stripeCustomerId: varchar("stripe_customer_id"), // In agency's connected account
+  subscriptionId: varchar("subscription_id"), // In agency's connected account
+  nextBillingDate: timestamp("next_billing_date"),
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Agency Plans table (plans created by agencies for their clients)
+export const agencyPlans = pgTable("agency_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agencyId: varchar("agency_id").notNull(), // References agencies.id
+  
+  // Plan details
+  name: varchar("name").notNull(),
+  description: text("description"),
+  
+  // Resource limits
+  characterQuota: integer("character_quota").notNull(), // Monthly ElevenLabs characters
+  maxAgents: integer("max_agents").default(1),
+  features: jsonb("features").notNull().default('[]'), // Array of enabled features
+  
+  // Pricing
+  monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull(),
+  yearlyPrice: decimal("yearly_price", { precision: 10, scale: 2 }),
+  
+  // Stripe product/price IDs (in agency's connected account)
+  stripeProductId: varchar("stripe_product_id"),
+  stripePriceIdMonthly: varchar("stripe_price_id_monthly"),
+  stripePriceIdYearly: varchar("stripe_price_id_yearly"),
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// White label settings for agencies
+export const whiteLabelSettings = pgTable("white_label_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agencyId: varchar("agency_id").notNull().unique(), // References agencies.id
+  
+  // Branding
+  companyName: varchar("company_name"),
+  logoUrl: varchar("logo_url"),
+  faviconUrl: varchar("favicon_url"),
+  
+  // Colors (CSS color values)
+  primaryColor: varchar("primary_color").default('#6366f1'),
+  secondaryColor: varchar("secondary_color").default('#8b5cf6'),
+  accentColor: varchar("accent_color").default('#06b6d4'),
+  
+  // Domain settings
+  customDomain: varchar("custom_domain"),
+  customDomainVerified: boolean("custom_domain_verified").default(false),
+  sslEnabled: boolean("ssl_enabled").default(false),
+  
+  // Contact info
+  supportEmail: varchar("support_email"),
+  supportPhone: varchar("support_phone"),
+  
+  // Additional customization
+  customCss: text("custom_css"),
+  footerText: text("footer_text"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Resource usage tracking across all tiers
+export const resourceUsage = pgTable("resource_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Entity identification
+  entityId: varchar("entity_id").notNull(), // Can be agencyId or clientId
+  entityType: varchar("entity_type").notNull(), // 'agency' or 'client'
+  agencyId: varchar("agency_id"), // For clients, tracks which agency they belong to
+  
+  // Usage period
+  year: integer("year").notNull(),
+  month: integer("month").notNull(), // 1-12
+  
+  // Resource usage
+  charactersUsed: integer("characters_used").default(0),
+  callsMade: integer("calls_made").default(0),
+  minutesUsed: integer("minutes_used").default(0),
+  agentsCreated: integer("agents_created").default(0),
+  
+  // Cost tracking
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 4 }).default('0'),
+  
+  // Reset tracking
+  lastReset: timestamp("last_reset"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  entityPeriodIdx: index("entity_period_idx").on(table.entityId, table.year, table.month),
+  agencyPeriodIdx: index("agency_period_idx").on(table.agencyId, table.year, table.month),
+}));
+
 // Payment relations (defined after billingPackages table)
 export const paymentsRelations = relations(payments, ({ one }) => ({
   organization: one(organizations, {
@@ -685,6 +855,59 @@ export const batchCallRecipientsRelations = relations(batchCallRecipients, ({ on
   }),
 }));
 
+// New relations for multi-tenant tables
+export const agenciesRelations = relations(agencies, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [agencies.ownerId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [agencies.organizationId],
+    references: [organizations.id],
+  }),
+  clients: many(clients),
+  plans: many(agencyPlans),
+  whiteLabelSettings: one(whiteLabelSettings),
+  resourceUsage: many(resourceUsage),
+}));
+
+export const clientsRelations = relations(clients, ({ one }) => ({
+  agency: one(agencies, {
+    fields: [clients.agencyId],
+    references: [agencies.id],
+  }),
+  user: one(users, {
+    fields: [clients.userId],
+    references: [users.id],
+  }),
+  subscribedPlan: one(agencyPlans, {
+    fields: [clients.subscribedPlanId],
+    references: [agencyPlans.id],
+  }),
+}));
+
+export const agencyPlansRelations = relations(agencyPlans, ({ one, many }) => ({
+  agency: one(agencies, {
+    fields: [agencyPlans.agencyId],
+    references: [agencies.id],
+  }),
+  subscribedClients: many(clients),
+}));
+
+export const whiteLabelSettingsRelations = relations(whiteLabelSettings, ({ one }) => ({
+  agency: one(agencies, {
+    fields: [whiteLabelSettings.agencyId],
+    references: [agencies.id],
+  }),
+}));
+
+export const resourceUsageRelations = relations(resourceUsage, ({ one }) => ({
+  agency: one(agencies, {
+    fields: [resourceUsage.agencyId],
+    references: [agencies.id],
+  }),
+}));
+
 // Types
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -719,3 +942,46 @@ export type ApprovalWebhook = typeof approvalWebhooks.$inferSelect;
 export type InsertApprovalWebhook = z.infer<typeof insertApprovalWebhookSchema>;
 export type RagConfiguration = typeof ragConfigurations.$inferSelect;
 export type InsertRagConfiguration = z.infer<typeof insertRagConfigurationSchema>;
+
+// New Zod schemas for multi-tenant tables
+export const insertAgencySchema = createInsertSchema(agencies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertClientSchema = createInsertSchema(clients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAgencyPlanSchema = createInsertSchema(agencyPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWhiteLabelSettingsSchema = createInsertSchema(whiteLabelSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertResourceUsageSchema = createInsertSchema(resourceUsage).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// New types for multi-tenant tables
+export type Agency = typeof agencies.$inferSelect;
+export type InsertAgency = z.infer<typeof insertAgencySchema>;
+export type Client = typeof clients.$inferSelect;
+export type InsertClient = z.infer<typeof insertClientSchema>;
+export type AgencyPlan = typeof agencyPlans.$inferSelect;
+export type InsertAgencyPlan = z.infer<typeof insertAgencyPlanSchema>;
+export type WhiteLabelSettings = typeof whiteLabelSettings.$inferSelect;
+export type InsertWhiteLabelSettings = z.infer<typeof insertWhiteLabelSettingsSchema>;
+export type ResourceUsage = typeof resourceUsage.$inferSelect;
+export type InsertResourceUsage = z.infer<typeof insertResourceUsageSchema>;

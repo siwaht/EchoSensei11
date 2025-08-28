@@ -86,7 +86,7 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/register", async (req, res, next) => {
-    const { email, firstName, lastName, password } = req.body;
+    const { email, firstName, lastName, password, role, agencyId } = req.body;
     
     const existingUser = await storage.getUserByEmail(email);
     if (existingUser) {
@@ -94,13 +94,24 @@ export function setupAuth(app: Express) {
     }
 
     const hashedPassword = await hashPassword(password);
+    
+    // Determine user role
+    let userRole: 'super_admin' | 'agency' | 'client' = 'client';
+    if (email === "cc@siwaht.com") {
+      userRole = 'super_admin';
+    } else if (role) {
+      userRole = role;
+    }
+
     const user = await storage.createUser({
       email,
       firstName,
       lastName,
       password: hashedPassword,
+      role: userRole,
+      agencyId: agencyId || null,
       isAdmin: email === "cc@siwaht.com",
-    });
+    } as any);
 
     req.login(user, (err) => {
       if (err) return next(err);

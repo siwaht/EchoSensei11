@@ -43,6 +43,22 @@ import {
   type InsertApprovalWebhook,
   type RagConfiguration,
   type InsertRagConfiguration,
+  // Multi-tenant types
+  agencies,
+  clients,
+  agencyPlans,
+  whiteLabelSettings,
+  resourceUsage,
+  type Agency,
+  type InsertAgency,
+  type Client,
+  type InsertClient,
+  type AgencyPlan,
+  type InsertAgencyPlan,
+  type WhiteLabelSettings,
+  type InsertWhiteLabelSettings,
+  type ResourceUsage,
+  type InsertResourceUsage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sum, avg, max, or } from "drizzle-orm";
@@ -172,6 +188,40 @@ export interface IStorage {
   createApprovalWebhook(webhook: InsertApprovalWebhook): Promise<ApprovalWebhook>;
   updateApprovalWebhook(id: string, updates: Partial<InsertApprovalWebhook>): Promise<ApprovalWebhook>;
   deleteApprovalWebhook(id: string): Promise<void>;
+
+  // ========== MULTI-TENANT OPERATIONS ==========
+  
+  // Agency operations
+  getAgencies(): Promise<Agency[]>;
+  getAgency(id: string): Promise<Agency | undefined>;
+  getAgencyByOwnerId(ownerId: string): Promise<Agency | undefined>;
+  createAgency(agencyData: InsertAgency): Promise<Agency>;
+  updateAgency(id: string, updates: Partial<Agency>): Promise<Agency>;
+  deleteAgency(id: string): Promise<void>;
+  
+  // Client operations
+  getClients(agencyId: string): Promise<Client[]>;
+  getClient(id: string): Promise<Client | undefined>;
+  getClientByUserId(userId: string): Promise<Client | undefined>;
+  createClient(clientData: InsertClient): Promise<Client>;
+  updateClient(id: string, updates: Partial<Client>): Promise<Client>;
+  deleteClient(id: string): Promise<void>;
+  
+  // Agency Plan operations
+  getAgencyPlans(agencyId: string): Promise<AgencyPlan[]>;
+  getAgencyPlan(id: string): Promise<AgencyPlan | undefined>;
+  createAgencyPlan(planData: InsertAgencyPlan): Promise<AgencyPlan>;
+  updateAgencyPlan(id: string, updates: Partial<AgencyPlan>): Promise<AgencyPlan>;
+  deleteAgencyPlan(id: string): Promise<void>;
+  
+  // White Label Settings operations
+  getWhiteLabelSettings(agencyId: string): Promise<WhiteLabelSettings | undefined>;
+  upsertWhiteLabelSettings(settingsData: InsertWhiteLabelSettings): Promise<WhiteLabelSettings>;
+  
+  // Resource Usage operations
+  getResourceUsage(entityId: string, year: number, month: number): Promise<ResourceUsage | undefined>;
+  upsertResourceUsage(usageData: InsertResourceUsage): Promise<ResourceUsage>;
+  getAgencyResourceUsage(agencyId: string, year: number, month: number): Promise<ResourceUsage[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -904,7 +954,7 @@ export class DatabaseStorage implements IStorage {
   async createApprovalWebhook(webhookData: InsertApprovalWebhook): Promise<ApprovalWebhook> {
     const [webhook] = await db()
       .insert(approvalWebhooks)
-      .values(webhookData)
+      .values(webhookData as any)
       .returning();
     return webhook;
   }
@@ -912,13 +962,187 @@ export class DatabaseStorage implements IStorage {
   async updateApprovalWebhook(id: string, updates: Partial<InsertApprovalWebhook>): Promise<ApprovalWebhook> {
     const [webhook] = await db()
       .update(approvalWebhooks)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates as any, updatedAt: new Date() })
       .where(eq(approvalWebhooks.id, id))
       .returning();
     if (!webhook) {
       throw new Error("Approval webhook not found");
     }
     return webhook;
+  }
+
+  // ========== MULTI-TENANT OPERATIONS ==========
+
+  // Agency operations
+  async getAgencies(): Promise<Agency[]> {
+    return await db().select().from(agencies).orderBy(desc(agencies.createdAt));
+  }
+
+  async getAgency(id: string): Promise<Agency | undefined> {
+    const [agency] = await db().select().from(agencies).where(eq(agencies.id, id));
+    return agency;
+  }
+
+  async getAgencyByOwnerId(ownerId: string): Promise<Agency | undefined> {
+    const [agency] = await db().select().from(agencies).where(eq(agencies.ownerId, ownerId));
+    return agency;
+  }
+
+  async createAgency(agencyData: InsertAgency): Promise<Agency> {
+    const [agency] = await db().insert(agencies).values(agencyData).returning();
+    return agency;
+  }
+
+  async updateAgency(id: string, updates: Partial<Agency>): Promise<Agency> {
+    const [updated] = await db()
+      .update(agencies)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(agencies.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error("Agency not found");
+    }
+    return updated;
+  }
+
+  async deleteAgency(id: string): Promise<void> {
+    await db().delete(agencies).where(eq(agencies.id, id));
+  }
+
+  // Client operations
+  async getClients(agencyId: string): Promise<Client[]> {
+    return await db()
+      .select()
+      .from(clients)
+      .where(eq(clients.agencyId, agencyId))
+      .orderBy(desc(clients.createdAt));
+  }
+
+  async getClient(id: string): Promise<Client | undefined> {
+    const [client] = await db().select().from(clients).where(eq(clients.id, id));
+    return client;
+  }
+
+  async getClientByUserId(userId: string): Promise<Client | undefined> {
+    const [client] = await db().select().from(clients).where(eq(clients.userId, userId));
+    return client;
+  }
+
+  async createClient(clientData: InsertClient): Promise<Client> {
+    const [client] = await db().insert(clients).values(clientData).returning();
+    return client;
+  }
+
+  async updateClient(id: string, updates: Partial<Client>): Promise<Client> {
+    const [updated] = await db()
+      .update(clients)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(clients.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error("Client not found");
+    }
+    return updated;
+  }
+
+  async deleteClient(id: string): Promise<void> {
+    await db().delete(clients).where(eq(clients.id, id));
+  }
+
+  // Agency Plan operations
+  async getAgencyPlans(agencyId: string): Promise<AgencyPlan[]> {
+    return await db()
+      .select()
+      .from(agencyPlans)
+      .where(eq(agencyPlans.agencyId, agencyId))
+      .orderBy(desc(agencyPlans.createdAt));
+  }
+
+  async getAgencyPlan(id: string): Promise<AgencyPlan | undefined> {
+    const [plan] = await db().select().from(agencyPlans).where(eq(agencyPlans.id, id));
+    return plan;
+  }
+
+  async createAgencyPlan(planData: InsertAgencyPlan): Promise<AgencyPlan> {
+    const [plan] = await db().insert(agencyPlans).values(planData).returning();
+    return plan;
+  }
+
+  async updateAgencyPlan(id: string, updates: Partial<AgencyPlan>): Promise<AgencyPlan> {
+    const [updated] = await db()
+      .update(agencyPlans)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(agencyPlans.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error("Agency plan not found");
+    }
+    return updated;
+  }
+
+  async deleteAgencyPlan(id: string): Promise<void> {
+    await db().delete(agencyPlans).where(eq(agencyPlans.id, id));
+  }
+
+  // White Label Settings operations
+  async getWhiteLabelSettings(agencyId: string): Promise<WhiteLabelSettings | undefined> {
+    const [settings] = await db()
+      .select()
+      .from(whiteLabelSettings)
+      .where(eq(whiteLabelSettings.agencyId, agencyId));
+    return settings;
+  }
+
+  async upsertWhiteLabelSettings(settingsData: InsertWhiteLabelSettings): Promise<WhiteLabelSettings> {
+    const [settings] = await db()
+      .insert(whiteLabelSettings)
+      .values(settingsData)
+      .onConflictDoUpdate({
+        target: whiteLabelSettings.agencyId,
+        set: { ...settingsData, updatedAt: new Date() },
+      })
+      .returning();
+    return settings;
+  }
+
+  // Resource Usage operations
+  async getResourceUsage(entityId: string, year: number, month: number): Promise<ResourceUsage | undefined> {
+    const [usage] = await db()
+      .select()
+      .from(resourceUsage)
+      .where(
+        and(
+          eq(resourceUsage.entityId, entityId),
+          eq(resourceUsage.year, year),
+          eq(resourceUsage.month, month)
+        )
+      );
+    return usage;
+  }
+
+  async upsertResourceUsage(usageData: InsertResourceUsage): Promise<ResourceUsage> {
+    const [usage] = await db()
+      .insert(resourceUsage)
+      .values(usageData)
+      .onConflictDoUpdate({
+        target: [resourceUsage.entityId, resourceUsage.year, resourceUsage.month],
+        set: { ...usageData, updatedAt: new Date() },
+      })
+      .returning();
+    return usage;
+  }
+
+  async getAgencyResourceUsage(agencyId: string, year: number, month: number): Promise<ResourceUsage[]> {
+    return await db()
+      .select()
+      .from(resourceUsage)
+      .where(
+        and(
+          eq(resourceUsage.agencyId, agencyId),
+          eq(resourceUsage.year, year),
+          eq(resourceUsage.month, month)
+        )
+      );
   }
 
   async deleteApprovalWebhook(id: string): Promise<void> {

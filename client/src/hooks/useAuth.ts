@@ -13,6 +13,7 @@ export function useAuth() {
     user,
     isLoading,
     isAuthenticated: !!user,
+    userRole: user?.role || null,
     error,
   };
 }

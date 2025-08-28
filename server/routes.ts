@@ -9,6 +9,8 @@ import multer from "multer";
 import type { RequestHandler } from "express";
 import { seedAdminUser } from "./seedAdmin";
 import { vectorDB } from "./vectordb";
+import { registerMultiTenantRoutes } from "./multiTenantRoutes";
+import { seedMultiTenantData } from "./seedMultiTenant";
 
 // Authentication middleware
 const isAuthenticated: RequestHandler = (req, res, next) => {
@@ -271,8 +273,14 @@ export function registerRoutes(app: Express): Server {
   // Seed admin user on startup
   seedAdminUser().catch(console.error);
   
+  // Seed multi-tenant demo data
+  seedMultiTenantData().catch(console.error);
+  
   // Auth middleware
   setupAuth(app);
+
+  // Register multi-tenant routes
+  registerMultiTenantRoutes(app);
 
   // Auth routes already handled by setupAuth in auth.ts
   
