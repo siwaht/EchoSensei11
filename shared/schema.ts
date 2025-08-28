@@ -390,14 +390,15 @@ export const agents = pgTable("agents", {
 // Call logs table
 export const callLogs = pgTable("call_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull(), // Required ElevenLabs conversation ID
   organizationId: varchar("organization_id").notNull(),
-  agentId: varchar("agent_id").notNull(),
+  agentId: varchar("agent_id"),
   elevenLabsCallId: varchar("eleven_labs_call_id"),
   duration: integer("duration"), // in seconds
   transcript: json("transcript"),
   audioUrl: varchar("audio_url"),
   cost: decimal("cost", { precision: 10, scale: 4 }),
-  status: varchar("status").notNull().default("completed"), // completed, failed, in_progress
+  status: varchar("status"), // completed, failed, in_progress
   createdAt: timestamp("created_at").defaultNow(),
 });
 

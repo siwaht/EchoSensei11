@@ -312,7 +312,8 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
             const callData = {
               organizationId: user.organizationId,
               agentId: conv.localAgent.id,
-              elevenLabsCallId: convId,  // Only use elevenLabsCallId, not conversationId
+              conversationId: convId,  // Required field in database
+              elevenLabsCallId: convId,  // Also store as elevenLabsCallId
               duration: metadata.call_duration_secs || 0,
               transcript: transcriptJson,
               audioUrl: audioUrl,
