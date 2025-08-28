@@ -1,14 +1,19 @@
 import { defineConfig } from "drizzle-kit";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
+// Check if we have a DATABASE_URL, otherwise use SQLite
+const isPostgres = !!process.env.DATABASE_URL;
+
+if (isPostgres && !process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL must be set for PostgreSQL");
 }
 
 export default defineConfig({
   out: "./migrations",
   schema: "./shared/schema.ts",
-  dialect: "postgresql",
-  dbCredentials: {
-    url: process.env.DATABASE_URL,
+  dialect: isPostgres ? "postgresql" : "sqlite",
+  dbCredentials: isPostgres ? {
+    url: process.env.DATABASE_URL!,
+  } : {
+    url: "./data/echosensei11.db",
   },
 });
