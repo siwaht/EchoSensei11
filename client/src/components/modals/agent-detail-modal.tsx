@@ -78,8 +78,8 @@ export function AgentDetailModal({ agent, open, onOpenChange }: AgentDetailModal
 
         <Tabs defaultValue="overview" className="w-full flex-1 overflow-hidden flex flex-col">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+            <TabsTrigger value="settings" data-testid="tab-settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
