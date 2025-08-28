@@ -127,17 +127,20 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
         return res.status(400).json({ message: "Active ElevenLabs integration required" });
       }
 
-      // Decrypt API key if it's encrypted, otherwise use as-is
+      // Decrypt API key - always decrypt since the storage encrypts all API keys
       let apiKey = integration.apiKey;
+      console.log("Raw API key length:", apiKey.length);
       console.log("API key format check - starts with 'enc_':", apiKey.startsWith('enc_'));
       console.log("API key format check - includes ':':", apiKey.includes(':'));
+      console.log("First few chars of encrypted key:", apiKey.substring(0, 20));
       
-      // Only decrypt if it appears to be encrypted (has : separator or starts with enc_)
-      if (apiKey.includes(':') || apiKey.startsWith('enc_')) {
+      // Always try to decrypt since the storage encrypts all API keys
+      try {
         apiKey = decryptApiKey(apiKey);
-        console.log("API key decrypted successfully");
-      } else {
-        console.log("Using API key as-is (not encrypted)")
+        console.log("API key decrypted, length:", apiKey.length);
+        console.log("Decrypted key starts with 'sk-':", apiKey.startsWith('sk-'));
+      } catch (error) {
+        console.error("Failed to decrypt API key, using as-is:", error);
       }
       
       // Step 1: Fetch ALL conversations using the List API with pagination
