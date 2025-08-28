@@ -234,20 +234,37 @@ function decryptApiKey(encryptedApiKey: string): string {
   }
 }
 
-// Cost calculation helper (rough estimate: $0.30 per minute)
+// Cost calculation helper
 function calculateCallCost(durationSeconds: number, costData?: any): number {
-  // If ElevenLabs provides actual cost data, use it
-  if (costData?.llm_cost) {
-    return Number(costData.llm_cost);
-  }
-  if (costData?.cost) {
-    return Number(costData.cost);
+  // ElevenLabs returns credits_used where 1 credit = $0.001
+  if (costData?.credits_used) {
+    return Number(costData.credits_used) * 0.001; // Convert credits to dollars
   }
   
-  // Otherwise, calculate estimated cost based on ElevenLabs pricing
-  // ElevenLabs charges approximately $0.30 per minute for conversational AI
+  // Check for other cost fields
+  if (costData?.llm_cost) {
+    // If llm_cost is in credits, convert it
+    const cost = Number(costData.llm_cost);
+    // If the value seems too high (> $100 for a call), assume it's in credits
+    if (cost > 100) {
+      return cost * 0.001;
+    }
+    return cost;
+  }
+  
+  if (costData?.cost) {
+    const cost = Number(costData.cost);
+    // If the value seems too high (> $100 for a call), assume it's in credits
+    if (cost > 100) {
+      return cost * 0.001;
+    }
+    return cost;
+  }
+  
+  // Otherwise, calculate estimated cost based on typical pricing
+  // Conversational AI typically costs $0.15-0.30 per minute
   const minutes = durationSeconds / 60;
-  return Math.round(minutes * 0.30 * 100) / 100; // Round to 2 decimal places
+  return Math.round(minutes * 0.25 * 100) / 100; // Round to 2 decimal places
 }
 
 export function registerRoutes(app: Express): Server {
