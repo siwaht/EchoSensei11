@@ -47,6 +47,14 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
         ...(agentId && { agent_id: agentId })
       });
       
+      // Ensure API key is valid before making the request
+      if (!apiKey || apiKey.length < 10) {
+        throw new Error('Invalid API key format. Please check your ElevenLabs API key in Integrations.');
+      }
+      
+      console.log(`Making request to: https://api.elevenlabs.io/v1/convai/conversations?${params}`);
+      console.log(`Using API key starting with: ${apiKey.substring(0, 10)}...`);
+      
       const response = await fetch(
         `https://api.elevenlabs.io/v1/convai/conversations?${params}`,
         {
@@ -76,6 +84,15 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
       
       if (currentConcurrent && maxConcurrent) {
         console.log(`Concurrency: ${currentConcurrent}/${maxConcurrent}`);
+      }
+      
+      // First check if the response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Unexpected response format. Expected JSON but got:', contentType);
+        console.error('Response text (first 500 chars):', text.substring(0, 500));
+        throw new Error(`API returned non-JSON response. This usually means authentication failed or the API endpoint has changed.`);
       }
       
       const data = await response.json();
