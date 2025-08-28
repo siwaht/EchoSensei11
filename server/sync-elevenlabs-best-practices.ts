@@ -255,6 +255,9 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
       let totalErrors = 0;
       
       if (conversationsToSync.length > 0) {
+        console.log(`Processing ${conversationsToSync.length} conversations...`);
+        console.log('Sample conversation to sync:', JSON.stringify(conversationsToSync[0], null, 2));
+        
         // Create request functions for each conversation
         const detailRequests = conversationsToSync.map(conv => async () => {
           const convId = conv.conversation_id;  // Use normalized conversation_id
@@ -263,6 +266,8 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
             console.error('Conversation ID is null when fetching details:', conv);
             return { success: false, conversationId: null, error: 'Missing conversation ID' };
           }
+          
+          console.log(`Processing conversation ${convId}, has localAgent: ${!!conv.localAgent}`);
           
           try {
             const response = await fetch(
@@ -311,6 +316,11 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
             // Create call log - ensure convId is not null
             if (!convId) {
               throw new Error('Conversation ID is null when creating call log');
+            }
+            
+            // Check if localAgent exists
+            if (!conv.localAgent || !conv.localAgent.id) {
+              throw new Error(`Local agent not found for conversation ${convId}`);
             }
             
             const callData = {
