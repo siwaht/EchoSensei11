@@ -170,16 +170,10 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
 
       // Decrypt API key - always decrypt since the storage encrypts all API keys
       let apiKey = integration.apiKey;
-      console.log("Raw API key length:", apiKey.length);
-      console.log("API key format check - starts with 'enc_':", apiKey.startsWith('enc_'));
-      console.log("API key format check - includes ':':", apiKey.includes(':'));
-      console.log("First few chars of encrypted key:", apiKey.substring(0, 20));
       
       // Always try to decrypt since the storage encrypts all API keys
       try {
         apiKey = decryptApiKey(apiKey);
-        console.log("API key decrypted, length:", apiKey.length);
-        console.log("Decrypted key starts with 'sk-':", apiKey.startsWith('sk-'));
       } catch (error) {
         console.error("Failed to decrypt API key, using as-is:", error);
       }
@@ -204,12 +198,9 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
           const agentId = conv.agent_id;
           
           if (!conversationId) {
-            console.error('Missing conversation ID in object. Keys available:', Object.keys(conv));
-            console.error('Full conversation object:', JSON.stringify(conv, null, 2));
+            console.error('Missing conversation ID in conversation object');
             return null;
           }
-          
-          console.log(`Found conversation: ${conversationId} for agent: ${agentId}`);
           
           return {
             ...conv,
@@ -231,7 +222,7 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
           // Use conversation_id field from API response (already normalized)
           const convId = conv.conversation_id;
           if (!convId) {
-            console.error('Conversation ID is null for conv:', conv);
+            console.error('Conversation ID is null in existing check');
             return { conversation: conv, exists: false };
           }
           const existing = await storage.getCallLogByElevenLabsId(
@@ -255,19 +246,14 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
       let totalErrors = 0;
       
       if (conversationsToSync.length > 0) {
-        console.log(`Processing ${conversationsToSync.length} conversations...`);
-        console.log('Sample conversation to sync:', JSON.stringify(conversationsToSync[0], null, 2));
-        
         // Create request functions for each conversation
         const detailRequests = conversationsToSync.map(conv => async () => {
           const convId = conv.conversation_id;  // Use normalized conversation_id
           
           if (!convId) {
-            console.error('Conversation ID is null when fetching details:', conv);
+            console.error('Conversation ID is null when fetching details');
             return { success: false, conversationId: null, error: 'Missing conversation ID' };
           }
-          
-          console.log(`Processing conversation ${convId}, has localAgent: ${!!conv.localAgent}`);
           
           try {
             const response = await fetch(
@@ -326,8 +312,7 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
             const callData = {
               organizationId: user.organizationId,
               agentId: conv.localAgent.id,
-              conversationId: convId,
-              elevenLabsCallId: convId,
+              elevenLabsCallId: convId,  // Only use elevenLabsCallId, not conversationId
               duration: metadata.call_duration_secs || 0,
               transcript: transcriptJson,
               audioUrl: audioUrl,
