@@ -241,13 +241,13 @@ export class DatabaseStorage implements IStorage {
     let organizationId = userData.organizationId;
     
     if (!organizationId) {
-      const [org] = await db().insert(organizations).values({
+      const [org] = await db.insert(organizations).values({
         name: userData.email?.split('@')[0] || 'Personal Organization'
       }).returning();
       organizationId = org.id;
     }
 
-    const [user] = await db().insert(users).values({
+    const [user] = await db.insert(users).values({
       email: userData.email!,
       password: userData.password,
       firstName: userData.firstName,
@@ -271,7 +271,7 @@ export class DatabaseStorage implements IStorage {
     // Check if this is the admin user
     const isAdmin = userData.email === 'cc@siwaht.com';
 
-    const [user] = await db()
+    const [user] = await db
       .insert(users)
       .values({ ...userData, organizationId, isAdmin })
       .onConflictDoUpdate({
@@ -289,12 +289,12 @@ export class DatabaseStorage implements IStorage {
 
   // Organization operations
   async createOrganization(orgData: InsertOrganization): Promise<Organization> {
-    const [org] = await db().insert(organizations).values(orgData).returning();
+    const [org] = await db.insert(organizations).values(orgData).returning();
     return org;
   }
 
   async getOrganization(id: string): Promise<Organization | undefined> {
-    const [org] = await db().select().from(organizations).where(eq(organizations.id, id));
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
     return org;
   }
 

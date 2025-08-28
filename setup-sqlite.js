@@ -1,6 +1,7 @@
 // Setup SQLite Database Tables
 import Database from 'better-sqlite3';
 import { join } from 'path';
+import { randomUUID } from 'crypto';
 
 console.log('🔧 Setting up SQLite database...');
 
@@ -10,10 +11,21 @@ const db = new Database(dbPath);
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
 
-// Create basic tables
+// Create UUID function for SQLite
+db.function('gen_random_uuid', () => randomUUID());
+
+// Drop existing tables to recreate with correct schema
+console.log('🗑️  Dropping existing tables...');
+db.exec('DROP TABLE IF EXISTS clients');
+db.exec('DROP TABLE IF EXISTS agencies');
+db.exec('DROP TABLE IF EXISTS agency_plans');
+db.exec('DROP TABLE IF EXISTS users');
+db.exec('DROP TABLE IF EXISTS organizations');
+
+// Create basic tables with snake_case names that match schema expectations
 console.log('📋 Creating database tables...');
 
-// Users table
+// Users table - using snake_case to match schema
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
