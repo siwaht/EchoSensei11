@@ -592,7 +592,7 @@ export default function ApprovalTasks() {
 
       {/* Task Details Dialog */}
       <Dialog open={!!selectedTask} onOpenChange={() => setSelectedTask(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Task Details</DialogTitle>
           </DialogHeader>
@@ -621,11 +621,13 @@ export default function ApprovalTasks() {
                 <p className="text-sm">{selectedTask.description}</p>
               </div>
               {selectedTask.metadata && (
-                <div>
+                <div className="w-full">
                   <p className="text-sm text-muted-foreground mb-2">Additional Information</p>
-                  <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto">
-                    {JSON.stringify(selectedTask.metadata, null, 2)}
-                  </pre>
+                  <div className="w-full overflow-x-auto">
+                    <pre className="text-xs bg-muted p-3 rounded-lg max-w-full overflow-x-auto whitespace-pre-wrap break-words">
+                      {JSON.stringify(selectedTask.metadata, null, 2)}
+                    </pre>
+                  </div>
                 </div>
               )}
             </div>
