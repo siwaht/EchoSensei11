@@ -197,20 +197,23 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
         const agents = await storage.getAgents(user.organizationId);
         const agentMap = new Map(agents.map(a => [a.elevenLabsAgentId, a]));
         
-        // Add agent info to conversations - API returns 'conversation_id' field
+        // Add agent info to conversations - check both 'id' and 'conversation_id' fields
         allConversations = allConversations.map(conv => {
-          // According to latest ElevenLabs API docs, field is 'conversation_id'
-          const conversationId = conv.conversation_id;
+          // The API might return 'id' or 'conversation_id' - check both
+          const conversationId = conv.conversation_id || conv.id;
           const agentId = conv.agent_id;
           
           if (!conversationId) {
-            console.error('Missing conversation_id in conversation object:', conv);
+            console.error('Missing conversation ID in object. Keys available:', Object.keys(conv));
+            console.error('Full conversation object:', JSON.stringify(conv, null, 2));
             return null;
           }
           
+          console.log(`Found conversation: ${conversationId} for agent: ${agentId}`);
+          
           return {
             ...conv,
-            conversation_id: conversationId,
+            conversation_id: conversationId, // Normalize to conversation_id
             agent_id: agentId,
             localAgent: agentMap.get(agentId)
           };
@@ -225,8 +228,12 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
       console.log("Filtering existing conversations...");
       const existingChecks = await Promise.all(
         allConversations.map(async (conv) => {
-          // Use conversation_id field from API response
+          // Use conversation_id field from API response (already normalized)
           const convId = conv.conversation_id;
+          if (!convId) {
+            console.error('Conversation ID is null for conv:', conv);
+            return { conversation: conv, exists: false };
+          }
           const existing = await storage.getCallLogByElevenLabsId(
             convId,
             user.organizationId
@@ -250,7 +257,12 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
       if (conversationsToSync.length > 0) {
         // Create request functions for each conversation
         const detailRequests = conversationsToSync.map(conv => async () => {
-          const convId = conv.conversation_id;  // Use conversation_id from API response
+          const convId = conv.conversation_id;  // Use normalized conversation_id
+          
+          if (!convId) {
+            console.error('Conversation ID is null when fetching details:', conv);
+            return { success: false, conversationId: null, error: 'Missing conversation ID' };
+          }
           
           try {
             const response = await fetch(
@@ -296,7 +308,11 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
               credits_used: metadata.credits_used || 0,
             };
             
-            // Create call log
+            // Create call log - ensure convId is not null
+            if (!convId) {
+              throw new Error('Conversation ID is null when creating call log');
+            }
+            
             const callData = {
               organizationId: user.organizationId,
               agentId: conv.localAgent.id,
