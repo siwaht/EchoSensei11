@@ -79,6 +79,12 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
       }
       
       const data = await response.json();
+      
+      // Log the first conversation to understand the structure
+      if (data.conversations && data.conversations.length > 0) {
+        console.log("Sample conversation structure:", JSON.stringify(data.conversations[0], null, 2));
+      }
+      
       conversations.push(...(data.conversations || []));
       
       hasMore = data.has_more;
@@ -156,11 +162,19 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
         const agents = await storage.getAgents(user.organizationId);
         const agentMap = new Map(agents.map(a => [a.elevenLabsAgentId, a]));
         
-        // Add agent info to conversations
-        allConversations = allConversations.map(conv => ({
-          ...conv,
-          localAgent: agentMap.get(conv.agent_id)
-        })).filter(conv => conv.localAgent); // Only sync conversations for known agents
+        // Add agent info to conversations and normalize the ID field
+        allConversations = allConversations.map(conv => {
+          // ElevenLabs uses 'id' field for conversation ID
+          const conversationId = conv.id || conv.conversation_id;
+          const agentId = conv.agent_id;
+          
+          return {
+            ...conv,
+            conversation_id: conversationId, // Normalize to conversation_id
+            agent_id: agentId,
+            localAgent: agentMap.get(agentId)
+          };
+        }).filter(conv => conv.localAgent); // Only sync conversations for known agents
         
       } catch (error: any) {
         console.error("Failed to fetch conversations:", error);
@@ -171,8 +185,10 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
       console.log("Filtering existing conversations...");
       const existingChecks = await Promise.all(
         allConversations.map(async (conv) => {
+          // Use the normalized conversation_id field
+          const convId = conv.conversation_id || conv.id;
           const existing = await storage.getCallLogByElevenLabsId(
-            conv.conversation_id,
+            convId,
             user.organizationId
           );
           return { conversation: conv, exists: !!existing };
@@ -194,9 +210,11 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
       if (conversationsToSync.length > 0) {
         // Create request functions for each conversation
         const detailRequests = conversationsToSync.map(conv => async () => {
+          const convId = conv.conversation_id || conv.id;  // Declare once at the top of the function
+          
           try {
             const response = await fetch(
-              `https://api.elevenlabs.io/v1/convai/conversations/${conv.conversation_id}`,
+              `https://api.elevenlabs.io/v1/convai/conversations/${convId}`,
               {
                 headers: {
                   'xi-api-key': apiKey,
@@ -206,7 +224,7 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
             );
             
             if (!response.ok) {
-              throw new Error(`Failed to fetch details for ${conv.conversation_id}`);
+              throw new Error(`Failed to fetch details for ${convId}`);
             }
             
             const details = await response.json();
@@ -214,7 +232,7 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
             // Process audio URL
             let audioUrl = details.metadata?.audio_url || 
                           details.metadata?.recording_url || 
-                          `/api/audio/${conv.conversation_id}`;
+                          `/api/audio/${convId}`;
             
             // Process transcript
             let transcriptJson: any = [];
@@ -242,8 +260,8 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
             const callData = {
               organizationId: user.organizationId,
               agentId: conv.localAgent.id,
-              conversationId: conv.conversation_id,
-              elevenLabsCallId: conv.conversation_id,
+              conversationId: convId,
+              elevenLabsCallId: convId,
               duration: metadata.call_duration_secs || 0,
               transcript: transcriptJson,
               audioUrl: audioUrl,
@@ -258,10 +276,10 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
             };
             
             await storage.createCallLog(callData);
-            return { success: true, conversationId: conv.conversation_id };
+            return { success: true, conversationId: convId };
           } catch (error: any) {
-            console.error(`Error processing ${conv.conversation_id}:`, error.message);
-            return { success: false, conversationId: conv.conversation_id, error: error.message };
+            console.error(`Error processing ${convId}:`, error.message);
+            return { success: false, conversationId: convId, error: error.message };
           }
         });
         
