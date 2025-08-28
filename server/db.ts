@@ -19,17 +19,21 @@ function getDatabaseConnection() {
     // Configure the connection pool with proper settings for serverless
     pool = new Pool({ 
       connectionString: process.env.DATABASE_URL,
-      max: 10, // Maximum number of connections in pool
-      connectionTimeoutMillis: 10000, // 10 seconds connection timeout
-      idleTimeoutMillis: 30000, // 30 seconds idle timeout
+      max: 10,
+      connectionTimeoutMillis: 10000,
+      idleTimeoutMillis: 30000,
       allowExitOnIdle: true
     });
 
     database = drizzle({ client: pool, schema });
   }
   
-  return database;
+  return database!;
 }
 
-// Export the function that lazy-loads the database connection
-export const db = getDatabaseConnection;
+// Create a callable db that is also an object with query methods
+type DrizzleDb = any;
+type CallableDb = DrizzleDb & (() => DrizzleDb);
+
+const concreteDb: any = getDatabaseConnection();
+export const db = Object.assign(() => concreteDb, concreteDb) as CallableDb;

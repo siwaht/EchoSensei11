@@ -17,22 +17,22 @@ export default function ClientDashboard() {
   const [selectedCallLog, setSelectedCallLog] = useState<any>(null);
 
   // Fetch client info and subscription
-  const { data: clientInfo } = useQuery({
+  const { data: clientInfo } = useQuery<any>({
     queryKey: ["/api/client/info"],
   });
 
   // Fetch usage statistics
-  const { data: usage } = useQuery({
+  const { data: usage } = useQuery<any>({
     queryKey: ["/api/client/usage"],
   });
 
   // Fetch recent call logs
-  const { data: callLogs, isLoading: callLogsLoading } = useQuery({
+  const { data: callLogs, isLoading: callLogsLoading } = useQuery<any[]>({
     queryKey: ["/api/client/call-logs"],
   });
 
   // Fetch agents
-  const { data: agents } = useQuery({
+  const { data: agents } = useQuery<any[]>({
     queryKey: ["/api/client/agents"],
   });
 

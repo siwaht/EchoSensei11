@@ -48,7 +48,7 @@ export default function History() {
     },
   });
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null) => {
     switch (status) {
       case "completed":
         return "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200";
@@ -68,7 +68,7 @@ export default function History() {
     return `${minutes}m ${remainingSeconds}s`;
   };
 
-  const getAgentName = (agentId: string) => {
+  const getAgentName = (agentId: string | null) => {
     const agent = agents?.find(a => a.id === agentId);
     return agent?.name || "Unknown Agent";
   };

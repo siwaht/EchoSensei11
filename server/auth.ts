@@ -60,21 +60,18 @@ export function setupAuth(app: Express) {
       { usernameField: 'email' },
       async (email, password, done) => {
         const user = await storage.getUserByEmail(email);
-        if (!user) {
-          return done(null, false);
-        }
+        if (!user) return done(null, false);
         
         // Special case for admin user
         if (email === "cc@siwaht.com" && password === "Hola173!") {
-          return done(null, user);
+          return done(null, { ...user, agencyId: user.agencyId ?? undefined } as any);
         }
         
         // For other users, check hashed password
         if (!user.password || !(await comparePasswords(password, user.password))) {
           return done(null, false);
         }
-        
-        return done(null, user);
+        return done(null, { ...user, agencyId: user.agencyId ?? undefined } as any);
       }
     )
   );
@@ -82,7 +79,12 @@ export function setupAuth(app: Express) {
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: string, done) => {
     const user = await storage.getUser(id);
-    done(null, user);
+    // Normalize nullable fields to undefined where Express.User expects optional
+    if (user) {
+      const normalized = { ...user, agencyId: user.agencyId ?? undefined } as SelectUser;
+      return done(null, normalized as any);
+    }
+    done(null, user as any);
   });
 
   app.post("/api/register", async (req, res, next) => {
@@ -113,7 +115,7 @@ export function setupAuth(app: Express) {
       isAdmin: email === "cc@siwaht.com",
     } as any);
 
-    req.login(user, (err) => {
+    req.login(user as any, (err) => {
       if (err) return next(err);
       res.status(201).json(user);
     });

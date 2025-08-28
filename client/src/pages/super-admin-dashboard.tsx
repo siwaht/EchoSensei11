@@ -13,6 +13,13 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Users, CreditCard, Settings, Activity, DollarSign, Shield, Palette, Link2, BarChart3 } from "lucide-react";
 import type { Agency, AgencyPlan } from "@shared/schema";
+type PlatformStats = {
+  totalAgencies?: number;
+  totalClients?: number;
+  monthlyRevenue?: number;
+  activeSubscriptions?: number;
+  platformUsage?: number;
+};
 
 export default function SuperAdminDashboard() {
   const queryClient = useQueryClient();
@@ -22,17 +29,17 @@ export default function SuperAdminDashboard() {
   const [isEditPlanOpen, setIsEditPlanOpen] = useState(false);
   
   // Fetch platform stats
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<PlatformStats>({
     queryKey: ["/api/super-admin/stats"],
   });
 
   // Fetch all agencies
-  const { data: agencies, isLoading: agenciesLoading } = useQuery({
+  const { data: agencies, isLoading: agenciesLoading } = useQuery<any[]>({
     queryKey: ["/api/super-admin/agencies"],
   });
 
   // Fetch agency plans
-  const { data: agencyPlans } = useQuery({
+  const { data: agencyPlans } = useQuery<AgencyPlan[]>({
     queryKey: ["/api/super-admin/agency-plans"],
   });
 

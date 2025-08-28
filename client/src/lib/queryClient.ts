@@ -7,15 +7,30 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Flexible API helper: supports apiRequest(method, url, data) and apiRequest(url, { method, body })
 export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
+  methodOrUrl: string,
+  urlOrOptions: string | { method: string; body?: unknown },
+  data?: unknown,
 ): Promise<Response> {
+  let url: string;
+  let method: string;
+  let bodyData: unknown | undefined;
+
+  if (typeof urlOrOptions === "string") {
+    method = methodOrUrl;
+    url = urlOrOptions;
+    bodyData = data;
+  } else {
+    url = methodOrUrl;
+    method = urlOrOptions.method;
+    bodyData = urlOrOptions.body;
+  }
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+    headers: bodyData !== undefined ? { "Content-Type": "application/json" } : {},
+    body: bodyData !== undefined ? JSON.stringify(bodyData) : undefined,
     credentials: "include",
   });
 

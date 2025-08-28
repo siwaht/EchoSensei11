@@ -130,7 +130,7 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
   // Apply template function
   const applyTemplate = (templateName: string) => {
     if (templateName && WEBHOOK_TEMPLATES[templateName as keyof typeof WEBHOOK_TEMPLATES]) {
-      const template = WEBHOOK_TEMPLATES[templateName as keyof typeof WEBHOOK_TEMPLATES];
+      const template = WEBHOOK_TEMPLATES[templateName as keyof typeof WEBHOOK_TEMPLATES] as any;
       setFormData({
         ...formData,
         name: template.name,
@@ -139,11 +139,11 @@ export function WebhookToolDialog({ isOpen, onClose, webhook, onSave }: WebhookT
         url: template.url,
         webhookConfig: {
           ...formData.webhookConfig,
-          ...template.webhookConfig,
-          headers: template.webhookConfig?.headers || [],
-          pathParameters: template.webhookConfig?.pathParameters || [],
-          queryParameters: template.webhookConfig?.queryParameters || [],
-          bodyParameters: template.webhookConfig?.bodyParameters || [],
+          ...(template.webhookConfig as any),
+          headers: (template.webhookConfig as any)?.headers || [],
+          pathParameters: (template.webhookConfig as any)?.pathParameters || [],
+          queryParameters: (template.webhookConfig as any)?.queryParameters || [],
+          bodyParameters: (template.webhookConfig as any)?.bodyParameters || [],
         }
       });
     }

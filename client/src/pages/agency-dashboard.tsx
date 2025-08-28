@@ -14,7 +14,25 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Users, CreditCard, Settings, Activity, DollarSign, Palette, Link2, BarChart3, Upload, Phone } from "lucide-react";
-import type { Client, ClientSubscription } from "@shared/schema";
+import type { Client } from "@shared/schema";
+type AgencyStats = {
+  activeClients?: number;
+  maxClients?: number;
+  monthlyRevenue?: number;
+  revenueGrowth?: number;
+  characterUsage?: number;
+  charactersUsed?: number;
+  characterQuota?: number;
+  totalCalls?: number;
+  netProfit?: number;
+};
+type WhiteLabel = {
+  brandName?: string;
+  customDomain?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  logoUrl?: string;
+};
 
 export default function AgencyDashboard() {
   const queryClient = useQueryClient();
@@ -24,27 +42,27 @@ export default function AgencyDashboard() {
   const [isWhiteLabelSettingsOpen, setIsWhiteLabelSettingsOpen] = useState(false);
 
   // Fetch agency info
-  const { data: agencyInfo } = useQuery({
+  const { data: agencyInfo } = useQuery<any>({
     queryKey: ["/api/agency/info"],
   });
 
   // Fetch agency stats
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<AgencyStats>({
     queryKey: ["/api/agency/stats"],
   });
 
   // Fetch clients
-  const { data: clients, isLoading: clientsLoading } = useQuery({
+  const { data: clients, isLoading: clientsLoading } = useQuery<any[]>({
     queryKey: ["/api/agency/clients"],
   });
 
   // Fetch subscription plans
-  const { data: subscriptionPlans } = useQuery({
+  const { data: subscriptionPlans } = useQuery<any[]>({
     queryKey: ["/api/agency/subscription-plans"],
   });
 
   // Fetch white-label settings
-  const { data: whiteLabelSettings } = useQuery({
+  const { data: whiteLabelSettings } = useQuery<WhiteLabel>({
     queryKey: ["/api/agency/white-label"],
   });
 

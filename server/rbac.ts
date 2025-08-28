@@ -13,7 +13,7 @@ declare global {
 
 // Extend Express Request to include role information
 export interface AuthenticatedRequest extends Request {
-  user: User;
+  user: User & { agencyId?: string | null };
   userRole: 'super_admin' | 'agency' | 'client';
   agencyId?: string | null;
   clientId?: string | null;

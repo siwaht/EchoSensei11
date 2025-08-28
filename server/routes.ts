@@ -5484,6 +5484,7 @@ Generate the complete prompt now:`;
           
           // Store call log
           await storage.createCallLog({
+            conversationId: conversation_id,
             organizationId: agent.organizationId,
             agentId: agent.id,
             elevenLabsCallId: conversation_id,
@@ -5542,6 +5543,7 @@ Generate the complete prompt now:`;
           
           // Store call log
           await storage.createCallLog({
+            conversationId: conversation_id,
             organizationId: agent.organizationId,
             agentId: agent.id,
             elevenLabsCallId: conversation_id,

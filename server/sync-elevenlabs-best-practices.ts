@@ -189,7 +189,7 @@ export function setupElevenLabsSyncOptimized(app: any, storage: any, isAuthentic
         
         // Get agent mapping for later use
         const agents = await storage.getAgents(user.organizationId);
-        const agentMap = new Map(agents.map(a => [a.elevenLabsAgentId, a]));
+        const agentMap = new Map(agents.map((a: any) => [a.elevenLabsAgentId, a]));
         
         // Add agent info to conversations - check both 'id' and 'conversation_id' fields
         allConversations = allConversations.map(conv => {

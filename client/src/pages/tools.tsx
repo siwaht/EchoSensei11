@@ -37,7 +37,7 @@ interface WebhookParameter {
   description?: string;
 }
 
-interface WebhookConfig {
+type WebhookConfig = {
   id: string;
   name: string;
   url: string;
@@ -53,22 +53,9 @@ interface WebhookConfig {
       type?: string;
       credentials?: any;
     };
-    headers?: Array<{
-      key: string;
-      value: string;
-      enabled: boolean;
-    }>;
-    pathParameters?: Array<{
-      key: string;
-      description?: string;
-    }>;
-    queryParameters?: Array<{
-      key: string;
-      description?: string;
-      required?: boolean;
-      dataType?: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array';
-      valueType?: 'LLM Prompt' | 'Static' | 'Dynamic Variable';
-    }>;
+    headers?: Array<{ key?: string; value?: string; enabled?: boolean } & { identifier?: string }>;
+    pathParameters?: Array<{ key?: string; identifier?: string; description?: string }>;
+    queryParameters?: Array<{ key?: string; identifier?: string; description?: string; required?: boolean; dataType?: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array'; valueType?: 'LLM Prompt' | 'Static' | 'Dynamic Variable' }>;
     bodyParameters?: Array<{
       identifier: string;
       dataType: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array';
@@ -82,7 +69,7 @@ interface WebhookConfig {
       jsonPath: string;
     }>;
   };
-}
+};
 
 interface ToolConfig {
   id: string;
@@ -314,11 +301,17 @@ export default function Tools() {
     }
 
     // Build custom tools array
-    const customTools = [...toolsConfig.customTools.filter(t => t.type !== 'mcp')];
+    const customTools: ToolConfig[] = [...toolsConfig.customTools.filter(t => t.type !== 'mcp')];
     
     // Add MCP servers to custom tools
     if (toolsConfig.mcpServers && toolsConfig.mcpServers.length > 0) {
-      customTools.push(...toolsConfig.mcpServers);
+      customTools.push(...toolsConfig.mcpServers.map((s) => ({
+        id: s.id,
+        name: s.name,
+        type: s.type,
+        configuration: s.configuration || {},
+        enabled: s.enabled,
+      })));
     }
 
     updateAgentMutation.mutate({

@@ -21,7 +21,7 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
     return `${minutes}m ${remainingSeconds}s`;
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null) => {
     switch (status) {
       case "completed":
         return "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200";
@@ -93,7 +93,7 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
         </div>
 
         {/* Call Recording with Professional Audio Player */}
-        {callLog.audioUrl && (
+        {typeof callLog.audioUrl === 'string' && callLog.audioUrl && (
           <div className="mb-4 sm:mb-6">
             <h4 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 sm:mb-3">Call Recording</h4>
             <Card className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700">
@@ -123,16 +123,16 @@ export function CallDetailModal({ callLog, open, onOpenChange }: CallDetailModal
                 {/* Audio Controls */}
                 <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                   <audio controls className="w-full sm:flex-1 sm:max-w-md" data-testid="audio-call-recording">
-                    <source src={callLog.audioUrl} type="audio/mpeg" />
-                    <source src={callLog.audioUrl} type="audio/wav" />
-                    <source src={callLog.audioUrl} type="audio/mp4" />
+                    <source src={callLog.audioUrl || undefined} type="audio/mpeg" />
+                    <source src={callLog.audioUrl || undefined} type="audio/wav" />
+                    <source src={callLog.audioUrl || undefined} type="audio/mp4" />
                     Your browser does not support the audio element.
                   </audio>
                   
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 text-xs text-gray-500 dark:text-gray-400">
                     <span className="block sm:inline">Duration: {callLog.duration ? `${Math.floor(callLog.duration / 60)}:${String(callLog.duration % 60).padStart(2, '0')}` : 'N/A'}</span>
                     <a
-                      href={callLog.audioUrl}
+                      href={callLog.audioUrl || undefined}
                       download={`call-recording-${callLog.elevenLabsCallId}.mp3`}
                       className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 transition-colors"
                       data-testid="link-download-recording"

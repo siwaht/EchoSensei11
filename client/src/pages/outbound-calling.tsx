@@ -66,7 +66,7 @@ export default function OutboundCalling() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/batch-calls"] });
       setShowCreateDialog(false);
-      setFormData({ name: "", agentId: "", phoneNumberId: "", recipients: [] });
+      setFormData({ name: "", agentId: "", phoneNumberId: "", voiceId: "", recipients: [] });
       toast({
         title: "Batch call created",
         description: "Your batch call has been created successfully.",
@@ -334,6 +334,7 @@ export default function OutboundCalling() {
                             name: batchCall.name,
                             agentId: batchCall.agentId,
                             phoneNumberId: batchCall.phoneNumberId || "",
+                            voiceId: "",
                             recipients: [],
                           });
                           setShowCreateDialog(true);
@@ -627,7 +628,7 @@ export default function OutboundCalling() {
                 onClick={() => {
                   setShowCreateDialog(false);
                   setSelectedBatchCall(null);
-                  setFormData({ name: "", agentId: "", phoneNumberId: "", recipients: [] });
+                  setFormData({ name: "", agentId: "", phoneNumberId: "", voiceId: "", recipients: [] });
                 }}
                 data-testid="button-cancel"
               >
